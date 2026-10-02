@@ -1,0 +1,1364 @@
+import { ResponsiveBar } from '@nivo/bar'
+import { ResponsiveLine } from '@nivo/line'
+import { useMemo, useState } from 'react'
+import {
+  Area,
+  AreaChart,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { EmptyState } from '@ops/components/ui/EmptyState'
+import { Select } from '@ops/components/ui/Select'
+import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { EmployeeCombobox } from '@ops/components/ui/EmployeeCombobox'
+import { AnimatedChart } from '@ops/features/reports/components/AnimatedChart'
+import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
+import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useOvertimeRecords } from '@ops/features/overtime/hooks/useOvertime'
+import {
+  ACTIVE_INACTIVE_PALETTE,
+  ATTENDANCE_PALETTE,
+  CHART_PALETTE_NO_RED,
+  EARNINGS_DEDUCTIONS_PALETTE,
+  NIVO_THEME,
+} from '@ops/features/reports/components/nivoTheme'
+import { ChartPane, FilterLabel, ReportFilterBar, ReportViewShell, StatTile, TablePane, ViewModeToggle, useScopedPayrollLines } from '@ops/features/reports/components/shared'
+import type { ExcelExport } from '@ops/features/reports/reportExport'
+import type { ReportViewMode } from '@ops/features/reports/components/shared'
+import { changePct, payrollMonthKey, summarizeBy, summarizeByPayrollMonth } from '@ops/features/reports/payrollAggregates'
+import { useAllPayrollLines, useAttendanceSummary, useLeaveSummary } from '@ops/features/reports/hooks/useReports'
+import { useMediaQuery } from '@ops/hooks/useMediaQuery'
+import { useTenant } from '@ops/hooks/useTenant'
+import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
+import { cn } from '@ops/lib/utils/cn'
+import { PAY_RATE_TYPE_LABEL } from '@ops/lib/payroll/payRate'
+import { hourlyRateFor } from '@ops/lib/payroll/rateBasis'
+import { formatCurrency } from '@ops/lib/utils/format'
+
+function fullName(personal: { firstName: string; lastName: string }) {
+  return `${personal.firstName} ${personal.lastName}`
+}
+
+// All chart color values below are drawn exclusively from the design system's CSS variables
+// (src/styles/globals.css) — no ad-hoc hex/rgb values — so charts stay in sync with the app's
+// palette (including dark mode) automatically.
+const CHART_TOOLTIP_STYLE = {
+  borderRadius: 12,
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-card)',
+  color: 'var(--color-card-foreground)',
+  fontSize: 12,
+}
+const CHART_TOOLTIP_LABEL_STYLE = { color: 'var(--color-card-foreground)', fontWeight: 600, marginBottom: 4 }
+const CHART_TOOLTIP_ITEM_STYLE = { color: 'var(--color-card-foreground)' }
+const CHART_LEGEND_STYLE = { fontSize: 12, color: 'var(--color-foreground)' }
+
+/** Shared categorical palette for charts with no inherent status meaning (leave types, cost dimensions, etc.). */
+const CATEGORY_COLORS = [
+  'var(--color-brand-500)',
+  'var(--color-accent)',
+  'var(--color-brand-300)',
+  'var(--color-warning)',
+  'var(--color-brand-700)',
+  'var(--color-danger)',
+]
+
+/**
+ * Hand-rolled SVG donut (percentage ring built from stroke-dasharray arcs) with a hover-driven
+ * center label. Recharts' <Pie> renders blank in this app's React 19 + recharts 3.10 combination
+ * (its sectors compute but never paint), so proportional breakdowns use this instead of PieChart.
+ */
+function DonutChart({ data, total, unit }: { data: [string, number][]; total: number; unit: string }) {
+  const [hovered, setHovered] = useState<number | null>(null)
+  const r = 38
+  const circumference = 2 * Math.PI * r
+
+  const active = hovered != null ? data[hovered] : undefined
+
+  const arcs = data.reduce<{ cumulative: number; items: { name: string; value: number; pct: number; dash: number; offset: number }[] }>(
+    (acc, [name, value]) => {
+      const pct = total > 0 ? value / total : 0
+      const dash = pct * circumference
+      acc.items.push({ name, value, pct, dash, offset: -acc.cumulative })
+      acc.cumulative += dash
+      return acc
+    },
+    { cumulative: 0, items: [] },
+  ).items
+
+  return (
+    <div className="relative flex h-64 items-center justify-center">
+      <svg viewBox="0 0 100 100" className="h-full w-full max-w-64">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--color-border)" strokeWidth={16} />
+        <g transform="rotate(-90 50 50)">
+          {arcs.map(({ name, value, pct, dash, offset }, idx) => (
+            <circle
+              key={name}
+              cx="50"
+              cy="50"
+              r={r}
+              fill="none"
+              stroke={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]}
+              strokeWidth={hovered === idx ? 18 : 16}
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={offset}
+              className="cursor-pointer transition-all"
+              onMouseEnter={() => setHovered(idx)}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <title>{`${name}: ${value} ${unit} (${(pct * 100).toFixed(1)}%)`}</title>
+            </circle>
+          ))}
+        </g>
+      </svg>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        <p className="font-display text-xl font-semibold tracking-tight">{active ? active[1] : total}</p>
+        <p className="max-w-24 truncate text-[11px] text-muted-foreground">{active ? active[0] : `Total ${unit}`}</p>
+      </div>
+    </div>
+  )
+}
+
+// ---------- Workforce Analytics ----------
+
+export function HeadcountAnalysisReport() {
+  const { employees, isLoading } = useEmployees()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const byDepartment = useMemo(() => {
+    const map = new Map<string, { active: number; inactive: number }>()
+    for (const e of employees) {
+      const bucket = map.get(e.employment.department) ?? { active: 0, inactive: 0 }
+      if (e.employment.status === 'active') bucket.active += 1
+      else bucket.inactive += 1
+      map.set(e.employment.department, bucket)
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [employees])
+
+  const active = employees.filter((e) => e.employment.status === 'active').length
+
+  return (
+    <ReportViewShell title="Headcount Analysis" description="Active vs. inactive headcount by department.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : employees.length === 0 ? (
+        <EmptyState title="No employees yet" />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatTile label="Total Employees" value={String(employees.length)} />
+            <StatTile label="Active" value={String(active)} />
+            <StatTile label="Inactive" value={String(employees.length - active)} />
+          </div>
+
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <AnimatedChart className="h-full w-full" chartKey={byDepartment.length}>
+              <ResponsiveBar
+                data={byDepartment.map(([dept, c]) => ({ dept, Active: c.active, Inactive: c.inactive }))}
+                keys={['Active', 'Inactive']}
+                indexBy="dept"
+                theme={NIVO_THEME}
+                colors={ACTIVE_INACTIVE_PALETTE}
+                margin={{ top: 40, right: 12, bottom: 40, left: 40 }}
+                padding={0.3}
+                innerPadding={2}
+                borderRadius={4}
+                enableLabel={false}
+                axisBottom={{ tickSize: 0, tickPadding: 8 }}
+                axisLeft={{ tickSize: 0, tickPadding: 8 }}
+                gridYValues={5}
+                legends={[
+                  {
+                    dataFrom: 'keys',
+                    anchor: 'top-left',
+                    direction: 'row',
+                    translateY: -28,
+                    itemWidth: 80,
+                    itemHeight: 20,
+                    symbolShape: 'circle',
+                    itemsSpacing: 12,
+                  },
+                ]}
+                animate
+                motionConfig="gentle"
+                role="img"
+                ariaLabel="Active vs. inactive headcount by department"
+              />
+            </AnimatedChart>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead>Inactive</TableHead>
+                  <TableHead>Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byDepartment.map(([dept, counts]) => (
+                  <TableRow key={dept}>
+                    <TableCell className="font-medium">{dept}</TableCell>
+                    <TableCell>{counts.active}</TableCell>
+                    <TableCell>{counts.inactive}</TableCell>
+                    <TableCell>{counts.active + counts.inactive}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+export function CompensationAnalysisReport() {
+  const { employees, isLoading } = useEmployees()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const byPayType = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>()
+    for (const e of employees) {
+      const bucket = map.get(e.compensation.payType) ?? { count: 0, total: 0 }
+      bucket.count += 1
+      bucket.total += e.compensation.basicPay
+      map.set(e.compensation.payType, bucket)
+    }
+    return [...map.entries()]
+  }, [employees])
+
+  const chartData = byPayType.map(([payType, bucket]) => ({
+    payType: PAY_RATE_TYPE_LABEL[payType as keyof typeof PAY_RATE_TYPE_LABEL],
+    avgRate: Math.round(bucket.total / bucket.count),
+    totalCost: bucket.total,
+  }))
+
+  return (
+    <ReportViewShell title="Compensation Analysis" description="Employee count and average base rate by Pay Rate Type.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : employees.length === 0 ? (
+        <EmptyState title="No employees yet" />
+      ) : (
+        <div className="space-y-4">
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ left: 4, right: 8, top: 8 }} barGap={4}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="payType" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <YAxis
+                  yAxisId="rate"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--color-muted-foreground)"
+                  width={70}
+                  tickFormatter={(v: number) => formatCurrency(v)}
+                />
+                <YAxis
+                  yAxisId="cost"
+                  orientation="right"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--color-muted-foreground)"
+                  width={70}
+                  tickFormatter={(v: number) => formatCurrency(v)}
+                />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Bar yAxisId="rate" dataKey="avgRate" name="Average Base Rate" fill="var(--color-brand-400)" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="cost" dataKey="totalCost" name="Total Base Pay Cost" fill="var(--color-brand-700)" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pay Rate Type</TableHead>
+                  <TableHead>Employees</TableHead>
+                  <TableHead>Average Base Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byPayType.map(([payType, bucket]) => (
+                  <TableRow key={payType}>
+                    <TableCell className="font-medium">{PAY_RATE_TYPE_LABEL[payType as keyof typeof PAY_RATE_TYPE_LABEL]}</TableCell>
+                    <TableCell>{bucket.count}</TableCell>
+                    <TableCell>{formatCurrency(Math.round(bucket.total / bucket.count))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+/** Re-homed from Basic Reports — attendance/absenteeism is a workforce analytic, not a basic report. */
+function pct(n: number, total: number) {
+  return total > 0 ? Math.round((n / total) * 1000) / 10 : 0
+}
+
+/** Y-axis = Departments by default (spec'd default view). Selecting a Department narrows the
+ * Y-axis to that department's employees; selecting an Employee (searchable, takes precedence)
+ * narrows to just that one row — both without altering the underlying attendance calculation,
+ * only how the same per-employee counts are grouped/filtered for display. */
+const ATTENDANCE_KEYS = ['Present', 'Late', 'Undertime', 'Absent'] as const
+
+export function AttendanceAbsenteeismReport() {
+  const { rows, isLoading } = useAttendanceSummary()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+  // A single-row chart legend of four statuses doesn't fit a phone-width card; wrap it in HTML instead.
+  const isPhone = useMediaQuery('(max-width: 639px)')
+  const [department, setDepartment] = useState<string>('all')
+  const [employeeId, setEmployeeId] = useState<string | undefined>(undefined)
+
+  const departmentOptions = useMemo(() => {
+    const names = [...new Set(rows.map((r) => r.employee.employment.department))].sort()
+    return [{ value: 'all', label: 'All Departments' }, ...names.map((d) => ({ value: d, label: d }))]
+  }, [rows])
+
+  const employeeOptions = useMemo(
+    () => rows.map((r) => ({ id: r.employee.id, name: fullName(r.employee.personal), employeeNumber: r.employee.employeeNumber, department: r.employee.employment.department })),
+    [rows],
+  )
+
+  const selectedEmployee = employeeId ? rows.find((r) => r.employee.id === employeeId) : undefined
+
+  const chartData = useMemo(() => {
+    if (selectedEmployee) {
+      const total = selectedEmployee.present + selectedEmployee.late + selectedEmployee.undertime + selectedEmployee.absent
+      return [
+        {
+          name: fullName(selectedEmployee.employee.personal),
+          Present: pct(selectedEmployee.present, total),
+          Late: pct(selectedEmployee.late, total),
+          Undertime: pct(selectedEmployee.undertime, total),
+          Absent: pct(selectedEmployee.absent, total),
+        },
+      ]
+    }
+
+    if (department !== 'all') {
+      return rows
+        .filter((r) => r.employee.employment.department === department)
+        .map((row) => {
+          const total = row.present + row.late + row.undertime + row.absent
+          return {
+            name: fullName(row.employee.personal),
+            Present: pct(row.present, total),
+            Late: pct(row.late, total),
+            Undertime: pct(row.undertime, total),
+            Absent: pct(row.absent, total),
+          }
+        })
+    }
+
+    const byDept = new Map<string, { present: number; late: number; undertime: number; absent: number }>()
+    for (const row of rows) {
+      const bucket = byDept.get(row.employee.employment.department) ?? { present: 0, late: 0, undertime: 0, absent: 0 }
+      bucket.present += row.present
+      bucket.late += row.late
+      bucket.undertime += row.undertime
+      bucket.absent += row.absent
+      byDept.set(row.employee.employment.department, bucket)
+    }
+    return [...byDept.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, b]) => {
+        const total = b.present + b.late + b.undertime + b.absent
+        return { name, Present: pct(b.present, total), Late: pct(b.late, total), Undertime: pct(b.undertime, total), Absent: pct(b.absent, total) }
+      })
+  }, [rows, department, selectedEmployee])
+
+  return (
+    <ReportViewShell title="Attendance / Absenteeism Analysis" description="Present, late, undertime, and absence rate — by department by default, or drill into one department or employee.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : rows.length === 0 ? (
+        <EmptyState title="No attendance data yet" />
+      ) : (
+        <div className="space-y-4">
+          <ReportFilterBar
+            onClear={
+              department !== 'all' || employeeId
+                ? () => {
+                    setDepartment('all')
+                    setEmployeeId(undefined)
+                  }
+                : undefined
+            }
+          >
+            <FilterLabel label="Department" className="w-48">
+              <Select
+                value={department}
+                onValueChange={(v) => {
+                  setDepartment(v)
+                  setEmployeeId(undefined)
+                }}
+                options={departmentOptions}
+              />
+            </FilterLabel>
+            <FilterLabel label="Employee" className="w-64">
+              <EmployeeCombobox
+                employees={employeeOptions}
+                value={employeeId}
+                onChange={setEmployeeId}
+                placeholder="Search employee by name or ID…"
+              />
+            </FilterLabel>
+          </ReportFilterBar>
+
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          {isPhone && (
+            <div className={cn('flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground', mode === 'table' && 'hidden')}>
+              {ATTENDANCE_KEYS.map((key, i) => (
+                <span key={key} className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full" style={{ backgroundColor: ATTENDANCE_PALETTE[i] }} />
+                  {key}
+                </span>
+              ))}
+            </div>
+          )}
+          <ChartPane mode={mode} style={{ height: Math.max(240, chartData.length * 36) }}>
+            <AnimatedChart className="h-full w-full" chartKey={`${department}-${employeeId ?? 'none'}`}>
+              <ResponsiveBar
+                data={chartData}
+                keys={[...ATTENDANCE_KEYS]}
+                indexBy="name"
+                layout="horizontal"
+                theme={NIVO_THEME}
+                colors={ATTENDANCE_PALETTE}
+                margin={isPhone ? { top: 12, right: 16, bottom: 40, left: 96 } : { top: 40, right: 24, bottom: 40, left: 130 }}
+                padding={0.3}
+                valueScale={{ type: 'linear', min: 0, max: 100 }}
+                valueFormat={(v) => `${v}%`}
+                borderRadius={2}
+                enableLabel={false}
+                axisBottom={{ tickSize: 0, tickPadding: 8, format: (v) => `${v}%`, legend: 'Share of recorded attendance', legendPosition: 'middle', legendOffset: 32 }}
+                axisLeft={{ tickSize: 0, tickPadding: 8 }}
+                legends={isPhone ? [] : [
+                  {
+                    dataFrom: 'keys',
+                    anchor: 'top-left',
+                    direction: 'row',
+                    translateY: -28,
+                    itemWidth: 74,
+                    itemHeight: 20,
+                    symbolShape: 'circle',
+                    itemsSpacing: 8,
+                  },
+                ]}
+                animate
+                motionConfig="gentle"
+                role="img"
+                ariaLabel="Attendance breakdown percentages"
+              />
+            </AnimatedChart>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{selectedEmployee ? 'Employee' : department !== 'all' ? 'Employee' : 'Department'}</TableHead>
+                  <TableHead>Present</TableHead>
+                  <TableHead>Late</TableHead>
+                  <TableHead>Undertime</TableHead>
+                  <TableHead>Absent</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {chartData.map((row) => (
+                  <TableRow key={row.name}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell>{row.Present}%</TableCell>
+                    <TableCell>{row.Late}%</TableCell>
+                    <TableCell>{row.Undertime}%</TableCell>
+                    <TableCell>{row.Absent}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+/** Re-homed from Basic Reports — leave utilization is a workforce analytic, not a basic report. */
+export function LeaveUtilizationReport() {
+  const { rows, isLoading } = useLeaveSummary()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const byLeaveType = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of rows) map.set(r.leaveTypeName, (map.get(r.leaveTypeName) ?? 0) + r.daysTaken)
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+  }, [rows])
+  const totalDays = byLeaveType.reduce((s, [, d]) => s + d, 0)
+
+  return (
+    <ReportViewShell title="Leave Utilization Analysis" description="Approved leave days taken per employee, by leave type.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : rows.length === 0 ? (
+        <EmptyState title="No approved leave yet" description="Approved leave requests will be summarized here by type." />
+      ) : (
+        <div className="space-y-4">
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="grid gap-4 sm:grid-cols-2">
+            <DonutChart data={byLeaveType} total={totalDays} unit="days" />
+            <div className="flex flex-col justify-center gap-2">
+              {byLeaveType.map(([name, days], idx) => (
+                <div key={name} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[idx % CATEGORY_COLORS.length] }} />
+                    {name}
+                  </span>
+                  <span className="font-medium tabular-nums">
+                    {days} days · {totalDays > 0 ? ((days / totalDays) * 100).toFixed(1) : '0'}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Leave Type</TableHead>
+                  <TableHead>Days Taken</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, idx) => (
+                  <TableRow key={`${row.employee.id}-${row.leaveTypeName}-${idx}`}>
+                    <TableCell className="font-medium">{fullName(row.employee.personal)}</TableCell>
+                    <TableCell>{row.leaveTypeName}</TableCell>
+                    <TableCell>{row.daysTaken}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+
+function monthLabel(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+export function OvertimeCostAnalysisReport() {
+  const { records, isLoading: recordsLoading } = useOvertimeRecords()
+  const { employees, isLoading: employeesLoading } = useEmployees()
+  const { rows: payrollRows } = useAllPayrollLines()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  /** OT, night differential and rest day/holiday pay actually paid in payroll runs, per department. */
+  const paidByDepartment = useMemo(
+    () =>
+      summarizeBy(payrollRows, (r) => r.employee.employment.department)
+        .filter(([, t]) => t.overtime + t.nightDiff + t.restDay > 0)
+        .sort((a, b) => b[1].overtime + b[1].nightDiff + b[1].restDay - (a[1].overtime + a[1].nightDiff + a[1].restDay)),
+    [payrollRows],
+  )
+
+  const byMonth = useMemo(() => {
+    const employeeById = new Map(employees.map((e) => [e.id, e]))
+    const map = new Map<string, { hours: number; cost: number }>()
+    for (const r of records) {
+      if (r.status === 'rejected') continue
+      const employee = employeeById.get(r.employeeId)
+      if (!employee) continue
+      const monthKey = r.date.slice(0, 7)
+      const bucket = map.get(monthKey) ?? { hours: 0, cost: 0 }
+      bucket.hours += r.hours
+      // Same basis as the payroll engine: hourly rate × the record's own OT rate multiplier.
+      bucket.cost += r.hours * hourlyRateFor(employee) * r.multiplier
+      map.set(monthKey, bucket)
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [records, employees])
+
+  return (
+    <ReportViewShell title="Overtime Cost Analysis" description="Overtime hours and estimated cost trend month over month, and OT / night differential pay by department from payroll runs.">
+      {recordsLoading || employeesLoading ? (
+        <Skeleton className="h-64" />
+      ) : byMonth.length === 0 ? (
+        <EmptyState title="No overtime recorded yet" />
+      ) : (
+        <div className="space-y-4">
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={byMonth.map(([monthKey, b]) => ({ month: monthLabel(monthKey), cost: Math.round(b.cost), hours: Math.round(b.hours * 10) / 10 }))}
+                margin={{ left: 4, right: 8, top: 8 }}
+              >
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <YAxis
+                  yAxisId="cost"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--color-muted-foreground)"
+                  width={70}
+                  tickFormatter={(v: number) => formatCurrency(v)}
+                />
+                <YAxis yAxisId="hours" orientation="right" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} />
+                <Tooltip formatter={(v, name) => (name === 'Estimated OT Cost' ? formatCurrency(Number(v)) : `${v} hrs`)} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Line yAxisId="cost" type="monotone" dataKey="cost" name="Estimated OT Cost" stroke="var(--color-brand-500)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line yAxisId="hours" type="monotone" dataKey="hours" name="OT Hours" stroke="var(--color-warning)" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead>OT Hours</TableHead>
+                  <TableHead>Estimated Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byMonth.map(([monthKey, b]) => (
+                  <TableRow key={monthKey}>
+                    <TableCell className="font-medium">{monthLabel(monthKey)}</TableCell>
+                    <TableCell>{b.hours.toFixed(1)}</TableCell>
+                    <TableCell>{formatCurrency(Math.round(b.cost))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+
+          {paidByDepartment.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div>
+                <p className="text-sm font-semibold">OT &amp; Night Differential Pay by Department</p>
+                <p className="text-xs text-muted-foreground">Amounts paid in payroll runs, by type.</p>
+              </div>
+              <ChartPane mode={mode} className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={paidByDepartment.map(([dept, t]) => ({ dept, overtime: Math.round(t.overtime), nightDiff: Math.round(t.nightDiff), restDay: Math.round(t.restDay) }))}
+                    margin={{ left: 4, right: 8, top: 8 }}
+                  >
+                    <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                    <XAxis dataKey="dept" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                    <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                    <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                    <Bar dataKey="overtime" name="Regular OT" stackId="ot" fill="var(--color-brand-500)" />
+                    <Bar dataKey="nightDiff" name="Night Differential" stackId="ot" fill="var(--color-brand-300)" />
+                    <Bar dataKey="restDay" name="Rest Day / Holiday OT" stackId="ot" fill="var(--color-warning)" radius={[4, 4, 0, 0]} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartPane>
+              <TablePane mode={mode}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Regular OT</TableHead>
+                      <TableHead>Night Differential</TableHead>
+                      <TableHead>Rest Day / Holiday OT</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Share of Gross</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paidByDepartment.map(([dept, t]) => {
+                      const total = t.overtime + t.nightDiff + t.restDay
+                      return (
+                        <TableRow key={dept}>
+                          <TableCell className="font-medium">{dept}</TableCell>
+                          <TableCell>{formatCurrency(t.overtime)}</TableCell>
+                          <TableCell>{formatCurrency(t.nightDiff)}</TableCell>
+                          <TableCell>{formatCurrency(t.restDay)}</TableCell>
+                          <TableCell className="font-medium">{formatCurrency(total)}</TableCell>
+                          <TableCell>{t.gross > 0 ? `${((total / t.gross) * 100).toFixed(1)}%` : '—'}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </TablePane>
+            </div>
+          )}
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+// ---------- Payroll Analytics ----------
+
+export function PayrollTrendReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  // Month over month (every payroll group's runs combined), so weekly, semi-monthly and monthly runs compare like for like.
+  const byMonth = useMemo(() => summarizeByPayrollMonth(rows), [rows])
+
+  const chartData = useMemo(
+    () =>
+      byMonth.map(([key, t], idx) => ({
+        label: monthLabel(key),
+        runs: t.runs,
+        gross: t.gross,
+        net: t.net,
+        variancePct: changePct(t.gross, byMonth[idx - 1]?.[1].gross),
+        netVariancePct: changePct(t.net, byMonth[idx - 1]?.[1].net),
+      })),
+    [byMonth],
+  )
+
+  const variance =
+    byMonth.length >= 2 ? byMonth[byMonth.length - 1][1].gross - byMonth[byMonth.length - 2][1].gross : 0
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Payroll Trend & Variance" description="Gross vs. net pay per payroll month (all payroll groups), with month-over-month variance.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : byMonth.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <div className="space-y-4">
+          {byMonth.length >= 2 && (
+            <StatTile
+              label="Latest vs. Previous Month (Gross Pay)"
+              value={`${variance >= 0 ? '+' : ''}${formatCurrency(variance)}`}
+            />
+          )}
+
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ left: 4, right: 8, top: 8 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <YAxis
+                  yAxisId="amount"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  stroke="var(--color-muted-foreground)"
+                  width={70}
+                  tickFormatter={(v: number) => formatCurrency(v)}
+                />
+                <YAxis yAxisId="variance" orientation="right" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip formatter={(v, name) => (name === 'Variance %' ? `${v}%` : formatCurrency(Number(v)))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Line yAxisId="amount" dataKey="gross" name="Gross Pay" stroke="var(--color-brand-400)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line yAxisId="amount" dataKey="net" name="Net Pay" stroke="var(--color-brand-700)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line yAxisId="variance" dataKey="variancePct" name="Variance %" stroke="var(--color-warning)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Runs</TableHead>
+                  <TableHead>Gross Pay</TableHead>
+                  <TableHead>Net Pay</TableHead>
+                  <TableHead>Variance % (Gross)</TableHead>
+                  <TableHead>Variance % (Net)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {chartData.map((p) => (
+                  <TableRow key={p.label}>
+                    <TableCell className="font-medium">{p.label}</TableCell>
+                    <TableCell>{p.runs}</TableCell>
+                    <TableCell>{formatCurrency(p.gross)}</TableCell>
+                    <TableCell>{formatCurrency(p.net)}</TableCell>
+                    <TableCell>{p.variancePct >= 0 ? '+' : ''}{p.variancePct}%</TableCell>
+                    <TableCell>{p.netVariancePct >= 0 ? '+' : ''}{p.netVariancePct}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+type CostDimension = 'department' | 'branch' | 'group'
+
+export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDimension }) {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+  const { branches } = useTenant()
+  const { groups } = usePayrollGroups()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const label = dimension === 'department' ? 'Department' : dimension === 'branch' ? 'Branch' : 'Payroll Group'
+
+  const keyFor = useMemo(() => {
+    const branchById = new Map(branches.map((b) => [b.id, b.name]))
+    const groupById = new Map(groups.map((g) => [g.id, g.name]))
+    return ({ employee, period }: (typeof rows)[number]) =>
+      dimension === 'department'
+        ? employee.employment.department
+        : dimension === 'branch'
+          ? (branchById.get(employee.branchId) ?? 'Unassigned')
+          : // The run's own Payroll Group (historically accurate), else the employee's current group for All Employees runs.
+            ((period.payrollGroupId && groupById.get(period.payrollGroupId)) || findEmployeePayrollGroup(groups, employee.id)?.name || 'Unassigned')
+  }, [branches, groups, dimension])
+
+  const byDimension = useMemo(() => summarizeBy(rows, keyFor), [rows, keyFor])
+
+  /** Same real per-line gross pay, grouped by payroll month so each series is a month-over-month
+   * trend (runs of different frequencies land in the same month instead of alternating with zeros). */
+  const trend = useMemo(() => {
+    const months = [...new Set(rows.map((r) => payrollMonthKey(r.period)))].sort()
+    const seriesByKey = new Map<string, Map<string, number>>()
+    for (const row of rows) {
+      const key = keyFor(row)
+      const perMonth = seriesByKey.get(key) ?? new Map<string, number>()
+      const month = payrollMonthKey(row.period)
+      perMonth.set(month, (perMonth.get(month) ?? 0) + row.line.grossPay)
+      seriesByKey.set(key, perMonth)
+    }
+    return [...seriesByKey.entries()]
+      .map(([key, perMonth]) => ({
+        id: key,
+        data: months.map((m) => ({ x: monthLabel(m), y: Math.round(perMonth.get(m) ?? 0) })),
+      }))
+      .sort((a, b) => b.data.reduce((s, d) => s + d.y, 0) - a.data.reduce((s, d) => s + d.y, 0))
+  }, [rows, keyFor])
+
+  const totalGross = byDimension.reduce((sum, [, t]) => sum + t.gross, 0)
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title={`Payroll Cost by ${label}`} description={`Month-over-month payroll cost trend and comparative metrics, grouped by ${label.toLowerCase()}.`}>
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : byDimension.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <div className="space-y-4">
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {trend.map((series, idx) => (
+              <span key={series.id} className="flex items-center gap-1.5">
+                <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: CHART_PALETTE_NO_RED[idx % CHART_PALETTE_NO_RED.length] }} />
+                {series.id}
+              </span>
+            ))}
+          </div>
+
+          <ChartPane mode={mode} className="h-80">
+            <AnimatedChart className="h-full w-full" chartKey={dimension}>
+              <ResponsiveLine
+                data={trend}
+                theme={NIVO_THEME}
+                colors={CHART_PALETTE_NO_RED}
+                margin={{ top: 16, right: 24, bottom: 50, left: 70 }}
+                xScale={{ type: 'point' }}
+                yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
+                curve="monotoneX"
+                axisBottom={{ tickSize: 0, tickPadding: 10 }}
+                axisLeft={{ tickSize: 0, tickPadding: 8, format: (v) => formatCurrency(Number(v)) }}
+                enableGridX={false}
+                lineWidth={2.5}
+                pointSize={7}
+                pointColor={{ theme: 'background' }}
+                pointBorderWidth={2}
+                pointBorderColor={{ from: 'serieColor' }}
+                enablePointLabel={false}
+                useMesh
+                enableSlices="x"
+                sliceTooltip={({ slice }) => (
+                  <div className="rounded-xl border border-border bg-card p-2.5 text-xs shadow-soft-lg">
+                    <p className="mb-1 font-semibold">{slice.points[0]?.data.xFormatted}</p>
+                    {slice.points.map((point) => (
+                      <div key={point.id} className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full" style={{ backgroundColor: point.seriesColor }} />
+                          {point.seriesId}
+                        </span>
+                        <span className="font-medium tabular-nums">{formatCurrency(Number(point.data.y))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                animate
+                motionConfig="gentle"
+                role="img"
+                ariaLabel={`Payroll cost trend by ${label.toLowerCase()}`}
+              />
+            </AnimatedChart>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{label}</TableHead>
+                  <TableHead>Employees</TableHead>
+                  <TableHead>Runs</TableHead>
+                  <TableHead>Gross Pay</TableHead>
+                  <TableHead>Deductions</TableHead>
+                  <TableHead>OT &amp; Night Diff</TableHead>
+                  <TableHead>Net Pay</TableHead>
+                  <TableHead>Avg Gross / Payslip</TableHead>
+                  <TableHead>Share of Gross</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byDimension.map(([key, t]) => (
+                  <TableRow key={key}>
+                    <TableCell className="font-medium">{key}</TableCell>
+                    <TableCell>{t.employees}</TableCell>
+                    <TableCell>{t.runs}</TableCell>
+                    <TableCell>{formatCurrency(t.gross)}</TableCell>
+                    <TableCell>{formatCurrency(t.totalDeductions)}</TableCell>
+                    <TableCell>{formatCurrency(t.overtime + t.nightDiff + t.restDay)}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(t.net)}</TableCell>
+                    <TableCell>{formatCurrency(t.lines ? t.gross / t.lines : 0)}</TableCell>
+                    <TableCell>{totalGross > 0 ? `${((t.gross / totalGross) * 100).toFixed(1)}%` : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+export function PayrollCostAnalysisReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const totals = rows.reduce(
+    (acc, { line }) => ({
+      gross: acc.gross + line.grossPay,
+      employerContributions: acc.employerContributions + line.sssEmployerShare + line.philhealthEmployerShare + line.pagibigEmployerShare,
+      net: acc.net + line.netPay,
+    }),
+    { gross: 0, employerContributions: 0, net: 0 },
+  )
+
+  const byPeriod = useMemo(() => {
+    const map = new Map<string, { period: (typeof rows)[number]['period']; gross: number; employerContributions: number; net: number }>()
+    for (const { period, line } of rows) {
+      const bucket = map.get(period.id) ?? { period, gross: 0, employerContributions: 0, net: 0 }
+      bucket.gross += line.grossPay
+      bucket.employerContributions += line.sssEmployerShare + line.philhealthEmployerShare + line.pagibigEmployerShare
+      bucket.net += line.netPay
+      map.set(period.id, bucket)
+    }
+    return [...map.values()].sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
+  }, [rows])
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Payroll Cost Analysis" description="Trend of Gross Pay, Employer Contributions, and Net Pay across every payroll period.">
+      {isLoading ? (
+        <Skeleton className="h-48" />
+      ) : rows.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatTile label="Total Gross Pay" value={formatCurrency(totals.gross)} />
+            <StatTile label="Employer Contributions" value={formatCurrency(totals.employerContributions)} />
+            <StatTile label="Total Cost to Company" value={formatCurrency(totals.gross + totals.employerContributions)} />
+          </div>
+
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={byPeriod.map((p) => ({ label: p.period.label, gross: p.gross, employerContributions: p.employerContributions, net: p.net }))} margin={{ left: 4, right: 8, top: 8 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Line type="monotone" dataKey="gross" name="Gross Pay" stroke="var(--color-brand-400)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="employerContributions" name="Employer Contributions" stroke="var(--color-warning)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="net" name="Net Pay" stroke="var(--color-brand-700)" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Gross Pay</TableHead>
+                  <TableHead>Employer Contributions</TableHead>
+                  <TableHead>Net Pay</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byPeriod.map((p) => (
+                  <TableRow key={p.period.id}>
+                    <TableCell className="font-medium">{p.period.label}</TableCell>
+                    <TableCell>{formatCurrency(p.gross)}</TableCell>
+                    <TableCell>{formatCurrency(p.employerContributions)}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(p.net)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+// ---------- Financial / Management ----------
+
+export function LaborCostAnalysisReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const byPeriod = useMemo(() => {
+    const map = new Map<string, { period: (typeof rows)[number]['period']; grossPay: number; employerContributions: number }>()
+    for (const { period, line } of rows) {
+      const bucket = map.get(period.id) ?? { period, grossPay: 0, employerContributions: 0 }
+      bucket.grossPay += line.grossPay
+      bucket.employerContributions += line.sssEmployerShare + line.philhealthEmployerShare + line.pagibigEmployerShare
+      map.set(period.id, bucket)
+    }
+    return [...map.values()].sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
+  }, [rows])
+
+  function onExport(): ExcelExport {
+    const header = ['Period', 'Gross Pay', 'Employer Contributions', 'Total Labor Cost']
+    const dataRows = byPeriod.map((p) => [p.period.label, p.grossPay, p.employerContributions, p.grossPay + p.employerContributions])
+    return { filename: 'labor-cost-analysis', rows: [header, ...dataRows], sumFooter: true }
+  }
+
+  return (
+    <ReportViewShell
+      title="Labor Cost Analysis"
+      description="Total labor cost per period — gross pay plus employer-side statutory contributions."
+      filters={scopePicker}
+      meta={[scopeMeta, { label: 'Payroll Runs', value: String(byPeriod.length) }]}
+      onExportExcel={byPeriod.length > 0 ? onExport : undefined}
+    >
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : byPeriod.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <div className="space-y-4">
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={byPeriod.map((p) => ({ label: p.period.label, grossPay: p.grossPay, employerContributions: p.employerContributions }))} margin={{ left: 4, right: 8, top: 8 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Area type="monotone" dataKey="grossPay" name="Gross Pay" stackId="labor" stroke="var(--color-brand-400)" fill="var(--color-brand-400)" fillOpacity={0.35} />
+                <Area type="monotone" dataKey="employerContributions" name="Employer Contributions" stackId="labor" stroke="var(--color-warning)" fill="var(--color-warning)" fillOpacity={0.35} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Gross Pay</TableHead>
+                  <TableHead>Employer Contributions</TableHead>
+                  <TableHead>Total Labor Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byPeriod.map((p) => (
+                  <TableRow key={p.period.id}>
+                    <TableCell className="font-medium">{p.period.label}</TableCell>
+                    <TableCell>{formatCurrency(p.grossPay)}</TableCell>
+                    <TableCell>{formatCurrency(p.employerContributions)}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(p.grossPay + p.employerContributions)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+export function EarningsVsDeductionsReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+  const [mode, setMode] = useState<ReportViewMode>('split')
+
+  const byMonth = useMemo(() => summarizeByPayrollMonth(rows), [rows])
+  const totals = byMonth.reduce(
+    (acc, [, t]) => ({ statutory: acc.statutory + t.statutory, tax: acc.tax + t.tax, loans: acc.loans + t.loans, other: acc.other + t.otherDeductions }),
+    { statutory: 0, tax: 0, loans: 0, other: 0 },
+  )
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Earnings vs. Deductions Analysis" description="Total earnings against deductions per payroll month, with deductions tracked by type (statutory, tax, loans, other).">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : byMonth.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile label="Statutory (SSS, PhilHealth, Pag-IBIG)" value={formatCurrency(totals.statutory)} />
+            <StatTile label="Withholding Tax" value={formatCurrency(totals.tax)} />
+            <StatTile label="Loan Amortizations" value={formatCurrency(totals.loans)} />
+            <StatTile label="Other (Absences, etc.)" value={formatCurrency(totals.other)} />
+          </div>
+
+          <ViewModeToggle value={mode} onChange={setMode} />
+
+          <ChartPane mode={mode} className="h-80">
+            <AnimatedChart className="h-full w-full" chartKey={byMonth.length}>
+              <ResponsiveLine
+                data={[
+                  { id: 'Earnings', data: byMonth.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.gross) })) },
+                  { id: 'Deductions', data: byMonth.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.totalDeductions) })) },
+                ]}
+                theme={NIVO_THEME}
+                colors={EARNINGS_DEDUCTIONS_PALETTE}
+                margin={{ top: 40, right: 24, bottom: 50, left: 70 }}
+                xScale={{ type: 'point' }}
+                yScale={{ type: 'linear', min: 0, max: 'auto' }}
+                curve="monotoneX"
+                axisBottom={{ tickSize: 0, tickPadding: 10 }}
+                axisLeft={{ tickSize: 0, tickPadding: 8, format: (v) => formatCurrency(Number(v)) }}
+                enableGridX={false}
+                lineWidth={2.5}
+                pointSize={7}
+                pointColor={{ theme: 'background' }}
+                pointBorderWidth={2}
+                pointBorderColor={{ from: 'serieColor' }}
+                useMesh
+                enableSlices="x"
+                sliceTooltip={({ slice }) => (
+                  <div className="rounded-xl border border-border bg-card p-2.5 text-xs shadow-soft-lg">
+                    <p className="mb-1 font-semibold">{slice.points[0]?.data.xFormatted}</p>
+                    {slice.points.map((point) => (
+                      <div key={point.id} className="flex items-center justify-between gap-4">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full" style={{ backgroundColor: point.seriesColor }} />
+                          {point.seriesId}
+                        </span>
+                        <span className="font-medium tabular-nums">{formatCurrency(Number(point.data.y))}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                legends={[
+                  {
+                    anchor: 'top-left',
+                    direction: 'row',
+                    translateY: -30,
+                    itemWidth: 100,
+                    itemHeight: 20,
+                    symbolShape: 'circle',
+                    itemsSpacing: 8,
+                  },
+                ]}
+                animate
+                motionConfig="gentle"
+                role="img"
+                ariaLabel="Earnings vs. deductions per month"
+              />
+            </AnimatedChart>
+          </ChartPane>
+
+          <TablePane mode={mode}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Earnings</TableHead>
+                  <TableHead>Statutory</TableHead>
+                  <TableHead>Tax</TableHead>
+                  <TableHead>Loans</TableHead>
+                  <TableHead>Other</TableHead>
+                  <TableHead>Total Deductions</TableHead>
+                  <TableHead>Deduction Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {byMonth.map(([key, t]) => (
+                  <TableRow key={key}>
+                    <TableCell className="font-medium">{monthLabel(key)}</TableCell>
+                    <TableCell>{formatCurrency(t.gross)}</TableCell>
+                    <TableCell>{formatCurrency(t.statutory)}</TableCell>
+                    <TableCell>{formatCurrency(t.tax)}</TableCell>
+                    <TableCell>{formatCurrency(t.loans)}</TableCell>
+                    <TableCell>{formatCurrency(t.otherDeductions)}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(t.totalDeductions)}</TableCell>
+                    <TableCell>{t.gross > 0 ? `${((t.totalDeductions / t.gross) * 100).toFixed(1)}%` : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TablePane>
+        </div>
+      )}
+    </ReportViewShell>
+  )
+}
+
+export function EmployerContributionAnalysisReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+
+  const byPeriod = useMemo(() => {
+    const map = new Map<string, { period: (typeof rows)[number]['period']; sss: number; philhealth: number; pagibig: number }>()
+    for (const { period, line } of rows) {
+      const bucket = map.get(period.id) ?? { period, sss: 0, philhealth: 0, pagibig: 0 }
+      bucket.sss += line.sssEmployerShare
+      bucket.philhealth += line.philhealthEmployerShare
+      bucket.pagibig += line.pagibigEmployerShare
+      map.set(period.id, bucket)
+    }
+    return [...map.values()].sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
+  }, [rows])
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Employer Contribution Analysis" description="Employer-side SSS, PhilHealth, and Pag-IBIG counterpart contributions per period.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : byPeriod.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Period</TableHead>
+              <TableHead>SSS Employer Share</TableHead>
+              <TableHead>PhilHealth Employer Share</TableHead>
+              <TableHead>Pag-IBIG Employer Share</TableHead>
+              <TableHead>Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {byPeriod.map((p) => (
+              <TableRow key={p.period.id}>
+                <TableCell className="font-medium">{p.period.label}</TableCell>
+                <TableCell>{formatCurrency(p.sss)}</TableCell>
+                <TableCell>{formatCurrency(p.philhealth)}</TableCell>
+                <TableCell>{formatCurrency(p.pagibig)}</TableCell>
+                <TableCell className="font-medium">{formatCurrency(p.sss + p.philhealth + p.pagibig)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </ReportViewShell>
+  )
+}
+
+export function PayrollExpenseByAccountReport() {
+  const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
+
+  const periods = useMemo(() => {
+    const seen = new Map<string, (typeof rows)[number]['period']>()
+    for (const r of rows) seen.set(r.period.id, r.period)
+    return [...seen.values()].sort((a, b) => a.startDate.localeCompare(b.startDate))
+  }, [rows])
+
+  const accountsByPeriod = useMemo(() => {
+    return periods.map((period) => {
+      const lines = rows.filter((r) => r.period.id === period.id).map((r) => r.line)
+      const salaries = lines.reduce((s, l) => s + l.grossPay, 0)
+      const sss = lines.reduce((s, l) => s + l.sssEmployerShare, 0)
+      const philhealth = lines.reduce((s, l) => s + l.philhealthEmployerShare, 0)
+      const pagibig = lines.reduce((s, l) => s + l.pagibigEmployerShare, 0)
+      return { period, salaries, sss, philhealth, pagibig, total: salaries + sss + philhealth + pagibig }
+    })
+  }, [periods, rows])
+
+  return (
+    <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Payroll Expense by Account & Cost Comparison" description="Salaries & Wages and statutory expense accounts, compared period over period.">
+      {isLoading ? (
+        <Skeleton className="h-64" />
+      ) : accountsByPeriod.length === 0 ? (
+        <EmptyState title="No payroll history yet" />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Period</TableHead>
+              <TableHead>Salaries & Wages Expense</TableHead>
+              <TableHead>SSS Expense</TableHead>
+              <TableHead>PhilHealth Expense</TableHead>
+              <TableHead>Pag-IBIG Expense</TableHead>
+              <TableHead>Total Expense</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {accountsByPeriod.map((p) => (
+              <TableRow key={p.period.id}>
+                <TableCell className="font-medium">{p.period.label}</TableCell>
+                <TableCell>{formatCurrency(p.salaries)}</TableCell>
+                <TableCell>{formatCurrency(p.sss)}</TableCell>
+                <TableCell>{formatCurrency(p.philhealth)}</TableCell>
+                <TableCell>{formatCurrency(p.pagibig)}</TableCell>
+                <TableCell className="font-medium">{formatCurrency(p.total)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </ReportViewShell>
+  )
+}

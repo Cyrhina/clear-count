@@ -1,0 +1,539 @@
+@import 'tailwindcss';
+
+/* Manual (button-toggled) dark mode — `dark:` utilities apply from the `.dark` class on <html>
+   set by the theme store, not from the OS `prefers-color-scheme` media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: 'Poppins', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --ease-editorial: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --color-brand-50: #eff9f6;
+  --color-brand-100: #d7efe7;
+  --color-brand-200: #b0dfd0;
+  --color-brand-300: #7ec8b3;
+  --color-brand-400: #4ba892;
+  --color-brand-500: #2d8a76;
+  --color-brand-600: #1f6f5f;
+  --color-brand-700: #1c594e;
+  --color-brand-800: #1a4740;
+  --color-brand-900: #173b36;
+  --color-brand-950: #0b211e;
+
+  --color-amber-accent: #c8842a;
+
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(0 0 0 / 0.10);
+  --shadow-soft-lg: 0 2px 4px 0 rgb(0 0 0 / 0.04), 0 16px 40px -12px rgb(0 0 0 / 0.14);
+}
+
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1c1a;
+  --card: #ffffff;
+  --card-foreground: #1c1c1a;
+  --muted: #f1f0ee;
+  --muted-foreground: #6f6d68;
+  --border: rgb(0 0 0 / 0.07);
+  --ring: var(--color-brand-500);
+
+  --primary: var(--color-brand-600);
+  --primary-foreground: #f7fbf9;
+  --accent: var(--color-amber-accent);
+  --accent-foreground: #2a1a05;
+
+  --success: #2f8f5b;
+  --success-foreground: #f4fbf7;
+  --warning: #b8791f;
+  --warning-foreground: #2a1a05;
+  --danger: #b83b3b;
+  --danger-foreground: #fdf5f5;
+
+  --sidebar: #14211e;
+  --sidebar-foreground: #e9efed;
+  --sidebar-muted: #93a5a1;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-active: rgb(255 255 255 / 0.08);
+
+  /* Chart-only categorical accents (Advanced Reports/@nivo) — extend the teal/amber brand
+     palette with indigo/blue/violet/slate so multi-series charts never need red. */
+  --chart-indigo: #5b5fc7;
+  --chart-blue: #3b7dd8;
+  --chart-violet: #7c5cbf;
+  --chart-slate: #64748b;
+}
+
+.dark {
+  --background: #101211;
+  --foreground: #f1f0ee;
+  --card: #17181a;
+  --card-foreground: #f1f0ee;
+  --muted: #1d1f1e;
+  --muted-foreground: #9a9994;
+  --border: rgb(255 255 255 / 0.08);
+  --ring: var(--color-brand-400);
+
+  --primary: var(--color-brand-400);
+  --primary-foreground: #0b211e;
+  --accent: var(--color-amber-accent);
+  --accent-foreground: #2a1a05;
+
+  --success: #4cad7d;
+  --success-foreground: #0b211e;
+  --warning: #d99a3f;
+  --warning-foreground: #2a1a05;
+  --danger: #d16565;
+  --danger-foreground: #2a1010;
+
+  --sidebar: #0b0d0c;
+  --sidebar-foreground: #e9efed;
+  --sidebar-muted: #7c8b87;
+  --sidebar-border: rgb(255 255 255 / 0.06);
+  --sidebar-active: rgb(255 255 255 / 0.06);
+
+  --chart-indigo: #8184e0;
+  --chart-blue: #6fa4e8;
+  --chart-violet: #a690d9;
+  --chart-slate: #94a3b8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-chart-indigo: var(--chart-indigo);
+  --color-chart-blue: var(--chart-blue);
+  --color-chart-violet: var(--chart-violet);
+  --color-chart-slate: var(--chart-slate);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Seamless scrolling across the portal — smooth anchor/programmatic scrolls and
+   momentum scrolling on touch devices, for every scroll container (page body,
+   dialogs, tables, card grids), while respecting reduced-motion preferences. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Company Admin Portal scrolling (screen only — print keeps full-height tables).
+   Wide/long data tables scroll inside their card in both directions, with the header row pinned. */
+@media screen {
+  main[data-portal='admin'] .overflow-x-auto:has(> table) {
+    overflow: auto;
+    max-height: max(20rem, calc(100dvh - 10rem));
+    overscroll-behavior: auto; /* let the page keep scrolling once the table reaches its end */
+  }
+
+  main[data-portal='admin'] .overflow-x-auto:has(> table) > table > thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    /* Same tint as the header's bg-muted/60, but opaque so rows don't show through while pinned. */
+    background-color: color-mix(in srgb, var(--color-muted) 60%, var(--color-card));
+  }
+
+  /* Tall dialogs: keep the Cancel / Save actions pinned to the bottom while the form scrolls. */
+  body:has(main[data-portal='admin']) [role='dialog'] :is(form > div.flex.justify-end:last-child, [role='dialog'] > div.flex.justify-end:has(> button)) {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-bottom: 0;
+    padding-top: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-card);
+  }
+}
+
+/* Company Admin soft card theme — pastel gradients + corner watermarks matching the Employee Dashboard. Scoped to
+   main[data-card-theme='soft'] (set in AppShell for the company_admin role only), so HR/Manager/
+   Super Admin/ESS views and portaled dialogs keep the plain card. Rules only apply while a Card
+   still has its default bg-card / border-border classes, so a page's own bg-* / border-* override wins. */
+:root {
+  /* Ultra-soft, translucent gradients over the card's white — the Tailwind equivalents are
+     bg-gradient-to-br from-slate-50/80 via-indigo-50/30 to-purple-50/50 (lavender),
+     from-emerald-50/40 via-emerald-50/30 to-teal-50/20 (sage), from-rose-50/50 via-orange-50/30 to-amber-50/40 (peach). */
+  --soft-tint-lavender: linear-gradient(to bottom right, rgb(248 250 252 / 0.8), rgb(238 242 255 / 0.3), rgb(250 245 255 / 0.5));
+  --soft-tint-sage: linear-gradient(to bottom right, rgb(236 253 245 / 0.4), rgb(236 253 245 / 0.3), rgb(240 253 250 / 0.2));
+  --soft-tint-peach: linear-gradient(to bottom right, rgb(255 241 242 / 0.5), rgb(255 247 237 / 0.3), rgb(255 251 235 / 0.4));
+  --soft-card-border: rgb(241 245 249 / 0.8); /* slate-100/80 */
+}
+
+.dark {
+  --soft-tint-lavender: linear-gradient(to bottom right, color-mix(in srgb, var(--chart-slate) 6%, transparent), color-mix(in srgb, var(--chart-indigo) 5%, transparent), color-mix(in srgb, var(--chart-violet) 8%, transparent));
+  --soft-tint-sage: linear-gradient(to bottom right, color-mix(in srgb, var(--success) 7%, transparent), color-mix(in srgb, var(--success) 5%, transparent), color-mix(in srgb, var(--color-brand-300) 4%, transparent));
+  --soft-tint-peach: linear-gradient(to bottom right, color-mix(in srgb, var(--danger) 6%, transparent), color-mix(in srgb, var(--accent) 5%, transparent), color-mix(in srgb, var(--warning) 6%, transparent));
+  --soft-card-border: rgb(255 255 255 / 0.1);
+}
+
+main[data-card-theme='soft'] [data-slot='card'].bg-card {
+  background-image: var(--soft-tint-lavender);
+}
+
+/* Rotate lavender → sage → peach across cards laid out side by side in a grid (unless a card sets data-tint). */
+main[data-card-theme='soft'] .grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 2) {
+  background-image: var(--soft-tint-sage);
+}
+
+main[data-card-theme='soft'] .grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 3) {
+  background-image: var(--soft-tint-peach);
+}
+
+/* Explicit tint for a card whose meaning calls for one: <Card data-tint="sage">. */
+main[data-card-theme='soft'] [data-slot='card'][data-tint='lavender'] {
+  background-image: var(--soft-tint-lavender);
+}
+
+main[data-card-theme='soft'] [data-slot='card'][data-tint='sage'] {
+  background-image: var(--soft-tint-sage);
+}
+
+main[data-card-theme='soft'] [data-slot='card'][data-tint='peach'] {
+  background-image: var(--soft-tint-peach);
+}
+
+/* Cards nested inside another card stay plain white tiles on the tinted parent. */
+main[data-card-theme='soft'] [data-slot='card'] [data-slot='card'].bg-card {
+  background-image: none;
+}
+
+/* Corner watermark (rendered by Card only in the soft theme). Hidden anywhere outside the themed
+   <main> — e.g. cards inside portaled dialogs — and colored to match the card's tint. */
+[data-slot='card-watermark'] {
+  display: none;
+}
+
+main[data-card-theme='soft'] [data-slot='card-watermark'] {
+  display: block;
+  color: color-mix(in srgb, var(--chart-indigo) 10%, transparent);
+}
+
+main[data-card-theme='soft'] :is(.grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 2), [data-slot='card'][data-tint='sage']) > [data-slot='card-watermark'] {
+  color: color-mix(in srgb, var(--success) 10%, transparent);
+}
+
+main[data-card-theme='soft'] :is(.grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 3), [data-slot='card'][data-tint='peach']) > [data-slot='card-watermark'] {
+  color: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* Standalone data tables keep a white surface for readability, with the same soft border. */
+main[data-card-theme='soft'] [data-slot='card'].border-border,
+main[data-card-theme='soft'] [data-slot='metric-card'],
+main[data-card-theme='soft'] .rounded-2xl.border-border:has(> table) {
+  border-color: var(--soft-card-border);
+}
+
+/* Metric cards: tone → tint, no accent top rule, and the footer becomes a plain "View … →" text link. */
+main[data-card-theme='soft'] [data-slot='metric-card'] {
+  border-top-width: 1px;
+  background-image: var(--soft-tint-lavender);
+}
+
+main[data-card-theme='soft'] [data-slot='metric-card'][data-tone='success'] {
+  background-image: var(--soft-tint-sage);
+}
+
+main[data-card-theme='soft'] [data-slot='metric-card']:is([data-tone='warning'], [data-tone='accent']) {
+  background-image: var(--soft-tint-peach);
+}
+
+main[data-card-theme='soft'] [data-slot='metric-card-footer'] {
+  justify-content: flex-start;
+  gap: 0.25rem;
+  border-top-width: 0;
+  background-color: transparent;
+  padding-top: 0;
+  padding-bottom: 1.25rem;
+}
+
+main[data-card-theme='soft'] a[data-slot='metric-card-footer']:hover {
+  background-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+main[data-card-theme='soft'] [data-slot='metric-card-footer'] > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+@media print {
+  main[data-card-theme='soft'] :is([data-slot='card'], [data-slot='metric-card']) {
+    background-image: none !important;
+  }
+}
+
+/* Print output (e.g. the Payslip print/PDF view) — standard page size/margins, and force
+   light backgrounds (like the Net Pay highlight) to actually print instead of being
+   stripped by the browser's default print color handling. Sidebar/header hide via their
+   own print:hidden utility classes rather than a broad selector here. */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body {
+    background-color: #fff;
+  }
+
+  /* Report PDF exports (ReportViewShell). Page size, 0.5in / 12.7mm margins and the
+     "Page X of Y" + confidentiality footer are injected per print job by reportExport.ts. */
+  .report-print {
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111827;
+    font-size: 9pt;
+  }
+
+  /* Let tables use the full printable width instead of clipping inside scroll containers. */
+  .report-print div:has(> table),
+  .report-print .overflow-x-auto,
+  .report-print .overflow-auto {
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-height: none !important;
+  }
+
+  .report-print table {
+    width: 100% !important;
+    table-layout: auto;
+    border-collapse: collapse;
+    font-size: 8pt;
+    line-height: 1.3;
+  }
+
+  .report-print thead {
+    display: table-header-group; /* repeat column headers on every page */
+  }
+
+  .report-print tfoot {
+    display: table-row-group; /* totals print once, at the end */
+  }
+
+  .report-print tr {
+    break-inside: avoid;
+  }
+
+  .report-print th {
+    background: #1f2937 !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 7.5pt;
+    letter-spacing: 0.02em;
+    padding: 5px 6px !important;
+    border: 1px solid #4b5563;
+    vertical-align: bottom;
+    white-space: normal !important;
+  }
+
+  /* Wrap long text, but never split a single word or amount — auto layout sizes columns to fit. */
+  .report-print td {
+    padding: 4px 6px !important;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .report-print tbody tr:nth-child(even) > td {
+    background: #f3f4f6 !important;
+  }
+
+  .report-print tbody tr:nth-child(odd) > td {
+    background: #fff !important;
+  }
+
+  .report-print tfoot td,
+  .report-print tfoot th,
+  .report-print tbody tr.font-semibold > td {
+    background: #e5e7eb !important;
+    color: #111827 !important;
+    font-weight: 700 !important;
+    border-top: 1.5px solid #1f2937;
+    border-bottom: 3px double #1f2937;
+  }
+
+  /* The app shell's print:flex-none column shrinks to its content; reports use the full page width. */
+  body:has(.report-print) :is(div, main):has(.report-print) {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+    background: #fff !important;
+  }
+
+  /* Off-canvas nav drawer / toasts are fixed-position and would repeat on every page. */
+  body:has(.report-print) .fixed {
+    display: none !important;
+  }
+
+  /* Summary tiles print as a compact strip rather than screen-sized cards. */
+  .report-print .grid:has(> .stat-tile) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(1.6in, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .report-print .stat-tile {
+    padding: 6px 8px !important;
+    border-radius: 6px !important;
+    border-color: #d1d5db !important;
+    break-inside: avoid;
+  }
+
+  .report-print .stat-tile > svg {
+    display: none !important;
+  }
+
+  .report-print .stat-tile > div > p {
+    font-size: 6.5pt;
+  }
+
+  .report-print .stat-tile > p {
+    margin-top: 1px;
+    font-size: 10.5pt;
+  }
+
+  .report-print svg text {
+    fill: #374151;
+  }
+}
+
+* {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+/* Global custom scrollbar — thin, unobtrusive, consistent across the app and every
+   internal scroll container (dialogs, popovers, tables, sidebar). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e6f5e transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #1e6f5e;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #175a4c;
+}
+
+*::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button:single-button,
+*::-webkit-scrollbar-button:start,
+*::-webkit-scrollbar-button:end,
+*::-webkit-scrollbar-button:vertical:start,
+*::-webkit-scrollbar-button:vertical:end,
+*::-webkit-scrollbar-button:horizontal:start,
+*::-webkit-scrollbar-button:horizontal:end {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Brief attention pulse for a table row/card jumped to from a notification — soft background
+   flash + ring, using the existing primary token, then fades back to normal. */
+@keyframes highlight-pulse {
+  0%,
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  12%,
+  55% {
+    background-color: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+}
+
+.highlight-target {
+  animation: highlight-pulse 2.4s ease-in-out;
+}
+
+/* Payslip email / PDF preview: emails and PDFs are always light, so the preview re-scopes the light
+   theme tokens onto the rendered payslip even when the portal itself is in dark mode. */
+.payslip-paper {
+  --background: #fafaf9;
+  --foreground: #1c1c1a;
+  --card: #ffffff;
+  --card-foreground: #1c1c1a;
+  --muted: #f1f0ee;
+  --muted-foreground: #6f6d68;
+  --border: rgb(0 0 0 / 0.07);
+  --primary: var(--color-brand-600);
+  --primary-foreground: #f7fbf9;
+  --success: #2f8f5b;
+  --warning: #b8791f;
+  --danger: #b83b3b;
+  color-scheme: light;
+  background: #ffffff;
+  color: var(--foreground);
+}
+
+/* Dashboard cards sit a touch higher than elsewhere — a slightly deeper version of
+   `shadow-soft`, scoped so other pages keep the default elevation. */
+.dashboard-elevated .shadow-soft {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 12px 28px -10px rgb(0 0 0 / 0.16);
+}
+.dark .dashboard-elevated .shadow-soft {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 12px 28px -10px rgb(0 0 0 / 0.55);
+}
+.dashboard-elevated .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 4px 10px -4px rgb(0 0 0 / 0.08);
+}

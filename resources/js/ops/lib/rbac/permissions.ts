@@ -1,0 +1,158 @@
+import type { Role } from '@ops/types/domain'
+
+export type Capability =
+  | 'dashboard.view'
+  | 'employees.view'
+  | 'employees.edit'
+  | 'employees.compensation.edit'
+  | 'attendance.view'
+  | 'attendance.adjust'
+  | 'attendance.approve'
+  | 'overtime.view'
+  | 'overtime.log'
+  | 'overtime.approve'
+  | 'compensation_approvals.manage'
+  | 'leave.view'
+  | 'leave.request'
+  | 'leave.approve'
+  | 'leave.manage_types'
+  | 'payroll.view'
+  | 'payroll.run'
+  | 'payroll.approve'
+  | 'payroll.finalize'
+  | 'statutory.view'
+  | 'statutory.edit'
+  | 'payslips.view'
+  | 'payslips.generate'
+  | 'loans.view'
+  | 'loans.manage'
+  | 'bonuses.view'
+  | 'bonuses.manage'
+  | 'thirteenth_month.view'
+  | 'thirteenth_month.manage'
+  | 'ess.view'
+  | 'reports.view'
+  | 'insights.view'
+  | 'approvals.view'
+  | 'notifications.view'
+  | 'notifications.send'
+  | 'users.manage'
+  | 'settings.company.edit'
+  | 'settings.payroll.edit'
+  | 'branches.manage'
+  | 'integrations.manage'
+  | 'subscription.manage'
+  | 'onboarding.manage'
+  | 'platform.admin'
+
+const ALL_ADMIN_CAPS: Capability[] = [
+  'dashboard.view',
+  'employees.view',
+  'employees.edit',
+  'employees.compensation.edit',
+  'attendance.view',
+  'attendance.adjust',
+  'attendance.approve',
+  'overtime.view',
+  'overtime.log',
+  'overtime.approve',
+  'compensation_approvals.manage',
+  'leave.view',
+  'leave.request',
+  'leave.approve',
+  'leave.manage_types',
+  'payroll.view',
+  'payroll.run',
+  'payroll.approve',
+  'payroll.finalize',
+  'statutory.view',
+  'statutory.edit',
+  'payslips.view',
+  'payslips.generate',
+  'loans.view',
+  'loans.manage',
+  'bonuses.view',
+  'bonuses.manage',
+  'thirteenth_month.view',
+  'thirteenth_month.manage',
+  'reports.view',
+  'insights.view',
+  'approvals.view',
+  'notifications.view',
+  'notifications.send',
+  'users.manage',
+  'settings.company.edit',
+  'settings.payroll.edit',
+  'branches.manage',
+  'integrations.manage',
+  'subscription.manage',
+  'onboarding.manage',
+]
+
+export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
+  super_admin: [...ALL_ADMIN_CAPS, 'platform.admin'],
+  company_admin: ALL_ADMIN_CAPS,
+  hr_admin: [
+    'dashboard.view',
+    'employees.view',
+    'employees.edit',
+    'attendance.view',
+    'attendance.adjust',
+    'overtime.view',
+    'overtime.log',
+    'overtime.approve',
+    'leave.view',
+    'leave.request',
+    'leave.approve',
+    'leave.manage_types',
+    'reports.view',
+    'approvals.view',
+    'notifications.view',
+    'onboarding.manage',
+  ],
+  payroll_admin: [
+    'dashboard.view',
+    'employees.view',
+    'attendance.view',
+    'overtime.view',
+    'overtime.log',
+    'overtime.approve',
+    'leave.view',
+    'payroll.view',
+    'payroll.run',
+    'payroll.approve',
+    'payroll.finalize',
+    'statutory.view',
+    'statutory.edit',
+    'payslips.view',
+    'payslips.generate',
+    'loans.view',
+    'loans.manage',
+    'bonuses.view',
+    'bonuses.manage',
+    'thirteenth_month.view',
+    'thirteenth_month.manage',
+    'reports.view',
+    'approvals.view',
+    'notifications.view',
+    'settings.payroll.edit',
+  ],
+  manager: [
+    'dashboard.view',
+    'attendance.view',
+    'attendance.approve',
+    'overtime.view',
+    'overtime.approve',
+    'leave.view',
+    'leave.approve',
+    'reports.view',
+    'approvals.view',
+    'notifications.view',
+    'ess.view',
+  ],
+  employee: ['ess.view', 'notifications.view'],
+}
+
+export function roleHasCapability(role: Role, capability: Capability): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(capability) ?? false
+}

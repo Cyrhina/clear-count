@@ -1,0 +1,298 @@
+import { getEmployees } from '@ops/lib/services/employeeService'
+import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
+import { db } from '@ops/mock-data'
+import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveRequest, SessionUser } from '@ops/types/domain'
+
+async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
+  const employees = await getEmployees(session)
+  return new Set(employees.map((e) => e.id))
+}
+
+export async function getSchedules(session: SessionUser) {
+  return scopeToCompany(db.schedules, session.companyId)
+}
+
+export async function getAttendanceForDate(session: SessionUser, date: string): Promise<AttendanceRecord[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && r.date === date && employeeIds.has(r.employeeId))
+}
+
+/** Every attendance record in scope, unfiltered by date — used to derive Daily/Hourly Basic Pay for a Payroll Run. */
+export async function getAttendanceRecords(session: SessionUser): Promise<AttendanceRecord[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
+}
+
+export async function getAttendanceForEmployee(session: SessionUser, employeeId: string): Promise<AttendanceRecord[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  if (!employeeIds.has(employeeId)) return []
+  return db.attendanceRecords
+    .filter((r) => r.employeeId === employeeId)
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+export async function getAttendanceRecordForEmployeeDate(
+  session: SessionUser,
+  employeeId: string,
+  date: string,
+): Promise<AttendanceRecord | undefined> {
+  return db.attendanceRecords.find((r) => r.companyId === session.companyId && r.employeeId === employeeId && r.date === date)
+}
+
+/** Employee ids with an approved leave request covering the given date — powers the "On Leave" filter option. */
+export async function getEmployeeIdsOnLeaveForDate(session: SessionUser, date: string): Promise<Set<string>> {
+  const employeeIds = await scopedEmployeeIds(session)
+  const onLeave = db.leaveRequests.filter(
+    (r) =>
+      r.companyId === session.companyId &&
+      r.status === 'approved' &&
+      employeeIds.has(r.employeeId) &&
+      r.dateFrom <= date &&
+      r.dateTo >= date,
+  )
+  return new Set(onLeave.map((r) => r.employeeId))
+}
+
+/** Employee ids with a pending adjustment request tied to the given date's attendance record — powers the "Pending Adjustment" filter option. */
+export async function getEmployeeIdsWithPendingAdjustmentForDate(session: SessionUser, date: string): Promise<Set<string>> {
+  const employeeIds = await scopedEmployeeIds(session)
+  const recordIdsForDate = new Set(
+    db.attendanceRecords.filter((r) => r.companyId === session.companyId && r.date === date).map((r) => r.id),
+  )
+  const pending = db.attendanceAdjustments.filter(
+    (a) =>
+      a.companyId === session.companyId &&
+      a.status === 'pending' &&
+      employeeIds.has(a.employeeId) &&
+      recordIdsForDate.has(a.attendanceRecordId),
+  )
+  return new Set(pending.map((a) => a.employeeId))
+}
+
+export interface ImportBiometricsResult {
+  fileName: string
+  importedCount: number
+}
+
+/**
+ * Mock biometrics import: simulates parsing a raw punch-log file by filling in time-in/time-out
+ * for the selected date — completing any employee currently missing a punch (absent, or no
+ * record yet) with a plausible present-day log. No real file parsing happens.
+ */
+export async function importBiometricsRecords(
+  session: SessionUser,
+  date: string,
+  fileName: string,
+): Promise<ImportBiometricsResult> {
+  const employees = await getEmployees(session)
+  const activeEmployees = employees.filter((e) => e.employment.status === 'active')
+  const schedules = await getSchedules(session)
+  const scheduleId = schedules[0]?.id
+  if (!scheduleId) return { fileName, importedCount: 0 }
+
+  let importedCount = 0
+  for (const employee of activeEmployees) {
+    const existing = db.attendanceRecords.find(
+      (r) => r.companyId === session.companyId && r.employeeId === employee.id && r.date === date,
+    )
+    if (existing) {
+      if (existing.status === 'absent' || !existing.timeIn) {
+        existing.timeIn = '08:56'
+        existing.timeOut = '18:02'
+        existing.status = 'present'
+        importedCount++
+      }
+      continue
+    }
+    db.attendanceRecords.push({
+      id: `${employee.id}_att_${date}_import`,
+      companyId: session.companyId,
+      employeeId: employee.id,
+      scheduleId,
+      date,
+      timeIn: '08:56',
+      timeOut: '18:02',
+      status: 'present',
+    })
+    importedCount++
+  }
+  return { fileName, importedCount }
+}
+
+export interface BiometricsPunch {
+  employeeId: string
+  date: string
+  timeIn: string
+  timeOut: string | null
+}
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
+function statusForPunch(timeIn: string, timeOut: string | null, startTime: string, endTime: string, graceMinutes: number): AttendanceRecord['status'] {
+  if (toMinutes(timeIn) > toMinutes(startTime) + graceMinutes) return 'late'
+  if (timeOut && toMinutes(timeOut) < toMinutes(endTime)) return 'undertime'
+  return 'present'
+}
+
+/** Applies punches parsed from an uploaded biometrics CSV — updates the matching day's record or creates one. */
+export async function applyBiometricsPunches(session: SessionUser, punches: BiometricsPunch[]): Promise<number> {
+  const employeeIds = await scopedEmployeeIds(session)
+  const schedules = await getSchedules(session)
+  const defaultSchedule = schedules[0]
+  if (!defaultSchedule) return 0
+
+  let applied = 0
+  for (const punch of punches) {
+    if (!employeeIds.has(punch.employeeId)) continue
+    const existing = db.attendanceRecords.find(
+      (r) => r.companyId === session.companyId && r.employeeId === punch.employeeId && r.date === punch.date,
+    )
+    const schedule =
+      schedules.find((s) => s.id === existing?.scheduleId) ??
+      schedules.find((s) => s.assignedEmployeeIds?.includes(punch.employeeId)) ??
+      defaultSchedule
+    const status = statusForPunch(punch.timeIn, punch.timeOut, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
+
+    if (existing) {
+      existing.timeIn = punch.timeIn
+      existing.timeOut = punch.timeOut
+      existing.status = status
+    } else {
+      db.attendanceRecords.push({
+        id: `${punch.employeeId}_att_${punch.date}_import`,
+        companyId: session.companyId,
+        employeeId: punch.employeeId,
+        scheduleId: schedule.id,
+        date: punch.date,
+        timeIn: punch.timeIn,
+        timeOut: punch.timeOut,
+        status,
+      })
+    }
+    applied++
+  }
+  return applied
+}
+
+export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.attendanceAdjustments
+    .filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId))
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
+}
+
+export interface CreateAdjustmentInput {
+  attendanceRecordId: string
+  requestedTimeIn: string | null
+  requestedTimeOut: string | null
+  reason: string
+  reasonCategory?: string
+}
+
+export async function createAttendanceAdjustment(
+  session: SessionUser,
+  input: CreateAdjustmentInput,
+): Promise<AttendanceAdjustment> {
+  const record = db.attendanceRecords.find((r) => r.id === input.attendanceRecordId)
+  if (!record) throw new Error('Attendance record not found')
+
+  const adjustment: AttendanceAdjustment = {
+    id: crypto.randomUUID(),
+    companyId: session.companyId,
+    employeeId: record.employeeId,
+    attendanceRecordId: record.id,
+    requestedTimeIn: input.requestedTimeIn,
+    requestedTimeOut: input.requestedTimeOut,
+    reason: input.reason,
+    reasonCategory: input.reasonCategory,
+    status: 'pending',
+    requestedAt: new Date().toISOString(),
+  }
+  db.attendanceAdjustments.unshift(adjustment)
+  return adjustment
+}
+
+export interface FileAdjustmentInput {
+  employeeId: string
+  date: string
+  requestedTimeIn: string | null
+  requestedTimeOut: string | null
+  reasonCategory: string
+  remarks: string
+}
+
+/**
+ * Backs the standalone "+ File Adjustment" flow, which starts from an employee + date
+ * rather than an existing attendance-table row. Resolves (or creates, if the employee
+ * has no record yet for that date — e.g. an unlogged absence) the underlying
+ * AttendanceRecord so every adjustment still ties back to one, matching the existing
+ * per-row request flow's data shape.
+ */
+export async function fileAttendanceAdjustment(session: SessionUser, input: FileAdjustmentInput): Promise<AttendanceAdjustment> {
+  let record = db.attendanceRecords.find(
+    (r) => r.companyId === session.companyId && r.employeeId === input.employeeId && r.date === input.date,
+  )
+
+  if (!record) {
+    const schedule = db.schedules.find((s) => s.companyId === session.companyId)
+    record = {
+      id: crypto.randomUUID(),
+      companyId: session.companyId,
+      employeeId: input.employeeId,
+      scheduleId: schedule?.id ?? '',
+      date: input.date,
+      timeIn: null,
+      timeOut: null,
+      status: 'absent',
+    }
+    db.attendanceRecords.push(record)
+  }
+
+  return createAttendanceAdjustment(session, {
+    attendanceRecordId: record.id,
+    requestedTimeIn: input.requestedTimeIn,
+    requestedTimeOut: input.requestedTimeOut,
+    reason: input.remarks,
+    reasonCategory: input.reasonCategory,
+  })
+}
+
+export async function decideAttendanceAdjustment(
+  session: SessionUser,
+  adjustmentId: string,
+  decision: Extract<ApprovalStatus, 'approved' | 'rejected'>,
+): Promise<void> {
+  const adjustment = db.attendanceAdjustments.find((a) => a.id === adjustmentId)
+  if (!adjustment) return
+
+  adjustment.status = decision
+  adjustment.decidedBy = session.name
+  adjustment.decidedAt = new Date().toISOString()
+
+  if (decision === 'approved') {
+    const record = db.attendanceRecords.find((r) => r.id === adjustment.attendanceRecordId)
+    if (record) {
+      record.timeIn = adjustment.requestedTimeIn
+      record.timeOut = adjustment.requestedTimeOut
+      record.status = 'present'
+    }
+  }
+}
+
+/** Approved leave requests overlapping a date range, with their leave type — for leave-aware attendance status. */
+export async function getApprovedLeavesInRange(
+  session: SessionUser,
+  from: string,
+  to: string,
+): Promise<{ request: LeaveRequest; typeName: string; isPaid: boolean }[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.leaveRequests
+    .filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= to && r.dateTo >= from)
+    .map((request) => {
+      const type = db.leaveTypes.find((t) => t.id === request.leaveTypeId)
+      return { request, typeName: type?.name ?? 'Leave', isPaid: type?.isPaid !== false }
+    })
+}

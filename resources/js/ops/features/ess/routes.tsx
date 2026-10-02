@@ -1,0 +1,8 @@
+export { EssHomePage } from '@ops/features/ess/EssHomePage'
+export { EssProfilePage } from '@ops/features/ess/EssProfilePage'
+export { EssPayslipsPage } from '@ops/features/ess/EssPayslipsPage'
+export { EssPayslipDetailPage } from '@ops/features/ess/EssPayslipDetailPage'
+export { EssAttendancePage } from '@ops/features/ess/EssAttendancePage'
+export { EssOvertimePage } from '@ops/features/ess/EssOvertimePage'
+export { EssLeavePage } from '@ops/features/ess/EssLeavePage'
+export { EssLoansPage } from '@ops/features/ess/EssLoansPage'
