@@ -33,6 +33,11 @@ class OpsController extends Controller
         return $this->page('attendance', $request);
     }
 
+    public function schedules(Request $request): Response
+    {
+        return $this->page('schedules', $request);
+    }
+
     public function overtime(Request $request): Response
     {
         return $this->page('overtime', $request);

@@ -1,8 +1,10 @@
 import { generateAttendanceRecords } from '@ops/mock-data/generators/attendance'
-import { generateBenefits, generateEmployeeDeductions } from '@ops/mock-data/generators/benefitsDeductions'
+import { generateBenefitPlans, generateBenefits, generateDeductionPlans, generateEmployeeDeductions } from '@ops/mock-data/generators/benefitsDeductions'
 import { generateBonuses } from '@ops/mock-data/generators/bonuses'
 import { generateCompensationApprovals } from '@ops/mock-data/generators/compensationApprovals'
 import { generateEmployeesForCompany } from '@ops/mock-data/generators/employees'
+import { generateBranchDepartments } from '@ops/mock-data/generators/branchDepartments'
+import { generateShiftAssignments } from '@ops/mock-data/generators/shiftAssignments'
 import { generateLoans } from '@ops/mock-data/generators/loans'
 import { generateOvertimeRecords } from '@ops/mock-data/generators/overtime'
 import { generateAttendanceAdjustments, generateLeaveRequests, generateSampleLeaveOverrides } from '@ops/mock-data/generators/workflowRecords'
@@ -37,7 +39,8 @@ function buildEmployees(): Employee[] {
 }
 
 const employees = buildEmployees()
-const schedulesByCompany = new Map(schedules.map((s) => [s.companyId, s]))
+// The attendance generator follows each company's default (Standard Day) shift, not the last template listed.
+const schedulesByCompany = new Map(schedules.filter((s) => s.id.endsWith('_sched_default')).map((s) => [s.companyId, s]))
 const attendanceRecords = generateAttendanceRecords(employees, schedulesByCompany)
 
 /**
@@ -126,6 +129,8 @@ export const db = {
   users,
   employees,
   schedules,
+  shiftAssignments: generateShiftAssignments(employees, schedules),
+  branchDepartments: generateBranchDepartments(employees),
   leaveTypes,
   compensationTypes,
   payrollGroups,
@@ -139,7 +144,9 @@ export const db = {
   statutoryConfigs,
   loanTypes,
   loans: generateLoans(employees),
+  benefitPlans: generateBenefitPlans(employees),
   employeeBenefits: generateBenefits(employees),
+  deductionPlans: generateDeductionPlans(employees),
   employeeDeductions: generateEmployeeDeductions(employees),
   overtimeRecords: generateOvertimeRecords(employees),
   bonuses: generateBonuses(employees),

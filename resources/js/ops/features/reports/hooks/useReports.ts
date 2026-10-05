@@ -14,6 +14,7 @@ import {
   type PayrollRegisterReport,
 } from '@ops/lib/services/reportService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
+import { getTaxComplianceData, type TaxComplianceData } from '@ops/lib/services/taxComplianceService'
 import type { Employee, PayrollPeriod } from '@ops/types/domain'
 
 export function usePayrollPeriodOptions() {
@@ -103,4 +104,23 @@ export function useStatutoryContributionData() {
   }, [user])
 
   return { rows: data?.rows ?? [], isSample: data?.isSample ?? false, isLoading: data === null }
+}
+
+/** Every employee's tax picture for one calendar year — 13th month & benefits against the ₱90,000 ceiling, de minimis ceilings, taxable compensation. */
+export function useTaxComplianceData(year: number | undefined) {
+  const { user } = useSession()
+  const [data, setData] = useState<TaxComplianceData | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setData(null)
+    getTaxComplianceData(user, year ?? new Date().getFullYear()).then((result) => {
+      if (!cancelled) setData(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user, year])
+
+  return { data, rows: data?.rows ?? [], years: data?.years ?? [new Date().getFullYear()], isLoading: data === null }
 }

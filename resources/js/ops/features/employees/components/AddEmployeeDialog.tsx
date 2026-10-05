@@ -20,6 +20,7 @@ import {
 } from '@ops/lib/payroll/payRate'
 import { formatCurrency } from '@ops/lib/utils/format'
 import { useToast } from '@ops/components/ui/Toast'
+import { DepartmentSelect } from '@ops/features/employees/components/DepartmentSelect'
 import { MixedCompensationDialog } from '@ops/features/employees/components/MixedCompensationDialog'
 import { useMixedCompensationStore, summarizeMixedCompensation } from '@ops/features/employees/mixedCompensationStore'
 import type { MixedCompensationStructure } from '@ops/features/employees/mixedCompensationStore'
@@ -153,9 +154,6 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
           <FormField label="Last name" required error={errors.lastName?.message}>
             <Input {...register('lastName')} placeholder="Dela Cruz" />
           </FormField>
-          <FormField label="Department" required error={errors.department?.message}>
-            <Input {...register('department')} placeholder="Operations" />
-          </FormField>
           <FormField label="Position" required error={errors.position?.message}>
             <Input {...register('position')} placeholder="Associate" />
           </FormField>
@@ -166,11 +164,18 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
               render={({ field }) => (
                 <Select
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(v) => {
+                    field.onChange(v)
+                    // Departments belong to a branch — pick again after switching.
+                    setValue('department', '')
+                  }}
                   options={branches.map((b) => ({ value: b.id, label: b.name }))}
                 />
               )}
             />
+          </FormField>
+          <FormField label="Department" required error={errors.department?.message}>
+            <DepartmentSelect branchId={watch('branchId')} value={watch('department')} onChange={(v) => setValue('department', v, { shouldValidate: true })} />
           </FormField>
           <FormField label="Employment type" required error={errors.employmentType?.message}>
             <Controller

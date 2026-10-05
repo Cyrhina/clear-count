@@ -295,6 +295,7 @@ export function PayslipCard({
         <div>
           <SectionBadge icon={CalendarDays} label="Pay Period Information" tone="accent" />
           <div className="space-y-1">
+            <InfoRow label="Payroll No." value={period && `${period.payrollNumber}/${period.payrollYear}`} />
             <InfoRow label="Pay Period" value={period && `${formatDate(period.startDate)} – ${formatDate(period.endDate)}`} />
             <InfoRow label="Pay Date" value={period && formatDate(period.payDate)} />
             <InfoRow label="Payment Method" value="Bank Transfer" />

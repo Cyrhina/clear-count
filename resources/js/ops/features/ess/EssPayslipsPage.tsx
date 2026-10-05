@@ -67,7 +67,10 @@ export function EssPayslipsPage() {
         <TableBody>
           {rows.map(({ period, line, otHours }) => (
             <TableRow key={line.id} id={`row-${line.id}`} className={cn(line.id === highlightId && 'highlight-target')}>
-              <TableCell className="font-medium">{period.label}</TableCell>
+              <TableCell className="font-medium">
+                {period.label}
+                <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">{period.payrollNumber}</span>
+              </TableCell>
               <TableCell>{formatCurrency(line.grossPay)}</TableCell>
               <TableCell>{formatCurrency(statutoryTotal(line))}</TableCell>
               <TableCell>{otHours > 0 ? `${otHours} hrs` : '—'}</TableCell>
@@ -100,7 +103,10 @@ export function EssPayslipsPage() {
 
       <Dialog open={!!preview} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogContent className="max-w-3xl">
-          <DialogTitle>{preview?.period.label}</DialogTitle>
+          <DialogTitle>
+            {preview?.period.label}
+            {preview && <span className="ml-2 text-sm font-normal text-muted-foreground">{preview.period.payrollNumber}</span>}
+          </DialogTitle>
           <DialogDescription>Payslip preview &mdash; use Print / Download inside the full payslip for a PDF copy.</DialogDescription>
           {preview && (
             <div className="mt-4">

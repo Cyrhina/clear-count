@@ -19,6 +19,7 @@ export function includedInRegularPayroll(bonus: BonusIncentive): boolean {
 export function bonusAppliesToEmployee(bonus: BonusIncentive, employee: Employee): boolean {
   if (bonus.targetType === 'company') return true
   if (bonus.targetType === 'department') return employee.employment.department === bonus.targetDepartment
+  if (bonus.targetType === 'employees') return !!bonus.targetEmployeeIds?.includes(employee.id)
   return employee.id === bonus.targetEmployeeId
 }
 

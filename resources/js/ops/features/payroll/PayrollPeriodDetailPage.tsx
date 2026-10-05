@@ -1,8 +1,9 @@
-import { ArrowLeft, Calculator, Lock, PlayCircle, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Calculator, Download, Lock, PauseCircle, PlayCircle, ShieldCheck, Undo2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
+import { BulkActionBar } from '@ops/components/ui/BulkActionBar'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
@@ -34,7 +35,8 @@ import { getBonuses } from '@ops/lib/services/bonusService'
 import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
 import { getLoans } from '@ops/lib/services/loanService'
 import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
-import { approvePayroll, finalizePayroll, getStatutoryConfig, runPayroll } from '@ops/lib/services/payrollService'
+import { downloadReportWorkbook } from '@ops/features/reports/reportExport'
+import { approvePayroll, finalizePayroll, getStatutoryConfig, holdEmployeesInPeriod, releaseEmployeesInPeriod, runPayroll } from '@ops/lib/services/payrollService'
 import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
 import { getThirteenthMonthLines, getThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
@@ -141,6 +143,39 @@ export function PayrollPeriodDetailPage() {
     refetchLines()
   }
 
+  const canHold = canRun && (period.status === 'review' || period.status === 'draft')
+  const heldIds = period.excludedEmployeeIds ?? []
+
+  async function handleHold() {
+    if (!id) return
+    const n = await holdEmployeesInPeriod(user, id, [...selection.selected])
+    notify({ title: `${n} employee${n === 1 ? '' : 's'} held out of this run`, description: 'Their lines were removed. Release them from the Held list to add them back.', tone: n ? 'success' : 'default' })
+    selection.clear()
+    refetchPeriods()
+    refetchLines()
+  }
+
+  async function handleRelease(ids: string[]) {
+    if (!id) return
+    const n = await releaseEmployeesInPeriod(user, id, ids)
+    notify({ title: `${n} employee${n === 1 ? '' : 's'} released back into this run`, tone: n ? 'success' : 'default' })
+    refetchPeriods()
+    refetchLines()
+  }
+
+  const exportSelected = () => {
+    const chosen = lines.filter((l) => selection.selected.has(l.employeeId))
+    const header = ['Employee', 'Position', 'Gross Pay', 'Total Deductions', 'Net Pay']
+    const rows = chosen.map((l) => [employeeName(l.employeeId), employeeById.get(l.employeeId)?.employment.position ?? '', l.grossPay, l.totalDeductions, l.netPay])
+    downloadReportWorkbook({
+      companyName: company?.name ?? 'Frontline Business Solutions',
+      title: `Payroll ${period.payrollNumber} — selected employees`,
+      meta: [{ label: 'Payroll Period', value: period.label }, { label: 'Employees', value: String(chosen.length) }],
+      generatedBy: user.name,
+      data: { filename: `payroll-${period.payrollNumber.toLowerCase()}-selected`, rows: [header, ...rows] },
+    })
+  }
+
   async function handleApprove() {
     if (!id) return
     await approvePayroll(user, id)
@@ -174,7 +209,7 @@ export function PayrollPeriodDetailPage() {
 
       <PageHeader
         title={period.label}
-        description={`${formatDate(period.startDate)} – ${formatDate(period.endDate)} · Pay date ${formatDate(period.payDate)}`}
+        description={`${period.payrollNumber} · ${formatDate(period.startDate)} – ${formatDate(period.endDate)} · Pay date ${formatDate(period.payDate)}`}
         actions={
           <div className="flex items-center gap-2">
             {payrollGroup ? <Badge tone="brand">{payrollGroup.name}</Badge> : <Badge tone="neutral">All Employees</Badge>}
@@ -199,6 +234,34 @@ export function PayrollPeriodDetailPage() {
       />
 
       <WorkLogsSummaryCard period={period} />
+
+      {heldIds.length > 0 && (
+        <Card className="border-warning/30 bg-warning/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold">Held out of this run ({heldIds.length})</p>
+              <p className="text-xs text-muted-foreground">No payroll line or payslip is created for them while held.</p>
+            </div>
+            {canHold && (
+              <Button size="sm" variant="secondary" icon={<Undo2 className="size-3.5" />} onClick={() => handleRelease(heldIds)}>
+                Release All
+              </Button>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {heldIds.map((employeeId) => (
+              <span key={employeeId} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs">
+                {employeeName(employeeId)}
+                {canHold && (
+                  <button type="button" className="text-primary hover:underline" onClick={() => handleRelease([employeeId])}>
+                    Release
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {isLoadingLines ? (
         <Skeleton className="h-72" />
@@ -366,6 +429,17 @@ export function PayrollPeriodDetailPage() {
               })}
             </TableBody>
           </Table>
+
+          <BulkActionBar count={selection.selected.size} noun={selection.selected.size === 1 ? 'employee selected' : 'employees selected'} onClear={selection.clear}>
+            <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={exportSelected}>
+              Export
+            </Button>
+            {canHold && (
+              <Button size="sm" icon={<PauseCircle className="size-3.5" />} onClick={handleHold}>
+                Hold from Run
+              </Button>
+            )}
+          </BulkActionBar>
         </>
       )}
 

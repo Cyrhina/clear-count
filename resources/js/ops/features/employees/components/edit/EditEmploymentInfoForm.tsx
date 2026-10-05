@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
+import { DepartmentSelect } from '@ops/features/employees/components/DepartmentSelect'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { useSession } from '@ops/hooks/useSession'
@@ -63,7 +64,7 @@ export function EditEmploymentInfoForm({
         <Input {...register('position', { required: 'Required' })} />
       </FormField>
       <FormField label="Department" required error={errors.department?.message}>
-        <Input {...register('department', { required: 'Required' })} />
+        <DepartmentSelect branchId={employee.branchId} value={watch('department')} onChange={(v) => setValue('department', v, { shouldValidate: true })} />
       </FormField>
       <FormField label="Employment type">
         <Select

@@ -1,3 +1,4 @@
+import { formatPayrollNumber } from '@ops/lib/payroll/payrollNumber'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { getPayrollLines, getPayrollPeriods, previewPayrollLine } from '@ops/lib/services/payrollService'
 import { db } from '@ops/mock-data'
@@ -209,12 +210,18 @@ export async function getStatutoryContributionData(session: SessionUser): Promis
 
   const employees = (await getEmployees(session)).filter((e) => e.employment.status === 'active')
   const rows: PayrollLineWithContext[] = []
+  const sampleSequence = new Map<number, number>()
   for (const cutoff of recentCompletedCutoffs(SAMPLE_CUTOFF_COUNT)) {
+    const year = Number(cutoff.endDate.slice(0, 4))
+    sampleSequence.set(year, (sampleSequence.get(year) ?? 0) + 1)
     const payDate = new Date(`${cutoff.endDate}T00:00:00`)
     payDate.setDate(payDate.getDate() + 5)
     const period: PayrollPeriod = {
       id: `sample_${cutoff.startDate}`,
       companyId: session.companyId,
+      // Illustrative numbering (PR001 per year) — these sample periods are not real runs.
+      payrollNumber: formatPayrollNumber(sampleSequence.get(year) ?? 1),
+      payrollYear: year,
       label: cutoff.label,
       startDate: cutoff.startDate,
       endDate: cutoff.endDate,

@@ -3,6 +3,7 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { GrantLeaveCreditsDialog } from '@ops/features/leave/components/GrantLeaveCreditsDialog'
 import { LeaveTypeDialog } from '@ops/features/leave/components/LeaveTypeDialog'
 import { HIERARCHY_LABEL, HIERARCHY_LEVELS } from '@ops/features/leave/hierarchyUtil'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -13,17 +14,20 @@ export function LeaveTypesPanel({
   leaveTypes,
   employees,
   onChanged,
+  onCreditsGranted,
 }: {
   leaveTypes: LeaveType[]
   employees: Employee[]
   onChanged: () => void
+  onCreditsGranted: () => void
 }) {
   const canManageTypes = usePermission('leave.manage_types')
 
   return (
     <div className="space-y-6">
       {canManageTypes && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <GrantLeaveCreditsDialog employees={employees} leaveTypes={leaveTypes} onGranted={onCreditsGranted} />
           <LeaveTypeDialog onSaved={onChanged} />
         </div>
       )}

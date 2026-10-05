@@ -34,6 +34,7 @@ import {
 import { CustomReportBuilder } from '@ops/features/reports/components/CustomReportBuilder'
 import { ReportCategorySection, type ReportCategory } from '@ops/features/reports/components/shared'
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
+import { DeMinimisBenefitsReport, TaxMonitoringReport, TaxableCompensationReport, ThirteenthMonthBenefitsReport, WithholdingTaxSummaryReport } from '@ops/features/reports/components/TaxComplianceReports'
 import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
 
 const BASIC_CATEGORIES: ReportCategory[] = [
@@ -63,10 +64,8 @@ const BASIC_CATEGORIES: ReportCategory[] = [
     ],
   },
   {
-    label: 'Statutory & Tax Reports',
+    label: 'Statutory Contributions',
     reports: [
-      { id: 'bir-2316', label: 'BIR Form 2316', description: 'Annual Certificate of Compensation/Tax Withheld.' },
-      { id: 'bir-1601c', label: 'BIR Form 1601-C', description: 'Monthly Remittance Return of Income Taxes Withheld.' },
       { id: 'sss-contribution', label: 'SSS Contribution Report', description: 'Monthly SSS R3/R5 remittance summary.' },
       { id: 'philhealth-contribution', label: 'PhilHealth Contribution Report', description: 'Monthly ER2/RF-1 remittance report.' },
       { id: 'pagibig-contribution', label: 'Pag-IBIG Contribution Report', description: 'Monthly MCRF remittance report.' },
@@ -75,6 +74,18 @@ const BASIC_CATEGORIES: ReportCategory[] = [
         label: 'Overall Statutory Contribution Report',
         description: 'Unified summary of SSS, PhilHealth, Pag-IBIG, and Tax deductions per employee.',
       },
+    ],
+  },
+  {
+    label: 'Tax & Compliance',
+    reports: [
+      { id: 'tax-monitoring', label: 'Tax Monitoring', description: 'Employees at or over the 13th month and de minimis ceilings, flagged for review.' },
+      { id: 'taxable-compensation', label: 'Taxable Compensation', description: 'Gross pay less non-taxable items, per employee, year to date.' },
+      { id: 'thirteenth-month-benefits', label: '13th Month & Other Benefits', description: '13th Month Pay and other benefits against the ₱90,000 non-taxable ceiling.' },
+      { id: 'de-minimis-benefits', label: 'De Minimis Benefits', description: 'Rice, uniform, laundry and other benefits against their BIR ceilings.' },
+      { id: 'withholding-tax-summary', label: 'Withholding Tax Summary', description: 'Tax withheld on compensation, by month or by employee.' },
+      { id: 'bir-1601c', label: 'BIR Form 1601-C', description: 'Monthly Remittance Return of Income Taxes Withheld.' },
+      { id: 'bir-2316', label: 'BIR Form 2316', description: 'Annual Certificate of Compensation/Tax Withheld.' },
     ],
   },
 ]
@@ -151,6 +162,16 @@ function renderBasicReport(id: string) {
       return <StatutoryContributionReport type="pagibig" />
     case 'consolidated-statutory':
       return <ConsolidatedStatutoryReport />
+    case 'tax-monitoring':
+      return <TaxMonitoringReport />
+    case 'taxable-compensation':
+      return <TaxableCompensationReport />
+    case 'thirteenth-month-benefits':
+      return <ThirteenthMonthBenefitsReport />
+    case 'de-minimis-benefits':
+      return <DeMinimisBenefitsReport />
+    case 'withholding-tax-summary':
+      return <WithholdingTaxSummaryReport />
     default:
       return null
   }

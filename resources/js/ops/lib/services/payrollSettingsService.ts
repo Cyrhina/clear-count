@@ -1,3 +1,4 @@
+import { getEmployees } from '@ops/lib/services/employeeService'
 import { db } from '@ops/mock-data'
 import type {
   CompensationType,
@@ -144,4 +145,12 @@ export async function updatePayrollRules(session: SessionUser, updates: Partial<
   const record = db.payrollRules.find((r) => r.companyId === session.companyId)
   if (!record) return
   Object.assign(record, updates)
+}
+
+/** Moves several employees into `groupId` (or out of every group when null) without touching the group's other members. Returns how many were moved. */
+export async function bulkSetEmployeePayrollGroup(session: SessionUser, employeeIds: string[], groupId: string | null): Promise<number> {
+  const employees = new Set((await getEmployees(session)).map((e) => e.id))
+  const ids = employeeIds.filter((id) => employees.has(id))
+  for (const id of ids) await setEmployeePayrollGroup(session, id, groupId)
+  return ids.length
 }

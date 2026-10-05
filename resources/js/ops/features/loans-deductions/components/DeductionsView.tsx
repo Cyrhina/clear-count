@@ -17,17 +17,9 @@ import { updateEmployeeDeduction } from '@ops/lib/services/benefitsService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Employee, EmployeeDeduction } from '@ops/types/domain'
 
-export type DeductionsViewKind = 'all' | 'recurring' | 'one_time'
+export type DeductionsViewKind = 'one_time'
 
 const COPY: Record<DeductionsViewKind, { title: string; description: string }> = {
-  all: {
-    title: 'Other Deductions',
-    description: 'Every deduction taken from pay that isn’t a loan or a government contribution — recurring and one-time together.',
-  },
-  recurring: {
-    title: 'Recurring Deductions',
-    description: 'Monthly amounts (cooperative savings, union dues, meal plans…) split across the month’s pay runs until they end or are cancelled.',
-  },
   one_time: {
     title: 'One-time Deductions',
     description: 'Single amounts (uniforms, replacement fees, damages…) taken in full in the pay run that covers the due date.',
@@ -61,7 +53,7 @@ export function DeductionsView({ kind, employees, canManage }: { kind: Deduction
   const copy = COPY[kind]
   const employeeById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])
 
-  const scoped = useMemo(() => deductions.filter((d) => (kind === 'all' || d.kind === kind) && employeeById.has(d.employeeId)), [deductions, kind, employeeById])
+  const scoped = useMemo(() => deductions.filter((d) => d.kind === kind && employeeById.has(d.employeeId)), [deductions, kind, employeeById])
   const filtered = scoped
     .filter((d) => {
       if (status !== 'all' && d.status !== status) return false
@@ -70,7 +62,6 @@ export function DeductionsView({ kind, employees, canManage }: { kind: Deduction
     })
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || fullName(employeeById.get(a.employeeId)).localeCompare(fullName(employeeById.get(b.employeeId))))
 
-  const activeRecurring = scoped.filter((d) => d.kind === 'recurring' && d.status === 'active')
   const pendingOneTime = scoped.filter((d) => d.kind === 'one_time' && d.status === 'active')
 
   async function change(d: EmployeeDeduction, updates: Partial<EmployeeDeduction>, message: string) {
@@ -95,13 +86,12 @@ export function DeductionsView({ kind, employees, canManage }: { kind: Deduction
           <p className="text-sm font-medium">{copy.title}</p>
           <p className="max-w-3xl text-xs text-muted-foreground">{copy.description}</p>
         </div>
-        {canManage && <DeductionDialog employees={employees} lockedKind={kind === 'all' ? undefined : kind} onSaved={refetch} />}
+        {canManage && <DeductionDialog employees={employees} lockedKind={kind} onSaved={refetch} />}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {kind !== 'one_time' && <StatTile label="Recurring / month" value={formatCurrency(activeRecurring.reduce((s, d) => s + d.amount, 0))} />}
-        {kind !== 'recurring' && <StatTile label="Scheduled one-time" value={formatCurrency(pendingOneTime.reduce((s, d) => s + d.amount, 0))} />}
-        <StatTile label="Employees affected" value={String(new Set([...activeRecurring, ...pendingOneTime].map((d) => d.employeeId)).size)} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatTile label="Scheduled one-time" value={formatCurrency(pendingOneTime.reduce((s, d) => s + d.amount, 0))} />
+        <StatTile label="Employees affected" value={String(new Set(pendingOneTime.map((d) => d.employeeId)).size)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -139,7 +129,7 @@ export function DeductionsView({ kind, employees, canManage }: { kind: Deduction
                   <DeductionDialog
                     employees={employees}
                     deduction={d}
-                    lockedKind={kind === 'all' ? undefined : kind}
+                    lockedKind={kind}
                     onSaved={refetch}
                     trigger={
                       <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || d.status === 'completed' || d.status === 'cancelled'} title={d.status === 'completed' || d.status === 'cancelled' ? `This record is ${d.status}.` : undefined}>

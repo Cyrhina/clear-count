@@ -51,9 +51,9 @@
   --danger: #b83b3b;
   --danger-foreground: #fdf5f5;
 
-  --sidebar: #14211e;
+  --sidebar: var(--brand-sidebar, #14211e);
   --sidebar-foreground: #e9efed;
-  --sidebar-muted: #93a5a1;
+  --sidebar-muted: var(--brand-sidebar-muted, #93a5a1);
   --sidebar-border: rgb(255 255 255 / 0.08);
   --sidebar-active: rgb(255 255 255 / 0.08);
 
@@ -87,9 +87,9 @@
   --danger: #d16565;
   --danger-foreground: #2a1010;
 
-  --sidebar: #0b0d0c;
+  --sidebar: var(--brand-sidebar-dark, #0b0d0c);
   --sidebar-foreground: #e9efed;
-  --sidebar-muted: #7c8b87;
+  --sidebar-muted: var(--brand-sidebar-muted, #7c8b87);
   --sidebar-border: rgb(255 255 255 / 0.06);
   --sidebar-active: rgb(255 255 255 / 0.06);
 

@@ -12,7 +12,9 @@ import type { AttendanceRecord, Employee } from '@ops/types/domain'
  *  3. CSV / delimited export (ZKTime / ZKBio software, or a hand-made sheet) — header names are matched
  *     by alias: User ID / AC-No. / EnNo / PIN, Date-Time (or separate Date + Time), Verify Mode, In/Out
  *     State, Device ID. Comma, semicolon, or tab delimited.
- *  4. Legacy FBS daily template — Employee ID, Date, Time In, Time Out, Log Type.
+ *  4. FBS standard CSV template (all non-ZKTeco devices/systems) — Employee ID, Date, Time In, Time Out.
+ *
+ * .xlsx workbooks are converted to CSV text first (see lib/utils/xlsxRead.ts), so they share these layouts.
  *
  * Invalid lines (missing fields, malformed timestamps, unmapped IDs) are reported per line and skipped;
  * every valid line still imports. Exact duplicate punches and repeated taps within a minute are ignored.
@@ -25,7 +27,7 @@ export const FORMAT_LABEL: Record<BiometricsFormat, string> = {
   zk_glog: 'ZKTeco ZK3969 · USB GLog export (.txt)',
   zk_csv: 'ZKTeco ZK3969 · CSV / software export',
   generic_csv: 'Generic biometrics CSV (other device models)',
-  fbs_daily: 'FBS daily template (CSV)',
+  fbs_daily: 'FBS standard CSV template',
 }
 
 export const FORMAT_MAPPING: Record<BiometricsFormat, string> = {
@@ -35,6 +37,9 @@ export const FORMAT_MAPPING: Record<BiometricsFormat, string> = {
   generic_csv: 'Header columns matched by name or mapped manually (Employee_ID / Badge_No, DateTime or Date + Time, State, Verify, Device)',
   fbs_daily: 'Employee ID · Date · Time In · Time Out · Log Type',
 }
+
+/** Header row of the standard CSV template used by every non-ZKTeco device or system. */
+export const STANDARD_TEMPLATE_HEADERS = ['Employee ID', 'Date', 'Time In', 'Time Out']
 
 export type PunchState = 'check_in' | 'check_out' | 'break_out' | 'break_in' | 'ot_in' | 'ot_out'
 
@@ -321,7 +326,7 @@ export function parseBiometricsFile(
   text: string,
   employees: Employee[],
   existingRecords: AttendanceRecord[],
-  options: { mapping?: ColumnMapping } = {},
+  options: { mapping?: ColumnMapping; /** Non-ZKTeco sources: only the FBS standard CSV template is accepted. */ template?: boolean } = {},
 ): BiometricsParseResult {
   const lines = text.replace(/^﻿/, '').split(/\r?\n/)
   const nonEmpty = lines.map((raw, i) => ({ raw, line: i + 1 })).filter((l) => l.raw.trim().length > 0)
@@ -336,7 +341,7 @@ export function parseBiometricsFile(
   const ATTLOG_RE = /^\s*(\S+)\s+(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s*(.*)$/
   // Only numeric codes may follow the timestamp — a header row or CSV never matches. The first few lines are
   // checked so one garbled leading line doesn't hide the format.
-  const looksLikeAttlog = !options.mapping && nonEmpty.slice(0, 5).some(({ raw }) => {
+  const looksLikeAttlog = !options.mapping && !options.template && nonEmpty.slice(0, 5).some(({ raw }) => {
     const m = raw.match(ATTLOG_RE)
     return !!m && !/[a-z]/i.test(m[3]) && !raw.includes(',')
   })
@@ -396,6 +401,14 @@ export function parseBiometricsFile(
 
     const timeInCol = findColumn(header, ['time in', 'timein', 'in time'])
     const timeOutCol = findColumn(header, ['time out', 'timeout', 'out time'])
+
+    if (options.template && (timeInCol === -1 || timeOutCol === -1 || findColumn(header, ALIASES.userId) === -1 || findColumn(header, ALIASES.date) === -1)) {
+      return {
+        ...empty,
+        format: 'fbs_daily',
+        headerError: `This file doesn't follow the standard CSV template. Expected the header row: ${STANDARD_TEMPLATE_HEADERS.join(', ')}. Found: ${rawHeaders.filter(Boolean).join(', ') || 'no header'}. Download the template and copy your records into it.`,
+      }
+    }
 
     if (!options.mapping && timeInCol !== -1 && timeOutCol !== -1) {
       // Legacy FBS daily template: one row per employee per day.
@@ -673,6 +686,17 @@ export function buildSampleAttlog(employees: Employee[], date: string): string {
   out.push(`${bad[2].padStart(9, ' ')}\t\t1\t1\t1\t0`)
   if (punches[0]) out.push(line(punches[0].pin, `${punches[0].date} ${punches[0].time}`, punches[0].device, punches[0].state, punches[0].verify))
   return out.join('\r\n') + '\r\n'
+}
+
+/**
+ * The standard CSV template for non-ZKTeco devices: one row per employee per day, Employee ID as in the
+ * employee list (FR-0006), Date as YYYY-MM-DD, times as HH:MM (24-hour). Time Out may be blank.
+ * An overnight shift is one row — Time Out earlier than Time In means it ended the next day.
+ */
+export function buildStandardTemplateCsv(employees: Employee[], date: string): string[][] {
+  const active = employees.filter((e) => e.employment.status === 'active').slice(0, 4)
+  const times: [string, string][] = [['08:52', '18:04'], ['09:21', '18:12'], ['08:47', '16:31'], ['09:03', '']]
+  return [STANDARD_TEMPLATE_HEADERS, ...active.map((e, i) => [e.employeeNumber, date, times[i][0], times[i][1]])]
 }
 
 /** CSV in the device/software export shape: User ID, Name, Timestamp, Verification Mode, In/Out State, Device ID. */

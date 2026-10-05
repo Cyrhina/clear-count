@@ -6,6 +6,7 @@ import {
   getHeadcountTrend,
   getPendingRequestsSummary,
 } from '@ops/lib/services/dashboardService'
+import { getTaxAlerts, type TaxAlerts } from '@ops/lib/services/taxComplianceService'
 import type { AdminDashboardOverview, DashboardStats, PendingRequestsSummary } from '@ops/lib/services/dashboardService'
 
 export function useDashboardData() {
@@ -61,4 +62,22 @@ export function usePendingRequestsSummary() {
   }, [user])
 
   return { summary, isLoading: summary === null }
+}
+
+export function useTaxAlerts() {
+  const { user } = useSession()
+  const [alerts, setAlerts] = useState<TaxAlerts | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setAlerts(null)
+    getTaxAlerts(user).then((result) => {
+      if (!cancelled) setAlerts(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  return { alerts, isLoading: alerts === null }
 }

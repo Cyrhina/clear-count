@@ -44,6 +44,10 @@ export interface Company {
   name: string
   tradeName?: string
   logoUrl?: string
+  /** When true, the whole system is themed from `brandColor` (the logo's dominant color). */
+  useLogoTheme?: boolean
+  /** Dominant color detected in the logo, `#rrggbb`. */
+  brandColor?: string
   companyType?: CompanyType
   industry?: string
   description?: string
@@ -244,6 +248,9 @@ export interface CompensationApproval {
 
 export type ShiftType = 'day' | 'night' | 'split' | 'flexible'
 
+/** Display colour of a shift template on the Schedules roster. */
+export type ShiftColor = 'teal' | 'amber' | 'violet' | 'emerald' | 'sky' | 'rose'
+
 export interface Schedule {
   id: string
   companyId: string
@@ -256,6 +263,30 @@ export interface Schedule {
   gracePeriodMinutes?: number
   restDays?: number[]
   assignedEmployeeIds?: string[]
+  color?: ShiftColor
+}
+
+/** One employee's shift on one date. `scheduleId: null` is a rostered rest day; no assignment at all means "not yet scheduled". */
+export interface ShiftAssignment {
+  id: string
+  companyId: string
+  employeeId: string
+  /** YYYY-MM-DD */
+  date: string
+  scheduleId: string | null
+}
+
+/**
+ * A department configured for one branch (the same department name can exist in several branches).
+ * Employees are matched to it by `employment.department` + `branchId`.
+ */
+export interface BranchDepartment {
+  id: string
+  companyId: string
+  branchId: string
+  name: string
+  /** The department's direct supervisor in this branch. */
+  supervisorEmployeeId: string | null
 }
 
 export type PayrollFrequency = 'daily' | 'weekly' | 'biweekly' | 'semi_monthly' | 'monthly' | 'custom'
@@ -456,6 +487,10 @@ export type PayrollPeriodStatus = 'draft' | 'review' | 'approved' | 'finalized'
 export interface PayrollPeriod {
   id: string
   companyId: string
+  /** Human-friendly run number, e.g. "PR001". Assigned once when the run is created; the sequence restarts every year (by pay date). */
+  payrollNumber: string
+  /** Year the sequence belongs to (the pay date's year) — with payrollNumber it is unique per company. */
+  payrollYear: number
   label: string
   startDate: string
   endDate: string
@@ -463,6 +498,8 @@ export interface PayrollPeriod {
   status: PayrollPeriodStatus
   /** When set, this run only includes employees currently assigned to this Payroll Group. Unset runs against every active employee (legacy behavior). */
   payrollGroupId?: string
+  /** Employees held out of this run (e.g. pending clearance or a pay dispute). `runPayroll` skips them; releasing one adds their line back. */
+  excludedEmployeeIds?: string[]
 }
 
 export interface TaxBracket {
@@ -582,6 +619,13 @@ export interface LoanTypeConfig {
   typicalTerm: string
   /** Reference only, e.g. "Up to 1 month of basic pay". */
   typicalAmount: string
+  /**
+   * 'fixed': every new loan of this type has the same principal and monthly deduction (below).
+   * 'custom' (default when absent): the principal and deduction are set per employee when the loan is added.
+   */
+  amountType?: 'fixed' | 'custom'
+  fixedPrincipal?: number
+  fixedMonthlyDeduction?: number
   /** Inactive types can't be picked for new loans; existing loans keep working. */
   isActive: boolean
   /** Built-in types can be edited or deactivated, never deleted. */
@@ -652,7 +696,7 @@ export interface OvertimeRecord {
 
 export type BonusApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected'
 export type BonusType = 'fixed_amount' | 'percentage' | 'performance_based' | 'output_based'
-export type BonusTargetType = 'employee' | 'department' | 'company'
+export type BonusTargetType = 'employee' | 'employees' | 'department' | 'company'
 export type BonusFrequency = 'one_time' | 'recurring'
 /** How an approved bonus is paid out: as extra earnings on the regular payroll payslip, or on its own standalone payslip. */
 export type BonusPayoutMode = 'regular_payroll' | 'separate_payslip'
@@ -664,6 +708,8 @@ export interface BonusIncentive {
   bonusType: BonusType
   targetType: BonusTargetType
   targetEmployeeId?: string
+  /** 'employees' target: the chosen employees. */
+  targetEmployeeIds?: string[]
   targetDepartment?: string
   /** Peso value for fixed_amount/performance_based/output_based; percentage points (e.g. 10 = 10%) of the employee's monthly-equivalent basic pay for 'percentage'. */
   amount: number
@@ -804,6 +850,8 @@ export interface EmployeeBenefit {
   id: string
   companyId: string
   employeeId: string
+  /** The plan the employee is enrolled in (HMO plans today). Absent on records created before plans existed. */
+  planId?: string
   category: BenefitCategory
   name: string
   provider?: string
@@ -820,7 +868,43 @@ export interface EmployeeBenefit {
   notes?: string
 }
 
+/**
+ * A plan employees can be enrolled in — e.g. "HMO Plan B". Enrolling an employee creates an `EmployeeBenefit`
+ * with the plan's name, provider, coverage and amounts (which can then be adjusted per employee, e.g. a dependent add-on).
+ */
+export interface BenefitPlan {
+  id: string
+  companyId: string
+  category: BenefitCategory
+  name: string
+  provider?: string
+  coverage?: string
+  /** Company-paid cost per enrolled employee per month (for a customisable allowance, the default pre-filled when adding employees). */
+  monthlyValue: number
+  /** Allowances only: 'fixed' pays everyone the plan's amount; 'custom' lets each employee's amount be set when they are added. Absent = fixed. */
+  amountType?: 'fixed' | 'custom'
+  /** Default monthly amount the employee contributes (payroll deduction). */
+  employeeShare: number
+  notes?: string
+  /** Archived plans take no new enrollments. */
+  status: 'active' | 'archived'
+}
+
 export type EmployeeDeductionKind = 'recurring' | 'one_time'
+
+/** A recurring deduction employees can be enrolled in — e.g. "Cooperative Savings". Enrolling creates a recurring `EmployeeDeduction`. */
+export interface DeductionPlan {
+  id: string
+  companyId: string
+  name: string
+  /** Monthly amount taken from each enrolled employee (for a customizable plan, the default pre-filled when adding employees). */
+  amount: number
+  /** 'fixed' deducts the same amount from everyone; 'custom' lets each employee's amount be set when they are added. Absent = fixed. */
+  amountType?: 'fixed' | 'custom'
+  reason?: string
+  /** Archived plans take no new enrolments. */
+  status: 'active' | 'archived'
+}
 
 /**
  * A deduction applied to an employee's pay that isn't a loan or a government contribution — e.g. cooperative
@@ -831,6 +915,8 @@ export interface EmployeeDeduction {
   id: string
   companyId: string
   employeeId: string
+  /** The recurring-deduction plan the employee is enrolled in. Absent on one-time deductions and on older records. */
+  planId?: string
   name: string
   kind: EmployeeDeductionKind
   /** Monthly amount (recurring) or the full amount (one-time). */

@@ -12,6 +12,7 @@ export const OPS_PAGES: Record<string, ComponentType> = {
   'employees.index': page(() => import('@ops/features/employees/routes'), 'EmployeeListPage'),
   'employees.show': page(() => import('@ops/features/employees/routes'), 'EmployeeProfilePage'),
   attendance: page(() => import('@ops/features/attendance/routes'), 'AttendancePage'),
+  schedules: page(() => import('@ops/features/schedules/routes'), 'SchedulesPage'),
   overtime: page(() => import('@ops/features/overtime/routes'), 'OvertimePage'),
   approvals: page(() => import('@ops/features/approvals/routes'), 'CompensationApprovalsPage'),
   leave: page(() => import('@ops/features/leave/routes'), 'LeavePage'),

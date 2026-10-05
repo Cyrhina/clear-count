@@ -84,6 +84,7 @@ export function ReportViewShell({
   meta = [],
   orientation: defaultOrientation = 'portrait',
   onExportExcel,
+  exportLabel = 'Export to Excel',
   filters,
   children,
 }: {
@@ -94,6 +95,8 @@ export function ReportViewShell({
   /** Default PDF orientation — wide tables start in landscape; the user can switch in the PDF menu. */
   orientation?: PageOrientation
   onExportExcel?: () => ExcelExport | Promise<ExcelExport>
+  /** Label of the Excel button — e.g. "Export Selected (3)" while rows are ticked. */
+  exportLabel?: string
   /** Filter controls shown above the report body (screen only). */
   filters?: ReactNode
   children: React.ReactNode
@@ -156,7 +159,7 @@ export function ReportViewShell({
         <div className="flex items-center gap-2">
           {onExportExcel && (
             <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={onExcel} disabled={exporting}>
-              Export to Excel
+              {exportLabel}
             </Button>
           )}
           <PdfExportMenu orientation={orientation} onOrientationChange={setOrientation} onPrint={onPrint} />
@@ -259,12 +262,12 @@ function ReportPrintHeader({
 
   return (
     <div className="report-print-header mb-4 hidden print:block">
-      <div className="flex items-center justify-between gap-4 border-b-2 border-[#1e6f5e] pb-2.5">
+      <div className="flex items-center justify-between gap-4 border-b-2 border-brand-600 pb-2.5">
         <div className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt="" className="size-10 rounded-lg object-contain" />
           ) : (
-            <div className="flex size-10 items-center justify-center rounded-lg bg-[#1e6f5e] text-sm font-bold text-white">{initials}</div>
+            <div className="flex size-10 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">{initials}</div>
           )}
           <div>
             <p className="text-[13pt] font-bold leading-tight text-[#111827]">{companyName}</p>

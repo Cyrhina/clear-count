@@ -180,3 +180,15 @@ export async function exportOvertimeSummaryCsv(session: SessionUser): Promise<st
   })
   return toCsv([header, ...rows])
 }
+
+/** Approves or rejects every pending record in `recordIds`; returns how many were decided (already-decided ones are left alone). */
+export async function decideOvertimeRecords(session: SessionUser, recordIds: string[], decision: Extract<ApprovalStatus, 'approved' | 'rejected'>): Promise<number> {
+  let decided = 0
+  for (const id of recordIds) {
+    const record = db.overtimeRecords.find((r) => r.id === id && r.companyId === session.companyId)
+    if (!record || record.status !== 'pending') continue
+    await decideOvertimeRecord(session, id, decision)
+    decided += 1
+  }
+  return decided
+}

@@ -29,6 +29,7 @@ const BONUS_TYPE_LABEL: Record<BonusIncentive['bonusType'], string> = {
 
 const TARGET_TYPE_LABEL: Record<BonusIncentive['targetType'], string> = {
   employee: 'Individual Employee',
+  employees: 'Selected Employees',
   department: 'Employee Group / Department',
   company: 'All Employees (Company-wide)',
 }

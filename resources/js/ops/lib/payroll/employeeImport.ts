@@ -1,6 +1,6 @@
 import { OUTPUT_UNIT_OPTIONS } from '@ops/lib/payroll/payRate'
 import type { CreateEmployeeExtras, CreateEmployeeInput } from '@ops/lib/services/employeeService'
-import type { Branch, Employee, PayRateType } from '@ops/types/domain'
+import type { Branch, BranchDepartment, Employee, PayRateType } from '@ops/types/domain'
 
 /**
  * Bulk employee import (CSV). Pure parsing + validation — nothing is saved here; the dialog shows the
@@ -89,7 +89,7 @@ function toIsoDate(raw: string): string | null {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-export function parseEmployeeImport(csvRows: string[][], branches: Branch[], existing: Employee[]): ImportParseResult {
+export function parseEmployeeImport(csvRows: string[][], branches: Branch[], existing: Employee[], departments: BranchDepartment[]): ImportParseResult {
   const [headerRow = [], ...body] = csvRows
   const headerIndex = new Map<string, number>()
   headerRow.forEach((h, i) => headerIndex.set(normalize(h.replace(/^﻿/, '').replace(/\*/g, '')), i))
@@ -129,6 +129,10 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
 
     const branch = branchByName.get(normalize(get(cells, 'Branch')))
     if (!branch) errors.push(get(cells, 'Branch') ? `Branch "${get(cells, 'Branch')}" not found` : 'Branch is required')
+
+    // The department must be one configured for that branch (Branches → Departments); use its exact spelling.
+    const configured = branch && department ? departments.find((d) => d.branchId === branch.id && normalize(d.name) === normalize(department)) : undefined
+    if (branch && department && !configured) errors.push(`Department "${department}" isn't set up in ${branch.name} — add it under Branches first`)
 
     const employmentType = normalize(get(cells, 'Employment Type').replace(/-/g, '_'))
     const matchedType = EMPLOYMENT_TYPES.find((t) => normalize(t) === employmentType)
@@ -192,7 +196,7 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
       warnings,
       input:
         errors.length === 0 && branch && matchedType && dateHired && matchedPay
-          ? { firstName, lastName, department, position, branchId: branch.id, employmentType: matchedType, dateHired, payType: matchedPay, basicPay, outputUnit, extras }
+          ? { firstName, lastName, department: configured?.name ?? department, position, branchId: branch.id, employmentType: matchedType, dateHired, payType: matchedPay, basicPay, outputUnit, extras }
           : undefined,
     })
   })

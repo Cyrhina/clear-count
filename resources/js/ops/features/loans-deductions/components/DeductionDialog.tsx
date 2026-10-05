@@ -59,12 +59,15 @@ export function DeductionDialog({
   employees,
   deduction,
   lockedKind,
+  amountLocked = false,
   onSaved,
   trigger,
 }: {
   employees: Employee[]
   deduction?: EmployeeDeduction
   lockedKind?: EmployeeDeductionKind
+  /** The amount is set by a fixed-amount plan, so it can't be changed for one employee. */
+  amountLocked?: boolean
   onSaved: () => void
   trigger?: React.ReactNode
 }) {
@@ -156,8 +159,8 @@ export function DeductionDialog({
               <Controller control={control} name="kind" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={KIND_OPTIONS} />} />
             </FormField>
           )}
-          <FormField label={kind === 'recurring' ? 'Amount per month (PHP)' : 'Amount (PHP)'} required error={errors.amount?.message}>
-            <Input type="number" step="0.01" {...register('amount', { valueAsNumber: true })} />
+          <FormField label={kind === 'recurring' ? 'Amount per month (PHP)' : 'Amount (PHP)'} required error={errors.amount?.message} hint={amountLocked ? 'Fixed by the plan — edit the plan to change it for everyone.' : undefined}>
+            <Input type="number" step="0.01" readOnly={amountLocked} {...register('amount', { valueAsNumber: true })} />
           </FormField>
           {kind === 'recurring' ? (
             <>

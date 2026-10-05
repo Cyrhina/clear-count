@@ -11,6 +11,7 @@ export interface CreateBonusInput {
   bonusType: BonusType
   targetType: BonusTargetType
   targetEmployeeId?: string
+  targetEmployeeIds?: string[]
   targetDepartment?: string
   amount: number
   periodLabel: string

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react'
 import { Suspense, useEffect, useState } from 'react'
 import { AppShell } from '@ops/components/layout/AppShell'
 import { ToastProvider } from '@ops/components/ui/Toast'
+import { CompanyThemeApplier } from '@ops/components/layout/CompanyThemeApplier'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
 import { seedSamplePayrollRuns } from '@ops/mock-data/payrollRuns'
 import { users } from '@ops/mock-data/seed/users'
@@ -48,6 +49,7 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
 
   return (
     <ToastProvider>
+      <CompanyThemeApplier />
       <OutletProvider
         value={
           <Suspense fallback={null}>

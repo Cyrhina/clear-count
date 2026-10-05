@@ -4,6 +4,7 @@ import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { BenefitsView } from '@ops/features/loans-deductions/components/BenefitsView'
 import { DeductionsView } from '@ops/features/loans-deductions/components/DeductionsView'
+import { RecurringDeductionsView } from '@ops/features/loans-deductions/components/RecurringDeductionsView'
 import { EmployeeLoansView } from '@ops/features/loans-deductions/components/EmployeeLoansView'
 import { LoanTypesView } from '@ops/features/loans-deductions/components/LoanTypesView'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
@@ -32,7 +33,6 @@ const SECTIONS = [
     value: 'deductions',
     label: 'Deductions',
     subs: [
-      { value: 'other-deductions', label: 'Other Deductions' },
       { value: 'recurring', label: 'Recurring Deductions' },
       { value: 'one-time', label: 'One-time Deductions' },
     ],
@@ -114,11 +114,8 @@ export function LoansDeductionsPage() {
                   )}
                   {s.value === 'deductions' && (
                     <>
-                      <TabsContent value="other-deductions">
-                        <DeductionsView kind="all" employees={employees} canManage={canManage} />
-                      </TabsContent>
                       <TabsContent value="recurring">
-                        <DeductionsView kind="recurring" employees={employees} canManage={canManage} />
+                        <RecurringDeductionsView employees={employees} canManage={canManage} />
                       </TabsContent>
                       <TabsContent value="one-time">
                         <DeductionsView kind="one_time" employees={employees} canManage={canManage} />

@@ -1,6 +1,6 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
-import { Check } from 'lucide-react'
+import { Check, Minus } from 'lucide-react'
 import { forwardRef } from 'react'
 import { cn } from '@ops/lib/utils/cn'
 
@@ -13,13 +13,13 @@ export const Checkbox = forwardRef<
     className={cn(
       'flex size-4 items-center justify-center rounded border border-border bg-card',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-      'data-[state=checked]:border-primary data-[state=checked]:bg-primary',
+      'data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary',
       className,
     )}
     {...props}
   >
     <CheckboxPrimitive.Indicator>
-      <Check className="size-3 text-primary-foreground" />
+      {props.checked === 'indeterminate' ? <Minus className="size-3 text-primary-foreground" /> : <Check className="size-3 text-primary-foreground" />}
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

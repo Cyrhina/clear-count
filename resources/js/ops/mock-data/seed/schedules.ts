@@ -1,11 +1,56 @@
 import type { Schedule } from '@ops/types/domain'
 import { companies } from '@ops/mock-data/seed/companies'
 
-export const schedules: Schedule[] = companies.map((company) => ({
-  id: `${company.id}_sched_default`,
-  companyId: company.id,
-  name: 'Standard Day Shift',
-  startTime: '09:00',
-  endTime: '18:00',
-  daysOfWeek: [1, 2, 3, 4, 5],
-}))
+/** Shift templates every company starts with. The Standard Day Shift (`_sched_default`) is always first — it is the fallback schedule. */
+export const schedules: Schedule[] = companies.flatMap((company): Schedule[] => [
+  {
+    id: `${company.id}_sched_default`,
+    companyId: company.id,
+    name: 'Standard Day Shift',
+    startTime: '09:00',
+    endTime: '18:00',
+    daysOfWeek: [1, 2, 3, 4, 5],
+    restDays: [0, 6],
+    breakMinutes: 60,
+    shiftType: 'day',
+    gracePeriodMinutes: 10,
+    color: 'teal',
+  },
+  {
+    id: `${company.id}_sched_mid`,
+    companyId: company.id,
+    name: 'Mid Shift',
+    startTime: '12:00',
+    endTime: '21:00',
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    breakMinutes: 60,
+    shiftType: 'day',
+    gracePeriodMinutes: 10,
+    color: 'amber',
+  },
+  {
+    id: `${company.id}_sched_night`,
+    companyId: company.id,
+    name: 'Night Shift',
+    startTime: '22:00',
+    endTime: '06:00',
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    breakMinutes: 60,
+    shiftType: 'night',
+    gracePeriodMinutes: 10,
+    color: 'violet',
+  },
+  {
+    id: `${company.id}_sched_flex`,
+    companyId: company.id,
+    name: 'Flexible Hours',
+    startTime: '08:00',
+    endTime: '17:00',
+    daysOfWeek: [1, 2, 3, 4, 5],
+    restDays: [0, 6],
+    breakMinutes: 60,
+    shiftType: 'flexible',
+    gracePeriodMinutes: 60,
+    color: 'emerald',
+  },
+])

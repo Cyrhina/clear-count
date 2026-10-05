@@ -13,6 +13,7 @@ import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/branches/branchUtils'
 import { EmployeeMultiPicker } from '@ops/features/branches/components/EmployeeMultiPicker'
 import { useSession } from '@ops/hooks/useSession'
+import { copyBranchDepartments } from '@ops/lib/services/branchDepartmentService'
 import { createBranch } from '@ops/lib/services/branchService'
 import type { Branch, Employee } from '@ops/types/domain'
 
@@ -45,6 +46,7 @@ function SectionTitle({ title, hint }: { title: string; hint?: string }) {
 export function AddBranchDialog({ employees, branches, onCreated }: { employees: Employee[]; branches: Branch[]; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
   const [employeeIds, setEmployeeIds] = useState<string[]>([])
+  const [copyFrom, setCopyFrom] = useState('')
   const { user } = useSession()
   const { notify } = useToast()
 
@@ -75,6 +77,7 @@ export function AddBranchDialog({ employees, branches, onCreated }: { employees:
     if (!next) {
       reset(DEFAULTS)
       setEmployeeIds([])
+      setCopyFrom('')
     }
   }
 
@@ -94,6 +97,8 @@ export function AddBranchDialog({ employees, branches, onCreated }: { employees:
       managerEmployeeId: clean(values.managerEmployeeId),
       employeeIds,
     })
+    // Employees brought in already carry their departments; this adds the rest of another branch's list.
+    if (copyFrom) await copyBranchDepartments(user, copyFrom, branch.id)
     notify({
       title: 'Branch added',
       description: employeeIds.length
@@ -128,6 +133,9 @@ export function AddBranchDialog({ employees, branches, onCreated }: { employees:
               </FormField>
               <FormField label="Date opened">
                 <Input type="date" {...register('openedDate')} />
+              </FormField>
+              <FormField label="Copy departments from" hint="Optional — start with another branch's department list.">
+                <Select value={copyFrom || undefined} onValueChange={setCopyFrom} options={branches.map((b) => ({ value: b.id, label: b.name }))} placeholder="Don't copy" disabled={branches.length === 0} />
               </FormField>
               <label className="flex items-center gap-2 self-end pb-2 text-sm">
                 <Controller control={control} name="isHeadOffice" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />} />

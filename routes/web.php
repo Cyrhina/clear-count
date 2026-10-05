@@ -14,6 +14,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('employees', [OpsController::class, 'employees'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [OpsController::class, 'employee'])->middleware('permission:employees.view')->name('employees.show');
         Route::get('attendance', [OpsController::class, 'attendance'])->middleware('permission:attendance.view')->name('attendance');
+        Route::get('schedules', [OpsController::class, 'schedules'])->middleware('permission:schedules.view')->name('schedules');
         Route::get('overtime', [OpsController::class, 'overtime'])->middleware('permission:overtime.view')->name('overtime');
         Route::get('approvals', [OpsController::class, 'approvals'])->middleware('permission:compensation_approvals.manage')->name('approvals');
         Route::get('leave', [OpsController::class, 'leave'])->middleware('permission:leave.view')->name('leave');

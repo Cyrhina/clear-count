@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Button } from '@ops/components/ui/Button'
 import { Checkbox, RadioGroup, RadioGroupItem } from '@ops/components/ui/Checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
+import { EmployeePickerPanel } from '@ops/components/ui/EmployeePickerPanel'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
@@ -19,8 +20,9 @@ import type { BonusIncentive, BonusPayoutMode, Employee } from '@ops/types/domai
 const schema = z.object({
   name: z.string().min(1, 'Required'),
   bonusType: z.enum(['fixed_amount', 'percentage', 'performance_based', 'output_based']),
-  targetType: z.enum(['employee', 'department', 'company']),
+  targetType: z.enum(['employee', 'employees', 'department', 'company']),
   targetEmployeeId: z.string().optional(),
+  targetEmployeeIds: z.array(z.string()).optional(),
   targetDepartment: z.string().optional(),
   amount: z.number().positive('Must be greater than 0'),
   periodLabel: z.string().min(1, 'Required'),
@@ -44,6 +46,7 @@ const TARGET_TYPE_OPTIONS = [
   { value: 'company', label: 'All Employees (Company-wide)' },
   { value: 'department', label: 'Employee Group / Department' },
   { value: 'employee', label: 'Individual Employee' },
+  { value: 'employees', label: 'Selected Employees' },
 ]
 
 const TAXABLE_OPTIONS = [
@@ -68,6 +71,7 @@ const DEFAULT_VALUES: Partial<FormValues> = {
   frequency: 'one_time',
   payoutMode: 'regular_payroll',
   saveAsDraft: false,
+  targetEmployeeIds: [],
 }
 
 function valuesFromBonus(bonus: BonusIncentive): Partial<FormValues> {
@@ -76,6 +80,7 @@ function valuesFromBonus(bonus: BonusIncentive): Partial<FormValues> {
     bonusType: bonus.bonusType,
     targetType: bonus.targetType,
     targetEmployeeId: bonus.targetEmployeeId,
+    targetEmployeeIds: bonus.targetEmployeeIds ?? [],
     targetDepartment: bonus.targetDepartment,
     amount: bonus.amount,
     periodLabel: bonus.periodLabel,
@@ -127,11 +132,16 @@ export function BonusFormDialog({
   }, [open, bonus, reset])
 
   async function onSubmit(values: FormValues) {
+    if (values.targetType === 'employees' && !values.targetEmployeeIds?.length) {
+      notify({ title: 'Pick at least one employee', tone: 'danger' })
+      return
+    }
     const input: CreateBonusInput = {
       name: values.name,
       bonusType: values.bonusType,
       targetType: values.targetType,
       targetEmployeeId: values.targetType === 'employee' ? values.targetEmployeeId : undefined,
+      targetEmployeeIds: values.targetType === 'employees' ? values.targetEmployeeIds : undefined,
       targetDepartment: values.targetType === 'department' ? values.targetDepartment : undefined,
       amount: values.amount,
       periodLabel: values.periodLabel,
@@ -202,6 +212,16 @@ export function BonusFormDialog({
                 )}
               />
             </FormField>
+          )}
+
+          {targetType === 'employees' && (
+            <div className="col-span-2">
+              <Controller
+                control={control}
+                name="targetEmployeeIds"
+                render={({ field }) => <EmployeePickerPanel employees={employees.filter((e) => e.employment.status === 'active')} value={field.value ?? []} onChange={field.onChange} maxHeightClass="max-h-44" />}
+              />
+            </div>
           )}
 
           <FormField label="Effective Payroll Period" required error={errors.periodLabel?.message}>

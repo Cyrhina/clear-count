@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@ops/components/ui/Button'
@@ -12,7 +12,7 @@ import { useToast } from '@ops/components/ui/Toast'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
 import { WorkLogsRangePreview } from '@ops/features/payroll/components/WorkLogsSummaryCard'
 import { useSession } from '@ops/hooks/useSession'
-import { createPayrollPeriod } from '@ops/lib/services/payrollService'
+import { createPayrollPeriod, getNextPayrollNumber } from '@ops/lib/services/payrollService'
 
 const schema = z.object({
   label: z.string().min(1, 'Required'),
@@ -38,7 +38,14 @@ export function CreatePeriodDialog({ onCreated }: { onCreated: () => void }) {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { payrollGroupId: 'all' } })
-  const [startDate, endDate, selectedGroupId] = watch(['startDate', 'endDate', 'payrollGroupId'])
+  const [startDate, endDate, selectedGroupId, payDate] = watch(['startDate', 'endDate', 'payrollGroupId', 'payDate'])
+  const [nextNumber, setNextNumber] = useState<string | null>(null)
+
+  // The number follows the pay date's year — PR001 again when the year changes.
+  useEffect(() => {
+    if (!open || !payDate) return setNextNumber(null)
+    void getNextPayrollNumber(user, payDate).then(setNextNumber)
+  }, [open, payDate, user])
 
   const groupOptions = [
     { value: 'all', label: 'All Employees (no Payroll Group filter)' },
@@ -81,6 +88,9 @@ export function CreatePeriodDialog({ onCreated }: { onCreated: () => void }) {
           </FormField>
           <FormField label="Pay date" required error={errors.payDate?.message}>
             <Input type="date" {...register('payDate')} />
+          </FormField>
+          <FormField label="Payroll No." hint="Assigned when the period is created. Restarts at PR001 each year, based on the pay date.">
+            <Input value={nextNumber ?? 'Set the pay date'} readOnly disabled className="tabular-nums" />
           </FormField>
 
           <div className="col-span-2">

@@ -26,7 +26,22 @@ const schema = z.object({
   description: z.string().trim().min(1, 'Required'),
   typicalTerm: z.string().trim().min(1, 'Required'),
   typicalAmount: z.string().trim().min(1, 'Required'),
+  amountType: z.enum(['fixed', 'custom']),
+  fixedPrincipal: z.string(),
+  fixedMonthlyDeduction: z.string(),
+}).superRefine((v, ctx) => {
+  if (v.amountType !== 'fixed') return
+  const principal = Number(v.fixedPrincipal)
+  const monthly = Number(v.fixedMonthlyDeduction)
+  if (!(principal > 0)) ctx.addIssue({ code: 'custom', path: ['fixedPrincipal'], message: 'Enter an amount greater than 0' })
+  if (!(monthly > 0)) ctx.addIssue({ code: 'custom', path: ['fixedMonthlyDeduction'], message: 'Enter an amount greater than 0' })
+  else if (principal > 0 && monthly > principal) ctx.addIssue({ code: 'custom', path: ['fixedMonthlyDeduction'], message: 'Can’t be more than the principal' })
 })
+
+const AMOUNT_TYPE_OPTIONS = [
+  { value: 'custom', label: 'Customizable — principal and deduction set per employee' },
+  { value: 'fixed', label: 'Fixed terms — the same for every employee' },
+]
 
 type FormValues = z.infer<typeof schema>
 
@@ -37,6 +52,9 @@ function toFormValues(type?: LoanTypeConfig): FormValues {
     description: type?.description ?? '',
     typicalTerm: type?.typicalTerm ?? '',
     typicalAmount: type?.typicalAmount ?? '',
+    amountType: type?.amountType ?? 'custom',
+    fixedPrincipal: type?.fixedPrincipal ? String(type.fixedPrincipal) : '',
+    fixedMonthlyDeduction: type?.fixedMonthlyDeduction ? String(type.fixedMonthlyDeduction) : '',
   }
 }
 
@@ -52,8 +70,10 @@ export function LoanTypeDialog({ type, existing, onSaved, trigger }: { type?: Lo
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: toFormValues(type) })
+  const amountType = watch('amountType')
 
   useEffect(() => {
     if (open) {
@@ -68,11 +88,14 @@ export function LoanTypeDialog({ type, existing, onSaved, trigger }: { type?: Lo
       setDuplicate(true)
       return
     }
+    const { fixedPrincipal, fixedMonthlyDeduction, ...rest } = values
+    const fixed = values.amountType === 'fixed'
+    const payload = { ...rest, fixedPrincipal: fixed ? Number(fixedPrincipal) : undefined, fixedMonthlyDeduction: fixed ? Number(fixedMonthlyDeduction) : undefined }
     if (type) {
-      await updateLoanType(user, type.id, values)
+      await updateLoanType(user, type.id, payload)
       notify({ title: 'Loan type updated', tone: 'success' })
     } else {
-      await createLoanType(user, values)
+      await createLoanType(user, payload)
       notify({ title: `${values.label} added`, description: 'It’s now available when adding an employee loan.', tone: 'success' })
     }
     setOpen(false)
@@ -106,6 +129,23 @@ export function LoanTypeDialog({ type, existing, onSaved, trigger }: { type?: Lo
           <FormField label="Description" required error={errors.description?.message} className="col-span-2">
             <Textarea {...register('description')} />
           </FormField>
+          <FormField
+            label="Amount type"
+            className="col-span-2"
+            hint={amountType === 'fixed' ? 'Applies to loans added from now on; existing loans keep their own terms.' : 'The principal and monthly deduction are entered for each employee when you add them to this loan type.'}
+          >
+            <Controller control={control} name="amountType" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={AMOUNT_TYPE_OPTIONS} aria-label="Amount type" />} />
+          </FormField>
+          {amountType === 'fixed' && (
+            <>
+              <FormField label="Principal (PHP)" required error={errors.fixedPrincipal?.message}>
+                <Input type="number" step="0.01" {...register('fixedPrincipal')} />
+              </FormField>
+              <FormField label="Monthly deduction (PHP)" required error={errors.fixedMonthlyDeduction?.message}>
+                <Input type="number" step="0.01" {...register('fixedMonthlyDeduction')} />
+              </FormField>
+            </>
+          )}
           <FormField label="Typical term" required error={errors.typicalTerm?.message}>
             <Input {...register('typicalTerm')} placeholder="e.g. 6 months" />
           </FormField>

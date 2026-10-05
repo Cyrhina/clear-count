@@ -1,5 +1,5 @@
-import { ImagePlus } from 'lucide-react'
-import { useState } from 'react'
+import { ImagePlus, Palette, RotateCcw, Wand2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Button } from '@ops/components/ui/Button'
@@ -11,6 +11,7 @@ import { Switch } from '@ops/components/ui/Switch'
 import { useToast } from '@ops/components/ui/Toast'
 import { useSession } from '@ops/hooks/useSession'
 import { updateCompany } from '@ops/lib/services/companyService'
+import { BRAND_SHADES, applyBrandTheme, buildBrandScale, extractBrandColor } from '@ops/lib/theme/brandTheme'
 import type { Address, Company, CompanyContact, CompanyRegistration } from '@ops/types/domain'
 
 interface FormValues {
@@ -131,6 +132,15 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
   const { user } = useSession()
   const { notify } = useToast()
   const [logoUrl, setLogoUrl] = useState(company.logoUrl ?? '')
+  const [useLogoTheme, setUseLogoTheme] = useState(company.useLogoTheme ?? false)
+  const [brandColor, setBrandColor] = useState(company.brandColor ?? '')
+  const [detecting, setDetecting] = useState(false)
+
+  // Live preview: the whole app re-themes as you upload / toggle, and falls back to the saved theme if you leave without saving.
+  useEffect(() => {
+    applyBrandTheme(useLogoTheme ? brandColor : undefined)
+    return () => applyBrandTheme(company.useLogoTheme ? company.brandColor : undefined)
+  }, [useLogoTheme, brandColor, company])
 
   const {
     register,
@@ -164,12 +174,29 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
   function handleLogoChange(file: File | undefined) {
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => setLogoUrl(String(reader.result))
+    reader.onload = () => {
+      const url = String(reader.result)
+      setLogoUrl(url)
+      void detectColor(url, true)
+    }
     reader.readAsDataURL(file)
   }
 
+  /** Reads the logo's dominant color; a freshly uploaded logo also switches the theme on. */
+  async function detectColor(url: string, enable: boolean) {
+    setDetecting(true)
+    const color = await extractBrandColor(url)
+    setDetecting(false)
+    if (!color) {
+      notify({ title: 'No color found in this logo', description: 'It looks blank or fully transparent, so the default theme stays.', tone: 'default' })
+      return
+    }
+    setBrandColor(color)
+    if (enable) setUseLogoTheme(true)
+  }
+
   async function onSubmit(values: FormValues) {
-    await updateCompany(user, { ...values, logoUrl })
+    await updateCompany(user, { ...values, logoUrl, useLogoTheme: useLogoTheme && !!brandColor, brandColor: brandColor || undefined })
     notify({ title: 'Company settings updated', tone: 'success' })
     onSaved()
   }
@@ -226,6 +253,61 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
             <Textarea disabled={!canEdit} {...register('description')} />
           </FormField>
         </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Card.Title>Color Theme</Card.Title>
+            <Card.Description>Re-colors the whole system — buttons, links, charts, highlights and the sidebar — from the logo you upload.</Card.Description>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Use logo colors</span>
+            <Switch checked={useLogoTheme && !!brandColor} onCheckedChange={setUseLogoTheme} disabled={!canEdit || !brandColor} aria-label="Use logo colors as the system theme" />
+          </div>
+        </div>
+
+        {brandColor ? (
+          <div className="mt-5 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="size-9 rounded-lg border border-border shadow-sm" style={{ backgroundColor: brandColor }} aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium">Detected from your logo</p>
+                <p className="font-mono text-xs uppercase text-muted-foreground">{brandColor}</p>
+              </div>
+              {canEdit && (
+                <div className="ml-auto flex gap-2">
+                  <Button type="button" size="sm" variant="secondary" icon={<Wand2 className="size-3.5" />} isLoading={detecting} disabled={!logoUrl} onClick={() => detectColor(logoUrl, false)}>
+                    Re-detect
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    icon={<RotateCcw className="size-3.5" />}
+                    onClick={() => {
+                      setUseLogoTheme(false)
+                      setBrandColor('')
+                    }}
+                  >
+                    Reset to default
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex overflow-hidden rounded-lg border border-border" aria-label="Generated color scale">
+              {BRAND_SHADES.map((shade) => (
+                <span key={shade} title={`brand-${shade}`} className="h-8 flex-1" style={{ backgroundColor: buildBrandScale(brandColor)[shade] }} />
+              ))}
+            </div>
+            {!useLogoTheme && <p className="text-xs text-muted-foreground">Turn on “Use logo colors” to apply this to the whole system.</p>}
+          </div>
+        ) : (
+          <p className="mt-5 flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+            <Palette className="size-4" />
+            {canEdit ? 'Upload your logo above and the system theme is picked from its colors.' : 'No logo theme has been set.'}
+          </p>
+        )}
       </Card>
 
       <Card className="p-6">
@@ -315,7 +397,7 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
 
       {canEdit && (
         <div className="flex justify-end">
-          <Button type="submit" isLoading={isSubmitting} disabled={!isDirty && logoUrl === (company.logoUrl ?? '')}>
+          <Button type="submit" isLoading={isSubmitting} disabled={!isDirty && logoUrl === (company.logoUrl ?? '') && useLogoTheme === (company.useLogoTheme ?? false) && brandColor === (company.brandColor ?? '')}>
             Save Changes
           </Button>
         </div>

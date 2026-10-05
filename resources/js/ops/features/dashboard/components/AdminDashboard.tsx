@@ -24,6 +24,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useAdminDashboardOverview } from '@ops/features/dashboard/hooks/useDashboardData'
 import { PendingRequestsCard } from '@ops/features/dashboard/components/PendingRequestsCard'
+import { TaxAlertsCard } from '@ops/features/dashboard/components/TaxAlertsCard'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency } from '@ops/lib/utils/format'
 
@@ -339,6 +340,8 @@ export function AdminDashboard() {
           </Card.Body>
         </Card>
       </div>
+
+      <TaxAlertsCard />
     </div>
   )
 }

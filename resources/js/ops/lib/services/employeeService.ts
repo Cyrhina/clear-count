@@ -1,3 +1,4 @@
+import { ensureBranchDepartment, releaseSupervisorIfMoved } from '@ops/lib/services/branchDepartmentService'
 import { scopeForSession } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type {
@@ -112,6 +113,8 @@ export async function createEmployee(session: SessionUser, input: CreateEmployee
   }
 
   db.employees.push(employee)
+  // Every employee's department exists in their branch's configuration.
+  await ensureBranchDepartment(session, employee.branchId, employee.employment.department)
   return employee
 }
 
@@ -222,6 +225,8 @@ export async function updateEmployeeEmploymentInfo(
 
   Object.assign(employee.employment, updates)
   logHistory(employee, session.name, 'Employment information updated')
+  await ensureBranchDepartment(session, employee.branchId, employee.employment.department)
+  releaseSupervisorIfMoved(session, employee.id)
 }
 
 export interface UpdateCompensationInput {
@@ -315,4 +320,36 @@ export async function getEmployeeIdsOnLeaveToday(session: SessionUser): Promise<
       r.dateTo >= today,
   )
   return new Set(onLeave.map((r) => r.employeeId))
+}
+
+/** Only employees the session may see (company and branch scope) — every bulk action narrows its ids through this first. */
+async function scopedEmployees(session: SessionUser, employeeIds: string[]): Promise<Employee[]> {
+  const ids = new Set(employeeIds)
+  return (await getEmployees(session)).filter((e) => ids.has(e.id))
+}
+
+/** Moves every selected employee to `department` (their own branch's department list is extended if needed). Returns how many changed. */
+export async function bulkUpdateEmployeeDepartment(session: SessionUser, employeeIds: string[], department: string): Promise<number> {
+  let changed = 0
+  for (const scoped of await scopedEmployees(session, employeeIds)) {
+    const employee = findCompanyEmployee(session, scoped.id)
+    if (!employee || employee.employment.department === department) continue
+    employee.employment.department = department
+    logHistory(employee, session.name, `Department changed to ${department}`)
+    await ensureBranchDepartment(session, employee.branchId, department)
+    releaseSupervisorIfMoved(session, employee.id)
+    changed += 1
+  }
+  return changed
+}
+
+/** Sets the status of every selected employee that isn't already in it (not for separations — those need a reason and last day). */
+export async function bulkUpdateEmployeeStatus(session: SessionUser, employeeIds: string[], status: EmploymentStatus): Promise<number> {
+  let changed = 0
+  for (const employee of await scopedEmployees(session, employeeIds)) {
+    if (employee.employment.status === status) continue
+    await updateEmployeeStatus(session, employee.id, status)
+    changed += 1
+  }
+  return changed
 }

@@ -32,7 +32,7 @@ export function LeavePage() {
 function LeaveContent() {
   const { requests, isLoading, refetch } = useLeaveRequests()
   const { leaveTypes, refetch: refetchLeaveTypes } = useLeaveTypes()
-  const { employees } = useEmployees()
+  const { employees, refetch: refetchEmployees } = useEmployees()
   const canRequest = usePermission('leave.request')
   const { highlightId } = useHighlightTarget()
   const [activeTab, setActiveTab] = useState('requests')
@@ -156,7 +156,7 @@ function LeaveContent() {
         </TabsContent>
 
         <TabsContent value="types">
-          <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} />
+          <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} onCreditsGranted={refetchEmployees} />
         </TabsContent>
       </Tabs>
     </div>

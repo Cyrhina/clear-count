@@ -1,3 +1,4 @@
+import { formatPayrollNumber } from '@ops/lib/payroll/payrollNumber'
 import type { Employee, LoanRecord, PayrollLine, PayrollPeriod } from '@ops/types/domain'
 
 export interface SamplePayslip {
@@ -32,9 +33,13 @@ export function buildSamplePayslips(employee: Employee, companyId: string): Samp
     const totalDeductions = sssEmployeeShare + philhealthEmployeeShare + pagibigEmployeeShare + withholdingTax
     const netPay = grossPay - totalDeductions
 
+    const year = Number(p.payDate.slice(0, 4))
+    const sequence = SAMPLE_PERIODS.filter((o) => o.payDate.slice(0, 4) === p.payDate.slice(0, 4) && o.payDate <= p.payDate).length
     const period: PayrollPeriod = {
       id: p.id,
       companyId,
+      payrollNumber: formatPayrollNumber(sequence),
+      payrollYear: year,
       label: p.label,
       startDate: p.startDate,
       endDate: p.endDate,

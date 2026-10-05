@@ -5,6 +5,7 @@ import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
+import { EmployeePickerPanel } from '@ops/components/ui/EmployeePickerPanel'
 import { EmployeeCombobox } from '@ops/components/ui/EmployeeCombobox'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Input } from '@ops/components/ui/Input'
@@ -228,15 +229,8 @@ export function ThirteenthMonthPage() {
             />
           </div>
           {mode === 'employees' && (
-            <div className="w-full max-w-md">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Active employees</p>
-              <EmployeeCombobox
-                multiple
-                employees={activeEligible.map((e) => ({ id: e.id, name: fullName(e), employeeNumber: e.employeeNumber, department: e.employment.department }))}
-                value={employeeIds}
-                onChange={setEmployeeIds}
-                placeholder="Select employees…"
-              />
+            <div className="w-full max-w-xl">
+              <EmployeePickerPanel employees={activeEligible} value={employeeIds} onChange={setEmployeeIds} maxHeightClass="max-h-56" />
             </div>
           )}
           {mode === 'separated' && (

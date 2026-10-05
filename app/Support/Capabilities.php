@@ -11,6 +11,7 @@ final class Capabilities
     public const ADMIN = [
         'dashboard.view', 'employees.view', 'employees.edit', 'employees.compensation.edit',
         'attendance.view', 'attendance.adjust', 'attendance.approve',
+        'schedules.view', 'schedules.manage',
         'overtime.view', 'overtime.log', 'overtime.approve', 'compensation_approvals.manage',
         'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types',
         'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize',
@@ -28,13 +29,13 @@ final class Capabilities
         'company_admin' => self::ADMIN,
         'hr_admin' => [
             'dashboard.view', 'employees.view', 'employees.edit',
-            'attendance.view', 'attendance.adjust',
+            'attendance.view', 'attendance.adjust', 'schedules.view', 'schedules.manage',
             'overtime.view', 'overtime.log', 'overtime.approve',
             'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types',
             'reports.view', 'approvals.view', 'notifications.view', 'onboarding.manage',
         ],
         'payroll_admin' => [
-            'dashboard.view', 'employees.view', 'attendance.view',
+            'dashboard.view', 'employees.view', 'attendance.view', 'schedules.view',
             'overtime.view', 'overtime.log', 'overtime.approve', 'leave.view',
             'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize',
             'statutory.view', 'statutory.edit', 'payslips.view', 'payslips.generate',
@@ -43,7 +44,7 @@ final class Capabilities
             'reports.view', 'approvals.view', 'notifications.view', 'settings.payroll.edit',
         ],
         'manager' => [
-            'dashboard.view', 'attendance.view', 'attendance.approve',
+            'dashboard.view', 'attendance.view', 'attendance.approve', 'schedules.view',
             'overtime.view', 'overtime.approve', 'leave.view', 'leave.approve',
             'reports.view', 'approvals.view', 'notifications.view', 'ess.view',
         ],

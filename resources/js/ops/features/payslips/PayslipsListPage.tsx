@@ -27,6 +27,7 @@ export function PayslipsListPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Payroll No.</TableHead>
               <TableHead>Period</TableHead>
               <TableHead>Pay Date</TableHead>
               <TableHead>Status</TableHead>
@@ -35,6 +36,7 @@ export function PayslipsListPage() {
           <TableBody>
             {finalized.map((period) => (
               <TableRow key={period.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${period.id}`)}>
+                <TableCell className="whitespace-nowrap font-medium tabular-nums">{period.payrollNumber}</TableCell>
                 <TableCell className="font-medium">{period.label}</TableCell>
                 <TableCell>{formatDate(period.payDate)}</TableCell>
                 <TableCell>

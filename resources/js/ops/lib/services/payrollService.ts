@@ -2,6 +2,7 @@ import { bonusAmountFor, bonusAppliesToEmployee, includedInRegularPayroll } from
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { allocateMonthly, loanConfigNameFor, payScheduleFor } from '@ops/lib/payroll/payFrequency'
 import { basicPayFor, dailyRateFor, hourlyRateFor, monthlyEquivalentFor, workLogsForPeriod } from '@ops/lib/payroll/rateBasis'
+import { formatPayrollNumber, nextPayrollSequence, payrollYearOf } from '@ops/lib/payroll/payrollNumber'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type { BonusIncentive, Employee, OvertimeRecord, PayrollDeductionLine, PayrollLine, PayrollPeriod, PayrollPeriodStatus, SessionUser, SssBracket, StatutoryConfig } from '@ops/types/domain'
@@ -32,10 +33,19 @@ export interface CreatePeriodInput {
   payrollGroupId?: string
 }
 
+/** The payroll number the next run with this pay date will get (PR001 again at the start of each year). */
+export async function getNextPayrollNumber(session: SessionUser, payDate: string): Promise<string> {
+  const year = payrollYearOf(payDate)
+  return formatPayrollNumber(nextPayrollSequence(scopeToCompany(db.payrollPeriods, session.companyId), year))
+}
+
 export async function createPayrollPeriod(session: SessionUser, input: CreatePeriodInput): Promise<PayrollPeriod> {
+  const payrollYear = payrollYearOf(input.payDate)
   const period: PayrollPeriod = {
     id: crypto.randomUUID(),
     companyId: session.companyId,
+    payrollNumber: formatPayrollNumber(nextPayrollSequence(scopeToCompany(db.payrollPeriods, session.companyId), payrollYear)),
+    payrollYear,
     status: 'draft',
     ...input,
   }
@@ -427,7 +437,8 @@ export async function runPayroll(session: SessionUser, periodId: string): Promis
       e.companyId === session.companyId &&
       // Separated employees stay in the one run that covers their last working day, to receive their final pay.
       (e.employment.status === 'active' || (!!e.employment.dateSeparated && e.employment.dateSeparated >= period.startDate && e.employment.dateSeparated <= period.endDate)) &&
-      (!payrollGroup || payrollGroup.employeeIds.includes(e.id)),
+      (!payrollGroup || payrollGroup.employeeIds.includes(e.id)) &&
+      !period.excludedEmployeeIds?.includes(e.id),
   )
 
   db.payrollLines = db.payrollLines.filter((l) => l.periodId !== periodId)
@@ -448,6 +459,40 @@ export async function runPayroll(session: SessionUser, periodId: string): Promis
 
   period.status = 'review'
   return lines
+}
+
+/** Holds employees out of a run that hasn't been approved yet: their lines are removed and the work logs they locked are freed. Returns how many were held. */
+export async function holdEmployeesInPeriod(session: SessionUser, periodId: string, employeeIds: string[]): Promise<number> {
+  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
+  if (!period || (period.status !== 'draft' && period.status !== 'review')) return 0
+  const held = new Set(period.excludedEmployeeIds ?? [])
+  const ids = employeeIds.filter((id) => !held.has(id) && db.employees.some((e) => e.id === id && e.companyId === session.companyId))
+  for (const id of ids) held.add(id)
+  period.excludedEmployeeIds = [...held]
+  const idSet = new Set(ids)
+  db.payrollLines = db.payrollLines.filter((l) => !(l.periodId === periodId && idSet.has(l.employeeId)))
+  for (const approval of db.compensationApprovals) {
+    if (approval.payrollPeriodId === periodId && idSet.has(approval.employeeId)) approval.payrollPeriodId = undefined
+  }
+  return ids.length
+}
+
+/** Puts held employees back into the run; if the run was already calculated, their lines are computed now. Returns how many were released. */
+export async function releaseEmployeesInPeriod(session: SessionUser, periodId: string, employeeIds: string[]): Promise<number> {
+  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
+  const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
+  if (!period || !config || (period.status !== 'draft' && period.status !== 'review')) return 0
+  const ids = employeeIds.filter((id) => period.excludedEmployeeIds?.includes(id))
+  period.excludedEmployeeIds = (period.excludedEmployeeIds ?? []).filter((id) => !ids.includes(id))
+  if (period.status === 'review') {
+    for (const id of ids) {
+      const employee = db.employees.find((e) => e.id === id && e.companyId === session.companyId)
+      if (!employee) continue
+      db.payrollLines.push(computeLine(session, period, config, employee))
+      for (const approval of workLogsForPeriod(employee.id, period, db.compensationApprovals).payable) approval.payrollPeriodId = period.id
+    }
+  }
+  return ids.length
 }
 
 function transition(session: SessionUser, periodId: string, from: PayrollPeriodStatus, to: PayrollPeriodStatus) {

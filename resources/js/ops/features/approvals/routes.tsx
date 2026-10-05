@@ -253,7 +253,7 @@ export function CompensationApprovalsPage() {
         {periodContext && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 py-1 pl-3 pr-1.5 text-xs font-medium text-foreground">
             <CalendarRange className="size-3.5 text-primary" />
-            Payroll period: {periodContext.period.label}
+            Payroll period: {periodContext.period.payrollNumber} · {periodContext.period.label}
             <span className="font-normal text-muted-foreground">
               ({formatDate(periodContext.period.startDate)} – {formatDate(periodContext.period.endDate)})
             </span>

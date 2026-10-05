@@ -2,15 +2,15 @@ import { Mails, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@ops/components/ui/Button'
 import { Checkbox } from '@ops/components/ui/Checkbox'
+import { SelectAllCheckbox as BaseSelectAll } from '@ops/components/ui/SelectCheckboxes'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import type { PayslipEmailStatus } from '@ops/types/domain'
 
-export function SelectAllCheckbox({ state, onChange, disabled }: { state: boolean | 'indeterminate'; onChange: (checked: boolean) => void; disabled?: boolean }) {
-  return <Checkbox aria-label="Select all payslips" checked={state} disabled={disabled} onCheckedChange={(v) => onChange(v === true)} />
-}
+export { RowCheckbox } from '@ops/components/ui/SelectCheckboxes'
 
-export function RowCheckbox({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
-  return <Checkbox aria-label={`Select ${label}`} checked={checked} disabled={disabled} onCheckedChange={(v) => onChange(v === true)} />
+/** Header checkbox for payslip tables. */
+export function SelectAllCheckbox(props: { state: boolean | 'indeterminate'; onChange: (checked: boolean) => void; disabled?: boolean }) {
+  return <BaseSelectAll {...props} label="Select all payslips" />
 }
 
 export interface BulkEmailCandidate {

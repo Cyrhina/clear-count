@@ -50,12 +50,15 @@ export function BenefitDialog({
   category,
   employees,
   benefit,
+  amountLocked = false,
   onSaved,
   trigger,
 }: {
   category: BenefitCategory
   employees: Employee[]
   benefit?: EmployeeBenefit
+  /** The amount is set by the plan (a fixed-amount allowance), so it can't be changed for one employee. */
+  amountLocked?: boolean
   onSaved: () => void
   trigger?: React.ReactNode
 }) {
@@ -145,9 +148,10 @@ export function BenefitDialog({
             label={isAllowance ? 'Monthly amount (PHP)' : 'Company-paid value per month (PHP)'}
             required
             error={errors.monthlyValue?.message}
+            hint={amountLocked ? 'Fixed by the plan — edit the plan to change it for everyone.' : undefined}
             className={isAllowance ? 'col-span-2' : undefined}
           >
-            <Input type="number" step="0.01" {...register('monthlyValue', { valueAsNumber: true })} />
+            <Input type="number" step="0.01" readOnly={amountLocked} {...register('monthlyValue', { valueAsNumber: true })} />
           </FormField>
           {!isAllowance && (
             <FormField label="Employee share per month (PHP)" error={errors.employeeShare?.message} hint="Deducted from pay. Leave 0 if the company covers it fully.">

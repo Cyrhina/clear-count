@@ -69,61 +69,14 @@ export async function getEmployeeIdsWithPendingAdjustmentForDate(session: Sessio
   return new Set(pending.map((a) => a.employeeId))
 }
 
-export interface ImportBiometricsResult {
-  fileName: string
-  importedCount: number
-}
-
-/**
- * Mock biometrics import: simulates parsing a raw punch-log file by filling in time-in/time-out
- * for the selected date — completing any employee currently missing a punch (absent, or no
- * record yet) with a plausible present-day log. No real file parsing happens.
- */
-export async function importBiometricsRecords(
-  session: SessionUser,
-  date: string,
-  fileName: string,
-): Promise<ImportBiometricsResult> {
-  const employees = await getEmployees(session)
-  const activeEmployees = employees.filter((e) => e.employment.status === 'active')
-  const schedules = await getSchedules(session)
-  const scheduleId = schedules[0]?.id
-  if (!scheduleId) return { fileName, importedCount: 0 }
-
-  let importedCount = 0
-  for (const employee of activeEmployees) {
-    const existing = db.attendanceRecords.find(
-      (r) => r.companyId === session.companyId && r.employeeId === employee.id && r.date === date,
-    )
-    if (existing) {
-      if (existing.status === 'absent' || !existing.timeIn) {
-        existing.timeIn = '08:56'
-        existing.timeOut = '18:02'
-        existing.status = 'present'
-        importedCount++
-      }
-      continue
-    }
-    db.attendanceRecords.push({
-      id: `${employee.id}_att_${date}_import`,
-      companyId: session.companyId,
-      employeeId: employee.id,
-      scheduleId,
-      date,
-      timeIn: '08:56',
-      timeOut: '18:02',
-      status: 'present',
-    })
-    importedCount++
-  }
-  return { fileName, importedCount }
-}
-
 export interface BiometricsPunch {
   employeeId: string
   date: string
   timeIn: string
   timeOut: string | null
+  /** Schedule-based import: the schedule the punch was reviewed against and the status that review settled on. */
+  scheduleId?: string
+  status?: AttendanceRecord['status']
 }
 
 function toMinutes(time: string): number {
@@ -151,15 +104,17 @@ export async function applyBiometricsPunches(session: SessionUser, punches: Biom
       (r) => r.companyId === session.companyId && r.employeeId === punch.employeeId && r.date === punch.date,
     )
     const schedule =
+      schedules.find((s) => s.id === punch.scheduleId) ??
       schedules.find((s) => s.id === existing?.scheduleId) ??
       schedules.find((s) => s.assignedEmployeeIds?.includes(punch.employeeId)) ??
       defaultSchedule
-    const status = statusForPunch(punch.timeIn, punch.timeOut, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
+    const status = punch.status ?? statusForPunch(punch.timeIn, punch.timeOut, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
 
     if (existing) {
       existing.timeIn = punch.timeIn
       existing.timeOut = punch.timeOut
       existing.status = status
+      if (punch.scheduleId) existing.scheduleId = punch.scheduleId
     } else {
       db.attendanceRecords.push({
         id: `${punch.employeeId}_att_${punch.date}_import`,
@@ -295,4 +250,16 @@ export async function getApprovedLeavesInRange(
       const type = db.leaveTypes.find((t) => t.id === request.leaveTypeId)
       return { request, typeName: type?.name ?? 'Leave', isPaid: type?.isPaid !== false }
     })
+}
+
+/** Approves or rejects every pending adjustment in `adjustmentIds`; returns how many were decided. */
+export async function decideAttendanceAdjustments(session: SessionUser, adjustmentIds: string[], decision: Extract<ApprovalStatus, 'approved' | 'rejected'>): Promise<number> {
+  let decided = 0
+  for (const id of adjustmentIds) {
+    const adjustment = db.attendanceAdjustments.find((a) => a.id === id)
+    if (!adjustment || adjustment.status !== 'pending') continue
+    await decideAttendanceAdjustment(session, id, decision)
+    decided += 1
+  }
+  return decided
 }

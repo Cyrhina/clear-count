@@ -15,6 +15,7 @@ import { fullName } from '@ops/features/branches/branchUtils'
 import { AddBranchDialog } from '@ops/features/branches/components/AddBranchDialog'
 import { AssignEmployeesDialog } from '@ops/features/branches/components/AssignEmployeesDialog'
 import { BranchDetailsDialog } from '@ops/features/branches/components/BranchDetailsDialog'
+import { useBranchDepartments } from '@ops/features/branches/hooks/useBranchDepartments'
 import { useBranches, useBranchSummaries } from '@ops/features/branches/hooks/useBranches'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -27,6 +28,7 @@ function BranchCard({
   branch,
   branches,
   employees,
+  departmentCount,
   canManage,
   onView,
   onChanged,
@@ -34,6 +36,7 @@ function BranchCard({
   branch: Branch
   branches: Branch[]
   employees: Employee[]
+  departmentCount: number
   canManage: boolean
   onView: () => void
   onChanged: () => void
@@ -48,8 +51,12 @@ function BranchCard({
   const otherBranches = branches.filter((b) => b.id !== branch.id).map((b) => ({ value: b.id, label: b.name }))
 
   async function moveEmployee(employee: Employee, targetId: string) {
-    await reassignEmployeeBranch(user, employee.id, targetId)
-    notify({ title: 'Employee transferred', description: `${fullName(employee)} moved to ${branches.find((b) => b.id === targetId)?.name}.`, tone: 'success' })
+    const created = await reassignEmployeeBranch(user, employee.id, targetId)
+    notify({
+      title: 'Employee transferred',
+      description: `${fullName(employee)} moved to ${branches.find((b) => b.id === targetId)?.name}.${created ? ` ${created} was added to that branch's departments.` : ''}`,
+      tone: 'success',
+    })
     onChanged()
   }
 
@@ -77,7 +84,7 @@ function BranchCard({
             {manager ? <span className="font-medium text-foreground">{fullName(manager)}</span> : 'No manager assigned'}
           </span>
           <span className="text-muted-foreground">
-            <span className="font-semibold text-foreground">{staff.length}</span> employees · {activeCount} active
+            <span className="font-semibold text-foreground">{staff.length}</span> employees · {activeCount} active · {departmentCount} department{departmentCount === 1 ? '' : 's'}
           </span>
         </div>
 
@@ -123,11 +130,13 @@ function BranchesTab() {
   const canManage = usePermission('branches.manage')
   const { branches, isLoading, refetch } = useBranches()
   const { employees, refetch: refetchEmployees } = useEmployees()
+  const { departments, refetch: refetchDepartments } = useBranchDepartments()
   const [viewingId, setViewingId] = useState<string | null>(null)
 
   const refresh = () => {
     refetch()
     refetchEmployees()
+    refetchDepartments()
   }
   const unassigned = employees.filter((e) => e.employment.status !== 'archived' && !branches.some((b) => b.id === e.branchId))
 
@@ -158,6 +167,7 @@ function BranchesTab() {
               branch={branch}
               branches={branches}
               employees={employees}
+              departmentCount={departments.filter((d) => d.branchId === branch.id).length}
               canManage={canManage}
               onView={() => setViewingId(branch.id)}
               onChanged={refresh}
@@ -170,6 +180,7 @@ function BranchesTab() {
         branch={branches.find((b) => b.id === viewingId) ?? null}
         branches={branches}
         employees={employees}
+        allDepartments={departments}
         canManage={canManage}
         onClose={() => setViewingId(null)}
         onChanged={refresh}

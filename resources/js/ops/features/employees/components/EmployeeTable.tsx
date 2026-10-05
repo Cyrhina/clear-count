@@ -6,13 +6,21 @@ import { Avatar } from '@ops/components/ui/Avatar'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { SEPARATION_LABEL } from '@ops/lib/services/employeeService'
+import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useTenant } from '@ops/hooks/useTenant'
 import { useMixedCompensationStore, summarizeMixedCompensationShort } from '@ops/features/employees/mixedCompensationStore'
 import { formatBaseRateShort } from '@ops/lib/payroll/payRate'
 import type { Employee } from '@ops/types/domain'
 
-export function EmployeeTable({ employees }: { employees: Employee[] }) {
+export interface EmployeeSelection {
+  selected: Set<string>
+  toggle: (id: string, checked: boolean) => void
+  toggleAll: (checked: boolean) => void
+  headerState: boolean | 'indeterminate'
+}
+
+export function EmployeeTable({ employees, selection }: { employees: Employee[]; selection?: EmployeeSelection }) {
   const navigate = useNavigate()
   const { branches } = useTenant()
   const mixedStructures = useMixedCompensationStore((s) => s.structures)
@@ -91,6 +99,11 @@ export function EmployeeTable({ employees }: { employees: Employee[] }) {
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
+            {selection && (
+              <TableHead className="w-10">
+                <SelectAllCheckbox state={selection.headerState} onChange={selection.toggleAll} label="Select all employees" />
+              </TableHead>
+            )}
             {headerGroup.headers.map((header) => (
               <TableHead key={header.id}>
                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -106,6 +119,11 @@ export function EmployeeTable({ employees }: { employees: Employee[] }) {
             className="cursor-pointer"
             onClick={() => navigate(`/employees/${row.original.id}`)}
           >
+            {selection && (
+              <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                <RowCheckbox checked={selection.selected.has(row.original.id)} onChange={(c) => selection.toggle(row.original.id, c)} label={`${row.original.personal.firstName} ${row.original.personal.lastName}`} />
+              </TableCell>
+            )}
             {row.getVisibleCells().map((cell) => (
               <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
             ))}

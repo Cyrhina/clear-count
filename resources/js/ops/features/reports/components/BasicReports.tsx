@@ -291,7 +291,7 @@ export function PayrollRegisterReport() {
       r.netPay,
     ])
     return {
-      filename: scope.basis === 'run' ? `payroll-register-${runReport?.period?.label ?? 'period'}` : `payroll-register-${scopeLabel(scope).replace(/\s+/g, '-').toLowerCase()}`,
+      filename: scope.basis === 'run' ? `payroll-register-${runReport?.period ? `${runReport.period.payrollNumber}-${runReport.period.payrollYear}-${runReport.period.label}` : 'period'}` : `payroll-register-${scopeLabel(scope).replace(/\s+/g, '-').toLowerCase()}`,
       rows: [header, ...rows],
       sumFooter: true,
       columnTypes: { SSS: 'currency', PhilHealth: 'currency', 'Pag-IBIG': 'currency' },

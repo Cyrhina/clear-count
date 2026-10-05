@@ -11,6 +11,7 @@ import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { IMPORT_COLUMNS, importTemplateRows, parseEmployeeImport } from '@ops/lib/payroll/employeeImport'
+import { useBranchDepartments } from '@ops/features/branches/hooks/useBranchDepartments'
 import { importEmployees } from '@ops/lib/services/employeeService'
 import { cn } from '@ops/lib/utils/cn'
 
@@ -27,7 +28,9 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
   const { employees } = useEmployees()
   const { notify } = useToast()
 
-  const result = useMemo(() => (csvRows ? parseEmployeeImport(csvRows, branches, employees) : null), [csvRows, branches, employees])
+  const { departments, isLoading: departmentsLoading } = useBranchDepartments()
+
+  const result = useMemo(() => (csvRows && !departmentsLoading ? parseEmployeeImport(csvRows, branches, employees, departments) : null), [csvRows, branches, employees, departments, departmentsLoading])
   const valid = result?.rows.filter((r) => r.input) ?? []
   const invalid = result?.rows.filter((r) => !r.input) ?? []
 
@@ -39,7 +42,12 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
   }
 
   function downloadSample() {
-    downloadCsv('employee-import-sample.csv', `﻿${toCsv(importTemplateRows(branches[0]?.name ?? 'Main Office'))}`)
+    // Departments must exist in the branch, so the sample uses the first branch's configured ones.
+    const branch = branches.find((b) => departments.some((d) => d.branchId === b.id)) ?? branches[0]
+    const configured = departments.filter((d) => d.branchId === branch?.id).map((d) => d.name)
+    const [header, ...rows] = importTemplateRows(branch?.name ?? 'Main Office')
+    const sample = configured.length ? rows.map((row, i) => row.map((cell, c) => (c === 2 ? configured[i % configured.length] : cell))) : rows
+    downloadCsv('employee-import-sample.csv', `﻿${toCsv([header, ...sample])}`)
   }
 
   async function onFileSelected(event: React.ChangeEvent<HTMLInputElement>) {

@@ -8,8 +8,11 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { AddEmployeeDialog } from '@ops/features/employees/components/AddEmployeeDialog'
 import { ImportEmployeesDialog } from '@ops/features/employees/components/ImportEmployeesDialog'
+import { BulkEmployeeActions } from '@ops/features/employees/components/BulkEmployeeActions'
 import { EmployeeTable } from '@ops/features/employees/components/EmployeeTable'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { usePermission } from '@ops/hooks/usePermission'
+import { useRowSelection } from '@ops/hooks/useRowSelection'
 import { useTenant } from '@ops/hooks/useTenant'
 import { useSession } from '@ops/hooks/useSession'
 import { getEmployeeIdsOnLeaveToday } from '@ops/lib/services/employeeService'
@@ -93,6 +96,10 @@ export function EmployeeListPage() {
       return sortDirection === 'asc' ? result : -result
     })
 
+  const canBulkEdit = usePermission('employees.edit') || usePermission('settings.payroll.edit')
+  const selection = useRowSelection(useMemo(() => filtered.map((e) => e.id), [filtered]))
+  const allDepartments = useMemo(() => [...new Set(employees.map((e) => e.employment.department))].sort(), [employees])
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -148,7 +155,9 @@ export function EmployeeListPage() {
         </p>
       </div>
 
-      {isLoading ? <Skeleton className="h-96" /> : <EmployeeTable employees={filtered} />}
+      {isLoading ? <Skeleton className="h-96" /> : <EmployeeTable employees={filtered} selection={canBulkEdit ? selection : undefined} />}
+
+      {canBulkEdit && <BulkEmployeeActions selected={[...selection.selected]} employees={filtered} departments={allDepartments} onClear={selection.clear} onDone={refetch} />}
     </div>
   )
 }

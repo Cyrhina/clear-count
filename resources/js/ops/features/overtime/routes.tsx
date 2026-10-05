@@ -4,12 +4,14 @@ import { useMemo, useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
+import { BulkActionBar } from '@ops/components/ui/BulkActionBar'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FilterField, FiltersPopover, SortControl, type SortDirection } from '@ops/components/ui/FiltersPopover'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
+import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
@@ -18,8 +20,9 @@ import { NewOvertimeRequestDialog } from '@ops/features/overtime/components/NewO
 import { OvertimeDetailsDialog } from '@ops/features/overtime/components/OvertimeDetailsDialog'
 import { useOvertimeRecords, useOvertimeSummary } from '@ops/features/overtime/hooks/useOvertime'
 import { usePermission } from '@ops/hooks/usePermission'
+import { useRowSelection } from '@ops/hooks/useRowSelection'
 import { useSession } from '@ops/hooks/useSession'
-import { decideOvertimeRecord, exportOvertimeSummaryCsv } from '@ops/lib/services/overtimeService'
+import { decideOvertimeRecord, decideOvertimeRecords, exportOvertimeSummaryCsv } from '@ops/lib/services/overtimeService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { OvertimeRecord, OvertimeType } from '@ops/types/domain'
 
@@ -158,6 +161,16 @@ export function OvertimePage() {
     refetchAll()
   }
 
+  const pendingIds = useMemo(() => (canApprove ? filtered.filter((r) => r.status === 'pending').map((r) => r.id) : []), [filtered, canApprove])
+  const selection = useRowSelection(pendingIds)
+
+  async function handleBulkDecide(decision: 'approved' | 'rejected') {
+    const n = await decideOvertimeRecords(user, [...selection.selected], decision)
+    notify({ title: `${n} request${n === 1 ? '' : 's'} ${decision}`, tone: 'success' })
+    selection.clear()
+    refetchAll()
+  }
+
   async function handleExport() {
     const csv = await exportOvertimeSummaryCsv(user)
     downloadCsv('overtime-summary.csv', csv)
@@ -259,6 +272,11 @@ export function OvertimePage() {
         <Table>
           <TableHeader>
             <TableRow>
+              {canApprove && (
+                <TableHead className="w-10">
+                  <SelectAllCheckbox state={selection.headerState} onChange={selection.toggleAll} label="Select all pending requests" disabled={pendingIds.length === 0} />
+                </TableHead>
+              )}
               <TableHead>Employee</TableHead>
               <TableHead>Department / Position</TableHead>
               <TableHead>Date & Schedule</TableHead>
@@ -274,6 +292,13 @@ export function OvertimePage() {
               const employee = employeeById.get(record.employeeId)
               return (
                 <TableRow key={record.id} className="cursor-pointer" onClick={() => setSelectedRecord(record)}>
+                  {canApprove && (
+                    <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                      {record.status === 'pending' && (
+                        <RowCheckbox checked={selection.selected.has(record.id)} onChange={(c) => selection.toggle(record.id, c)} label={employee ? `${employee.personal.firstName} ${employee.personal.lastName}` : 'request'} />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-2.5">
                       <Avatar name={employee ? `${employee.personal.firstName} ${employee.personal.lastName}` : '?'} size="sm" />
@@ -324,6 +349,15 @@ export function OvertimePage() {
           </TableBody>
         </Table>
       )}
+
+      <BulkActionBar count={selection.selected.size} noun={selection.selected.size === 1 ? 'request selected' : 'requests selected'} onClear={selection.clear}>
+        <Button size="sm" variant="secondary" onClick={() => handleBulkDecide('rejected')}>
+          Reject Selected
+        </Button>
+        <Button size="sm" onClick={() => handleBulkDecide('approved')}>
+          Approve Selected
+        </Button>
+      </BulkActionBar>
 
       <OvertimeDetailsDialog
         record={selectedRecord}

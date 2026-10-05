@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Employee;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DemoSeeder extends Seeder
@@ -21,20 +20,19 @@ class DemoSeeder extends Seeder
         $own = Employee::withoutGlobalScopes()->where('company_id', $company->id)->first();
 
         $accounts = [
-            ['Andrea Villareal', 'andrea.villareal@fbs.com', 'company_admin', null],
-            ['Payroll Manager', 'payroll@fbs.com', 'payroll_admin', null],
-            ['Demo Employee', 'employee@fbs.com', 'employee', $own?->id],
+            ['Andrea', 'Villareal', 'andrea.villareal@fbs.com', 'company_admin', null],
+            ['Payroll', 'Manager', 'payroll@fbs.com', 'payroll_admin', null],
+            ['Demo', 'Employee', 'employee@fbs.com', 'employee', $own?->id],
         ];
 
-        foreach ($accounts as [$name, $email, $role, $employeeId]) {
-            User::factory()->create([
-                'name' => $name,
-                'email' => $email,
-                'password' => 'password123',
+        $users = new UserSeeder;
+
+        foreach ($accounts as [$firstName, $lastName, $email, $role, $employeeId]) {
+            $users->createUser($firstName, $lastName, $email, $role, attributes: [
                 'company_id' => $company->id,
                 'branch_id' => $head->id,
                 'employee_id' => $employeeId,
-            ])->assignRole($role);
+            ]);
         }
     }
 }

@@ -11,10 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/branches/branchUtils'
 import { AssignEmployeesDialog } from '@ops/features/branches/components/AssignEmployeesDialog'
+import { BranchDepartmentsPanel } from '@ops/features/branches/components/BranchDepartmentsPanel'
 import { useSession } from '@ops/hooks/useSession'
 import { reassignEmployeeBranch, updateBranch } from '@ops/lib/services/branchService'
 import { formatDate } from '@ops/lib/utils/format'
-import type { Branch, Employee } from '@ops/types/domain'
+import type { Branch, BranchDepartment, Employee } from '@ops/types/domain'
 
 function DetailItem({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -42,6 +43,7 @@ export function BranchDetailsDialog({
   branch,
   branches,
   employees,
+  allDepartments,
   canManage,
   onClose,
   onChanged,
@@ -49,6 +51,8 @@ export function BranchDetailsDialog({
   branch: Branch | null
   branches: Branch[]
   employees: Employee[]
+  /** Departments configured across every branch. */
+  allDepartments: BranchDepartment[]
   canManage: boolean
   onClose: () => void
   onChanged: () => void
@@ -59,7 +63,8 @@ export function BranchDetailsDialog({
 
   const staff = branch ? employees.filter((e) => e.branchId === branch.id) : []
   const manager = branch?.managerEmployeeId ? employees.find((e) => e.id === branch.managerEmployeeId) : undefined
-  const departments = new Set(staff.map((e) => e.employment.department)).size
+  const branchDepartments = branch ? allDepartments.filter((d) => d.branchId === branch.id) : []
+  const departmentCount = branchDepartments.length
   const q = query.trim().toLowerCase()
   const visible = staff
     .filter((e) => !q || `${fullName(e)} ${e.employeeNumber} ${e.employment.position} ${e.employment.department}`.toLowerCase().includes(q))
@@ -68,8 +73,12 @@ export function BranchDetailsDialog({
 
   async function moveEmployee(employee: Employee, targetId: string) {
     const target = branches.find((b) => b.id === targetId)
-    await reassignEmployeeBranch(user, employee.id, targetId)
-    notify({ title: 'Employee transferred', description: `${fullName(employee)} moved to ${target?.name ?? 'another branch'}.`, tone: 'success' })
+    const created = await reassignEmployeeBranch(user, employee.id, targetId)
+    notify({
+      title: 'Employee transferred',
+      description: `${fullName(employee)} moved to ${target?.name ?? 'another branch'}.${created ? ` ${created} was added to that branch's departments.` : ''}`,
+      tone: 'success',
+    })
     onChanged()
   }
 
@@ -104,7 +113,7 @@ export function BranchDetailsDialog({
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Employees" value={staff.length} />
               <Stat label="Active" value={staff.filter((e) => e.employment.status === 'active').length} />
-              <Stat label="Departments" value={departments} />
+              <Stat label="Departments" value={departmentCount} />
               <Stat label="Opened" value={branch.openedDate ? formatDate(branch.openedDate) : '—'} />
             </div>
 
@@ -142,9 +151,11 @@ export function BranchDetailsDialog({
                 {branch.isHeadOffice ? 'Head Office' : 'Branch'}
               </DetailItem>
               <DetailItem icon={<Users className="size-4" />} label="Headcount">
-                {staff.length} employee{staff.length === 1 ? '' : 's'} across {departments} department{departments === 1 ? '' : 's'}
+                {staff.length} employee{staff.length === 1 ? '' : 's'} across {departmentCount} department{departmentCount === 1 ? '' : 's'}
               </DetailItem>
             </div>
+
+            <BranchDepartmentsPanel branch={branch} branches={branches} staff={staff} departments={branchDepartments} allDepartments={allDepartments} canManage={canManage} onChanged={onChanged} />
 
             <div className="mt-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">

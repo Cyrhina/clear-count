@@ -2,15 +2,16 @@ import { CalendarClock, Pencil, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
-import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
 import { BenefitDialog } from '@ops/features/loans-deductions/components/BenefitDialog'
+import { BenefitPlanDialog } from '@ops/features/loans-deductions/components/BenefitPlanDialog'
+import { BenefitPlansView } from '@ops/features/loans-deductions/components/BenefitPlansView'
 import { RecordCard } from '@ops/features/loans-deductions/components/RecordCard'
 import { RecordDetailsDialog } from '@ops/features/loans-deductions/components/RecordDetailsDialog'
-import { useEmployeeBenefits } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
+import { useBenefitPlans, useEmployeeBenefits } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { BENEFIT_CATEGORY_META, fullName } from '@ops/features/loans-deductions/loanUtils'
 import { StatTile } from '@ops/features/reports/components/shared'
 import { useSession } from '@ops/hooks/useSession'
@@ -19,10 +20,10 @@ import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { BenefitCategory, Employee, EmployeeBenefit } from '@ops/types/domain'
 
 const DESCRIPTION: Record<BenefitCategory, string> = {
-  hmo: 'Health coverage provided to employees. Employee shares (e.g. dependents) are deducted in payroll; the rest is paid by the company and shown on the payslip.',
-  allowance: 'Cash allowances paid through payroll and added to earnings on the payslip.',
-  insurance: 'Company-provided insurance. Shown on the payslip as an employer-paid benefit.',
-  other: 'Other company-paid perks and programs. Shown on the payslip as employer-paid benefits.',
+  hmo: 'Health coverage provided to employees, organised by plan. Add employees to a plan from its card. Employee shares (e.g. dependents) are deducted in payroll; the rest is paid by the company and shown on the payslip.',
+  allowance: 'Cash allowances paid through payroll and added to earnings on the payslip, organised by allowance. Add employees to an allowance from its card.',
+  insurance: 'Company-provided insurance, organised by policy. Add employees to a policy from its card. Shown on the payslip as an employer-paid benefit.',
+  other: 'Other company-paid perks and programs, organised by benefit. Add employees to a benefit from its card. Shown on the payslip as employer-paid benefits.',
 }
 
 const STATUS_OPTIONS = [
@@ -34,7 +35,7 @@ const STATUS_OPTIONS = [
 
 const STATUS_ORDER = { active: 0, paused: 1, cancelled: 2 } as const
 
-interface Row {
+export interface Row {
   key: string
   employee: Employee
   name: string
@@ -54,6 +55,11 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export function BenefitsView({ category, employees, canManage }: { category: BenefitCategory; employees: Employee[]; canManage: boolean }) {
   const { benefits, isLoading, refetch } = useEmployeeBenefits()
+  const { plans, refetch: refetchPlans } = useBenefitPlans(category)
+  const refreshAll = () => {
+    refetch()
+    refetchPlans()
+  }
   const { user } = useSession()
   const { notify } = useToast()
   const navigate = useNavigate()
@@ -81,26 +87,10 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
         notes: b.notes,
         benefit: b,
       }))
-    // Allowances set on the employee profile are already paid by payroll — list them here (managed on the profile) so this tab shows every allowance.
-    const fromProfile: Row[] = isAllowance
-      ? employees
-          .filter((e) => e.employment.status === 'active')
-          .flatMap((e) =>
-            e.compensation.allowances.map((a, i) => ({
-              key: `${e.id}-profile-${i}`,
-              employee: e,
-              name: a.label,
-              monthlyValue: a.amount,
-              employeeShare: 0,
-              status: 'active' as const,
-              notes: 'Set on the employee profile. Edit it there.',
-            })),
-          )
-      : []
-    return [...managed, ...fromProfile].sort(
+    return managed.sort(
       (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || fullName(a.employee).localeCompare(fullName(b.employee)) || a.name.localeCompare(b.name),
     )
-  }, [benefits, employees, category, isAllowance])
+  }, [benefits, employees, category])
 
   const filtered = rows.filter((row) => {
     if (status !== 'all' && row.status !== status) return false
@@ -128,6 +118,55 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
     return parts.join(' ')
   }
 
+  /** The per-employee card: View / Edit / Pause·Resume / Cancel. Shown inside each plan's details. */
+  function renderRecordCard(row: Row, extraActions?: React.ReactNode) {
+    return (
+    <RecordCard
+      key={row.key}
+      title={fullName(row.employee)}
+      subtitle={[row.name, row.provider].filter(Boolean).join(' · ')}
+      status={row.benefit ? row.status : 'active'}
+      headline={formatCurrency(row.monthlyValue)}
+      headlineHint={isAllowance ? 'per month, added to earnings' : 'company-paid per month'}
+      lines={[row.coverage, row.employeeShare > 0 ? `Employee share ${formatCurrency(row.employeeShare)}/month` : undefined, row.startDate ? `Since ${formatDate(row.startDate)}${row.endDate ? ` · until ${formatDate(row.endDate)}` : ''}` : 'Set on employee profile'].filter(Boolean)}
+      note={<p className="text-muted-foreground">{noteFor(row)}</p>}
+      noteIcon={<CalendarClock className="mt-0.5 size-3.5 shrink-0 text-primary" />}
+      onView={() => setViewing(row)}
+      edit={
+        <>
+        {row.benefit ? (
+          <BenefitDialog
+            category={category}
+            employees={employees}
+            benefit={row.benefit}
+            amountLocked={isAllowance && plans.find((p) => p.id === row.benefit?.planId)?.amountType !== 'custom'}
+            onSaved={refetch}
+            trigger={
+              <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || row.status === 'cancelled'} title={row.status === 'cancelled' ? 'This record is cancelled.' : undefined}>
+                Edit
+              </Button>
+            }
+          />
+        ) : (
+          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage} title="Set on the employee profile" onClick={() => navigate(`/employees/${row.employee.id}`)}>
+            Edit
+          </Button>
+        )}
+        {extraActions}
+        </>
+      }
+      onPause={() => change(row, { status: 'paused' }, 'paused — left out of payroll until resumed')}
+      onResume={() => change(row, { status: 'active' }, 'resumed')}
+      onCancel={() => change(row, { status: 'cancelled', endDate: row.endDate ?? today() }, 'cancelled')}
+      lockedReason={row.benefit ? undefined : 'Managed on the employee profile'}
+      cancelName={row.name}
+      cancelConsequence={`${row.name} for ${fullName(row.employee)} will stop being included in payroll and on payslips.`}
+      canManage={canManage}
+      dimmed={row.status === 'cancelled'}
+    />
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -135,7 +174,7 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
           <p className="text-sm font-medium">{meta.title}</p>
           <p className="max-w-3xl text-xs text-muted-foreground">{DESCRIPTION[category]}</p>
         </div>
-        {canManage && <BenefitDialog category={category} employees={employees} onSaved={refetch} />}
+        {canManage && <BenefitPlanDialog category={category} onSaved={refreshAll} />}
       </div>
 
       <div className={isAllowance ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4 sm:grid-cols-3'}>
@@ -157,52 +196,19 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
 
       {isLoading ? (
         <Skeleton className="h-64" />
-      ) : filtered.length === 0 ? (
-        <EmptyState title={`No ${meta.title.toLowerCase()} found`} description={rows.length === 0 ? `Add ${meta.singular} records to include them in payroll and payslips.` : 'Try clearing the search or status filter.'} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((row) => (
-            <RecordCard
-              key={row.key}
-              title={fullName(row.employee)}
-              subtitle={[row.name, row.provider].filter(Boolean).join(' · ')}
-              status={row.benefit ? row.status : 'active'}
-              headline={formatCurrency(row.monthlyValue)}
-              headlineHint={isAllowance ? 'per month, added to earnings' : 'company-paid per month'}
-              lines={[row.coverage, row.employeeShare > 0 ? `Employee share ${formatCurrency(row.employeeShare)}/month` : undefined, row.startDate ? `Since ${formatDate(row.startDate)}${row.endDate ? ` · until ${formatDate(row.endDate)}` : ''}` : 'Set on employee profile'].filter(Boolean)}
-              note={<p className="text-muted-foreground">{noteFor(row)}</p>}
-              noteIcon={<CalendarClock className="mt-0.5 size-3.5 shrink-0 text-primary" />}
-              onView={() => setViewing(row)}
-              edit={
-                row.benefit ? (
-                  <BenefitDialog
-                    category={category}
-                    employees={employees}
-                    benefit={row.benefit}
-                    onSaved={refetch}
-                    trigger={
-                      <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || row.status === 'cancelled'} title={row.status === 'cancelled' ? 'This record is cancelled.' : undefined}>
-                        Edit
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage} title="Set on the employee profile" onClick={() => navigate(`/employees/${row.employee.id}`)}>
-                    Edit
-                  </Button>
-                )
-              }
-              onPause={() => change(row, { status: 'paused' }, 'paused — left out of payroll until resumed')}
-              onResume={() => change(row, { status: 'active' }, 'resumed')}
-              onCancel={() => change(row, { status: 'cancelled', endDate: row.endDate ?? today() }, 'cancelled')}
-              lockedReason={row.benefit ? undefined : 'Managed on the employee profile'}
-              cancelName={row.name}
-              cancelConsequence={`${row.name} for ${fullName(row.employee)} will stop being included in payroll and on payslips.`}
-              canManage={canManage}
-              dimmed={row.status === 'cancelled'}
-            />
-          ))}
-        </div>
+        <BenefitPlansView
+          category={category}
+          plans={plans}
+          rows={rows}
+          filteredRows={filtered}
+          filtersActive={search.trim() !== '' || status !== 'all'}
+          employees={employees}
+          benefits={benefits}
+          canManage={canManage}
+          renderRecordCard={renderRecordCard}
+          onChanged={refreshAll}
+        />
       )}
 
       <RecordDetailsDialog

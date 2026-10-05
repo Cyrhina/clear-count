@@ -37,7 +37,20 @@ function toFormValues(loan?: LoanRecord): FormValues {
 }
 
 /** Adds a loan, or edits an existing one (the employee and principal stay fixed once a loan exists). */
-export function AddLoanDialog({ employees, onCreated, loan, trigger }: { employees: Employee[]; onCreated: () => void; loan?: LoanRecord; trigger?: React.ReactNode }) {
+export function AddLoanDialog({
+  employees,
+  onCreated,
+  loan,
+  amountLocked = false,
+  trigger,
+}: {
+  employees: Employee[]
+  onCreated: () => void
+  loan?: LoanRecord
+  /** The loan type has fixed terms, so the monthly deduction can't be changed for one employee. */
+  amountLocked?: boolean
+  trigger?: React.ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const { user } = useSession()
   const { notify } = useToast()
@@ -108,8 +121,8 @@ export function AddLoanDialog({ employees, onCreated, loan, trigger }: { employe
           <FormField label="Principal (PHP)" required error={errors.principal?.message}>
             <Input type="number" disabled={isEdit} {...register('principal', { valueAsNumber: true })} />
           </FormField>
-          <FormField label="Monthly deduction (PHP)" required error={errors.monthlyDeduction?.message}>
-            <Input type="number" {...register('monthlyDeduction', { valueAsNumber: true })} />
+          <FormField label="Monthly deduction (PHP)" required error={errors.monthlyDeduction?.message} hint={amountLocked ? 'Fixed by the loan type.' : undefined}>
+            <Input type="number" readOnly={amountLocked} {...register('monthlyDeduction', { valueAsNumber: true })} />
           </FormField>
           <FormField label="Start date" required error={errors.startDate?.message} className="col-span-2">
             <Input type="date" {...register('startDate')} />

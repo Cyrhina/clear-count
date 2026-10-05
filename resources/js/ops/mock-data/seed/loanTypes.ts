@@ -22,6 +22,10 @@ const CUSTOM_SAMPLE: Seed = {
   description: 'Short advance on the next salary, repaid in 2–3 pay runs.',
   typicalTerm: '1–3 months',
   typicalAmount: 'Up to 50% of monthly basic pay',
+  // A fixed-terms example: everyone borrows the same amount and repays the same installment.
+  amountType: 'fixed',
+  fixedPrincipal: 10000,
+  fixedMonthlyDeduction: 5000,
 }
 
 export const loanTypes: LoanTypeConfig[] = companies.flatMap((company) => [

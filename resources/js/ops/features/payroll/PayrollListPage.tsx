@@ -35,6 +35,7 @@ export function PayrollListPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Payroll No.</TableHead>
               <TableHead>Period</TableHead>
               <TableHead>Payroll Group</TableHead>
               <TableHead>Coverage</TableHead>
@@ -45,6 +46,9 @@ export function PayrollListPage() {
           <TableBody>
             {periods.map((period) => (
               <TableRow key={period.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${period.id}`)}>
+                <TableCell className="whitespace-nowrap font-medium tabular-nums" title={`${period.payrollNumber} for ${period.payrollYear}`}>
+                  {period.payrollNumber}
+                </TableCell>
                 <TableCell className="font-medium">{period.label}</TableCell>
                 <TableCell>
                   {period.payrollGroupId ? (

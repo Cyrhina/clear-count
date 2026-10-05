@@ -1077,7 +1077,7 @@ export function LaborCostAnalysisReport() {
 
   function onExport(): ExcelExport {
     const header = ['Period', 'Gross Pay', 'Employer Contributions', 'Total Labor Cost']
-    const dataRows = byPeriod.map((p) => [p.period.label, p.grossPay, p.employerContributions, p.grossPay + p.employerContributions])
+    const dataRows = byPeriod.map((p) => [`${p.period.payrollNumber}/${p.period.payrollYear} · ${p.period.label}`, p.grossPay, p.employerContributions, p.grossPay + p.employerContributions])
     return { filename: 'labor-cost-analysis', rows: [header, ...dataRows], sumFooter: true }
   }
 

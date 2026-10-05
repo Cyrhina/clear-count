@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
-import { getEmployeeBenefits, getEmployeeDeductions } from '@ops/lib/services/benefitsService'
+import { getBenefitPlans, getDeductionPlans, getEmployeeBenefits, getEmployeeDeductions } from '@ops/lib/services/benefitsService'
 import { getLoanTypes } from '@ops/lib/services/loanTypeService'
 import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
-import type { DeductionConfig, EmployeeBenefit, EmployeeDeduction, LoanTypeConfig } from '@ops/types/domain'
+import type { BenefitCategory, BenefitPlan, DeductionConfig, DeductionPlan, EmployeeBenefit, EmployeeDeduction, LoanTypeConfig } from '@ops/types/domain'
 
 export function useEmployeeBenefits() {
   const { user } = useSession()
@@ -19,6 +19,38 @@ export function useEmployeeBenefits() {
   }, [refetch])
 
   return { benefits: benefits ?? [], isLoading: benefits === null, refetch }
+}
+
+export function useBenefitPlans(category: BenefitCategory) {
+  const { user } = useSession()
+  const [plans, setPlans] = useState<BenefitPlan[] | null>(null)
+
+  const refetch = useCallback(() => {
+    getBenefitPlans(user, category).then(setPlans)
+  }, [user, category])
+
+  useEffect(() => {
+    setPlans(null)
+    refetch()
+  }, [refetch])
+
+  return { plans: plans ?? [], isLoading: plans === null, refetch }
+}
+
+export function useDeductionPlans() {
+  const { user } = useSession()
+  const [plans, setPlans] = useState<DeductionPlan[] | null>(null)
+
+  const refetch = useCallback(() => {
+    getDeductionPlans(user).then(setPlans)
+  }, [user])
+
+  useEffect(() => {
+    setPlans(null)
+    refetch()
+  }, [refetch])
+
+  return { plans: plans ?? [], isLoading: plans === null, refetch }
 }
 
 export function useEmployeeDeductions() {
