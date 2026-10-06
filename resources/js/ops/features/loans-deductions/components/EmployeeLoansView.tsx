@@ -1,11 +1,12 @@
-import { CalendarClock, Eye, Landmark, Pencil, Search, UserPlus } from 'lucide-react'
+import { CalendarClock, Eye, Landmark, Pencil, UserPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
-import { Input } from '@ops/components/ui/Input'
+import { FilterField } from '@ops/components/ui/FiltersPopover'
+import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
@@ -159,16 +160,26 @@ export function EmployeeLoansView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee, ID, or type…" className="pl-9" />
-        </div>
-        <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} className="w-40" />
-        <p className="ml-auto self-center text-sm text-muted-foreground">
-          {loans.filter(matches).length} of {loans.length} loans
-        </p>
-      </div>
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search employee, ID, or type…"
+        activeCount={status !== 'all' ? 1 : 0}
+        onClear={() => {
+          setSearch('')
+          setStatus('all')
+        }}
+        trailing={
+          <>
+            {loans.filter(matches).length} of {loans.length} loans
+          </>
+        }
+        filters={
+          <FilterField label="Status">
+            <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} />
+          </FilterField>
+        }
+      />
 
       {isLoading ? (
         <Skeleton className="h-72" />

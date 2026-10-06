@@ -33,6 +33,7 @@ import {
 } from '@ops/features/reports/components/BasicReports'
 import { CustomReportBuilder } from '@ops/features/reports/components/CustomReportBuilder'
 import { ReportCategorySection, type ReportCategory } from '@ops/features/reports/components/shared'
+import { BonusReport, PayrollHistoryReport, ThirteenthMonthPayReport } from '@ops/features/reports/components/PayrollRecordReports'
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
 import { DeMinimisBenefitsReport, TaxMonitoringReport, TaxableCompensationReport, ThirteenthMonthBenefitsReport, WithholdingTaxSummaryReport } from '@ops/features/reports/components/TaxComplianceReports'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -52,9 +53,12 @@ const BASIC_CATEGORIES: ReportCategory[] = [
       { id: 'payroll-register', label: 'Payroll Register', description: 'Detailed payroll breakdown per employee.' },
       { id: 'payroll-summary', label: 'Payroll Summary', description: 'High-level period total summary.' },
       { id: 'payroll-summary-per-employee', label: 'Payroll Summary per Employee', description: 'Individual period comparisons.' },
+      { id: 'payroll-history', label: 'Payroll History', description: 'Every payroll run with its status and totals.' },
       { id: 'payslip-report', label: 'Payslip Report', description: 'Batch view of generated payslips.' },
       { id: 'overtime-report', label: 'Overtime Report', description: 'OT and Night Differential hours & costs.' },
       { id: 'loans-deductions-report', label: 'Loans & Deductions Report', description: 'Active company loans and recurring deduction tracking.' },
+      { id: 'bonus-report', label: 'Bonus Report', description: 'Bonuses and incentives with targets, tax treatment and approval status.' },
+      { id: 'thirteenth-month-pay-report', label: '13th Month Pay Report', description: '13th Month Pay computed per employee across every batch.' },
       { id: 'benefits-report', label: 'Benefits Report', description: 'HMO, allowances, insurance and other benefits, with amounts paid through payroll.' },
     ],
   },
@@ -141,6 +145,12 @@ function renderBasicReport(id: string) {
       return <PayrollSummaryReport />
     case 'payroll-summary-per-employee':
       return <PayrollSummaryPerEmployeeReport />
+    case 'payroll-history':
+      return <PayrollHistoryReport />
+    case 'bonus-report':
+      return <BonusReport />
+    case 'thirteenth-month-pay-report':
+      return <ThirteenthMonthPayReport />
     case 'payslip-report':
       return <PayslipReportView />
     case 'overtime-report':
@@ -216,7 +226,7 @@ function renderAdvancedReport(id: string) {
 }
 
 /** Reports anyone with `reports.view` may open; everything else needs `reports.payroll.view` (it shows pay, tax, or cost). */
-const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'headcount-analysis', 'attendance-absenteeism', 'leave-utilization'])
+const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'sss-contribution', 'philhealth-contribution', 'pagibig-contribution', 'consolidated-statutory', 'tax-monitoring', 'taxable-compensation', 'thirteenth-month-benefits', 'de-minimis-benefits', 'withholding-tax-summary', 'bir-1601c', 'bir-2316', 'headcount-analysis', 'attendance-absenteeism', 'leave-utilization'])
 
 function visibleCategories(categories: ReportCategory[], canPayroll: boolean): ReportCategory[] {
   if (canPayroll) return categories

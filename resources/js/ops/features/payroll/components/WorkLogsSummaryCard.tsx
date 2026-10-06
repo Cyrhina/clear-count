@@ -2,6 +2,7 @@ import { AlertCircle, ArrowRight, Boxes, Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '@ops/components/ui/Card'
+import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { getWorkLogSummaryForPeriod } from '@ops/lib/services/compensationApprovalService'
 import type { WorkLogSummary } from '@ops/lib/services/compensationApprovalService'
@@ -40,10 +41,12 @@ function plural(n: number, word: string) {
 /** "Approved Work Logs" card on a payroll period — what this run pays (or, while draft, would pay) from the Approvals module. */
 export function WorkLogsSummaryCard({ period, refreshKey }: { period: PayrollPeriod; refreshKey?: unknown }) {
   const summary = useWorkLogSummary(period, refreshKey)
+  const canApprove = usePermission('compensation_approvals.manage')
   if (!summary || !hasAny(summary)) return null
 
   const isDraft = period.status === 'draft'
-  const approvalsHref = `/approvals?${new URLSearchParams({ status: 'pending', periodId: period.id })}`
+  // Payroll Admin only reads approved records, so without approval rights the link goes to Payroll Inputs instead.
+  const approvalsHref = canApprove ? `/approvals?${new URLSearchParams({ status: 'pending', periodId: period.id })}` : '/payroll-inputs'
   const tiles = [
     { icon: Clock, label: `${plural(summary.hourly.records, 'Approved Hourly Record')}`, detail: `${summary.hourly.quantity} hrs`, amount: summary.hourly.amount },
     { icon: Boxes, label: `${plural(summary.output.records, 'Approved Piece-Rate / Output Record')}`, detail: `${summary.output.quantity} units`, amount: summary.output.amount },
@@ -61,7 +64,7 @@ export function WorkLogsSummaryCard({ period, refreshKey }: { period: PayrollPer
           </p>
         </div>
         <Link to={approvalsHref} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          Open Approvals
+          {canApprove ? 'Open Approvals' : 'View Payroll Inputs'}
           <ArrowRight className="size-3.5" />
         </Link>
       </div>
@@ -90,7 +93,7 @@ export function WorkLogsSummaryCard({ period, refreshKey }: { period: PayrollPer
                 ? `${plural(summary.pendingCount, 'pending entry')} in this period won't be paid unless approved before you run payroll.`
                 : `${plural(summary.pendingCount, 'entry')} still pending were not paid in this run.`}
               <Link to={approvalsHref} className="font-medium underline-offset-2 hover:underline">
-                Review &amp; approve
+                {canApprove ? 'Review & approve' : 'View records'}
               </Link>
             </p>
           )}

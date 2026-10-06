@@ -5,10 +5,11 @@ import {
   getDashboardStats,
   getHeadcountTrend,
   getPendingRequestsSummary,
+  getPayrollDashboard,
   getWorkforceCharts,
 } from '@ops/lib/services/dashboardService'
 import { getTaxAlerts, type TaxAlerts } from '@ops/lib/services/taxComplianceService'
-import type { AdminDashboardOverview, DashboardStats, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
+import type { AdminDashboardOverview, DashboardStats, PayrollDashboard, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
 
 export function useDashboardData() {
   const { user } = useSession()
@@ -99,4 +100,22 @@ export function useWorkforceCharts() {
   }, [user])
 
   return { charts, isLoading: charts === null }
+}
+
+export function usePayrollDashboard() {
+  const { user } = useSession()
+  const [data, setData] = useState<PayrollDashboard | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setData(null)
+    getPayrollDashboard(user).then((result) => {
+      if (!cancelled) setData(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  return { data, isLoading: data === null }
 }

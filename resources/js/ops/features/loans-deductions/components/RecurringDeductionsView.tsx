@@ -8,6 +8,8 @@ import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Input } from '@ops/components/ui/Input'
+import { FilterField } from '@ops/components/ui/FiltersPopover'
+import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
@@ -149,16 +151,26 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
         <StatTile label="Employees affected" value={String(new Set(active.map((d) => d.employeeId)).size)} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee or deduction…" className="pl-9" />
-        </div>
-        <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} className="w-44" />
-        <p className="ml-auto text-sm text-muted-foreground">
-          {recurring.filter(matches).length} of {recurring.length} records
-        </p>
-      </div>
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search employee or deduction…"
+        activeCount={status !== 'all' ? 1 : 0}
+        onClear={() => {
+          setSearch('')
+          setStatus('all')
+        }}
+        trailing={
+          <>
+            {recurring.filter(matches).length} of {recurring.length} records
+          </>
+        }
+        filters={
+          <FilterField label="Status">
+            <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} />
+          </FilterField>
+        }
+      />
 
       {isLoading ? (
         <Skeleton className="h-64" />

@@ -1,5 +1,5 @@
 import { ArrowLeft, Calculator, Download, Lock, PauseCircle, PlayCircle, ShieldCheck, Undo2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
@@ -8,6 +8,9 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import { EmptyState } from '@ops/components/ui/EmptyState'
+import { FilterField } from '@ops/components/ui/FiltersPopover'
+import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
+import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
@@ -100,7 +103,27 @@ export function PayrollPeriodDetailPage() {
   const employeeById = new Map(employees.map((e) => [e.id, e]))
   const payrollGroup = period?.payrollGroupId ? groups.find((g) => g.id === period.payrollGroupId) : undefined
   const emails = usePayslipEmails('payroll', id)
-  const selection = usePayslipSelection(lines.map((l) => l.employeeId))
+  const [search, setSearch] = useState('')
+  const [department, setDepartment] = useState('all')
+  const [branchFilter, setBranchFilter] = useState('all')
+  const filteredLines = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return lines.filter((line) => {
+      const e = employeeById.get(line.employeeId)
+      if (!e) return !q && department === 'all' && branchFilter === 'all'
+      const text = `${e.personal.firstName} ${e.personal.lastName} ${e.employeeNumber} ${e.employment.position ?? ''}`.toLowerCase()
+      return (!q || text.includes(q)) && (department === 'all' || e.employment.department === department) && (branchFilter === 'all' || e.branchId === branchFilter)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, employees, search, department, branchFilter])
+  const departmentOptions = useMemo(() => [...new Set(employees.map((e) => e.employment.department).filter(Boolean))].sort(), [employees])
+  const lineFilterCount = [department !== 'all', branchFilter !== 'all'].filter(Boolean).length
+  const clearLineFilters = () => {
+    setSearch('')
+    setDepartment('all')
+    setBranchFilter('all')
+  }
+  const selection = usePayslipSelection(filteredLines.map((l) => l.employeeId))
 
   if (!period) return <Skeleton className="h-96" />
 
@@ -287,8 +310,27 @@ export function PayrollPeriodDetailPage() {
             </Card>
           </div>
 
+          <SearchFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Search employee, ID, or position…"
+            activeCount={lineFilterCount}
+            onClear={clearLineFilters}
+            trailing={`${filteredLines.length} of ${lines.length} employees`}
+            filters={
+              <>
+                <FilterField label="Department">
+                  <Select value={department} onValueChange={setDepartment} options={[{ value: 'all', label: 'All departments' }, ...departmentOptions.map((d) => ({ value: d, label: d }))]} />
+                </FilterField>
+                <FilterField label="Branch">
+                  <Select value={branchFilter} onValueChange={setBranchFilter} options={[{ value: 'all', label: 'All branches' }, ...branches.map((b) => ({ value: b.id, label: b.name }))]} />
+                </FilterField>
+              </>
+            }
+          />
+
           <BulkEmailToolbar
-            candidates={lines.map((l) => ({
+            candidates={filteredLines.map((l) => ({
               employeeId: l.employeeId,
               employeeName: employeeName(l.employeeId),
               hasEmail: !!employeeById.get(l.employeeId)?.personal.personalEmail,
@@ -324,7 +366,14 @@ export function PayrollPeriodDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {lines.map((line) => {
+              {filteredLines.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
+                    No employees match these filters.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filteredLines.map((line) => {
                 const employee = employeeById.get(line.employeeId)
                 const employeeGroup = employee ? findEmployeePayrollGroup(groups, employee.id) : undefined
                 const compensationType = compensationTypes.find((c) => c.id === employeeGroup?.compensationTypeId)

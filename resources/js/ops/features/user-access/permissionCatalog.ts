@@ -59,6 +59,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'payroll.view': { label: 'View payroll runs', description: 'See payroll periods, computations, and totals.', group: 'Payroll' },
   'payroll.run': { label: 'Run payroll', description: 'Create payroll periods and calculate employee pay.', group: 'Payroll' },
   'payroll.approve': { label: 'Approve payroll', description: 'Review and approve calculated payroll runs.', group: 'Payroll' },
+  'payroll.inputs.view': { label: 'View payroll inputs', description: 'See the approved time, output, leave and adjustment records that payroll runs are built from.', group: 'Payroll' },
   'payroll.finalize': { label: 'Finalize payroll', description: 'Lock payroll runs, issue payslips, and post loan deductions.', group: 'Payroll' },
   'statutory.view': { label: 'View statutory contributions', description: 'See SSS, PhilHealth, Pag-IBIG, and withholding tax tables.', group: 'Payroll' },
   'statutory.edit': { label: 'Edit statutory contributions', description: 'Update contribution brackets, rates, and tax tables.', group: 'Payroll' },
@@ -75,7 +76,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'thirteenth_month.manage': { label: 'Manage 13th month pay', description: 'Generate, finalize, and issue 13th month payslips.', group: 'Compensation & Benefits' },
 
   'reports.view': { label: 'View reports', description: 'Open, export, and print workforce and payroll reports.', group: 'Analytics & Reports' },
-  'reports.payroll.view': { label: 'View payroll & tax reports', description: 'Open payroll, statutory, tax and compensation reports. Without it, only workforce reports (employee list, compensation, benefits, headcount, attendance, leave) are available.', group: 'Analytics & Reports' },
+  'reports.payroll.view': { label: 'View payroll & tax reports', description: 'Open payroll, statutory, tax and compensation reports. Without it, only workforce reports (employee list, compensation, benefits, statutory contributions, tax & compliance, headcount, attendance, leave) are available.', group: 'Analytics & Reports' },
   'insights.view': { label: 'View insights', description: 'See analytics and decision-support insights.', group: 'Analytics & Reports' },
   'approvals.view': { label: 'Approvals inbox', description: 'See pending requests that need action.', group: 'Analytics & Reports' },
 
@@ -95,7 +96,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   super_admin: 'Full platform access across all companies, including platform administration.',
   company_admin: 'Full access to everything in this company — people, payroll, settings, and billing.',
   hr_admin: 'Manages people and time — employee records, attendance, schedules, leave, overtime, approvals, benefits, loans and deductions. Views payroll results and 13th month; no payroll processing, bank details, or separations.',
-  payroll_admin: 'Runs payroll end to end — statutory contributions, payslips, loans, bonuses, and 13th month pay.',
+  payroll_admin: 'Runs payroll from approved records — payroll runs and inputs, statutory and tax, payslips, loans and deductions, bonuses, 13th month, and payroll reports.',
   manager: 'Approves their team’s attendance, overtime, and leave, and views team reports.',
   employee: 'Self-service only — own payslips, leave, attendance, and notifications.',
 }

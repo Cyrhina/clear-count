@@ -63,6 +63,11 @@ class OpsController extends Controller
         return $this->page('payroll.show', $request);
     }
 
+    public function payrollInputs(Request $request): Response
+    {
+        return $this->page('payroll.inputs', $request);
+    }
+
     public function bonusesIndex(Request $request): Response
     {
         return $this->page('bonuses.index', $request);

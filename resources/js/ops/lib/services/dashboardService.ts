@@ -331,3 +331,94 @@ export async function getWorkforceCharts(session: SessionUser): Promise<Workforc
 
   return { attendance, headcount }
 }
+
+export interface PayrollDashboard {
+  /** The run in progress (latest one not yet finalized), or the latest run when everything is finalized. */
+  current?: { id: string; payrollNumber: string; label: string; status: 'draft' | 'review' | 'approved' | 'finalized'; payDate: string; employees: number }
+  totals: { grossPay: number; totalDeductions: number; netPay: number; employerContributions: number; payrollCost: number }
+  counts: { periods: number; pendingRuns: number; awaitingApproval: number; approvedNotFinalized: number }
+  pendingRecords: { workLogs: number; overtime: number; leave: number; adjustments: number }
+  exceptions: { id: string; message: string; tone: 'danger' | 'warning'; to: string }[]
+  /** Gross, deductions and net per run, oldest first (last 6 runs). */
+  trend: { run: string; grossPay: number; deductions: number; netPay: number }[]
+  /** Where the deductions of the current run go. */
+  deductionBreakdown: { name: string; value: number }[]
+  /** Runs by stage of the Create → Review → Approve → Finalize flow. */
+  pipeline: { stage: string; runs: number }[]
+}
+
+const sum = (values: number[]) => values.reduce((a, b) => a + b, 0)
+
+/** Payroll Admin's home: the run in progress, what it costs, what is waiting on approval and what looks wrong. */
+export async function getPayrollDashboard(session: SessionUser): Promise<PayrollDashboard> {
+  const periods = db.payrollPeriods.filter((p) => p.companyId === session.companyId).sort((a, b) => b.startDate.localeCompare(a.startDate))
+  const focus = periods.find((p) => p.status !== 'finalized') ?? periods[0]
+  const lines = focus ? db.payrollLines.filter((l) => l.periodId === focus.id) : []
+  const employeesById = new Map(scopeForSession(db.employees, session).map((e) => [e.id, e]))
+  const name = (id: string) => {
+    const e = employeesById.get(id)
+    return e ? `${e.personal.firstName} ${e.personal.lastName}` : 'An employee'
+  }
+
+  const employer = sum(lines.map((l) => l.sssEmployerShare + l.philhealthEmployerShare + l.pagibigEmployerShare))
+  const grossPay = sum(lines.map((l) => l.grossPay))
+  const totals = { grossPay, totalDeductions: sum(lines.map((l) => l.totalDeductions)), netPay: sum(lines.map((l) => l.netPay)), employerContributions: employer, payrollCost: grossPay + employer }
+
+  const workLogs = db.compensationApprovals.filter((a) => a.companyId === session.companyId && a.status === 'pending').length
+  const overtime = db.overtimeRecords.filter((r) => r.companyId === session.companyId && r.status === 'pending').length
+  const leave = db.leaveRequests.filter((r) => r.companyId === session.companyId && r.status === 'pending').length
+  const adjustments = db.attendanceAdjustments.filter((a) => a.companyId === session.companyId && a.status === 'pending').length
+
+  const exceptions: PayrollDashboard['exceptions'] = []
+  const runTo = focus ? `/payroll/${focus.id}` : '/payroll'
+  const lowNet = lines.filter((l) => l.netPay <= 0)
+  if (lowNet.length) exceptions.push({ id: 'zero-net', message: `${lowNet.length} employee${lowNet.length === 1 ? '' : 's'} with zero or negative net pay${lowNet.length <= 2 ? ` (${lowNet.map((l) => name(l.employeeId)).join(', ')})` : ''}.`, tone: 'danger', to: runTo })
+  const held = focus?.excludedEmployeeIds?.length ?? 0
+  if (held) exceptions.push({ id: 'held', message: `${held} employee${held === 1 ? ' is' : 's are'} held out of the current run.`, tone: 'warning', to: runTo })
+  const active = [...employeesById.values()].filter((e) => e.employment.status === 'active')
+  const noBank = active.filter((e) => !e.bank?.accountNumber).length
+  if (noBank) exceptions.push({ id: 'no-bank', message: `${noBank} active employee${noBank === 1 ? ' has' : 's have'} no bank account on file.`, tone: 'warning', to: runTo })
+  const noGov = active.filter((e) => !e.government?.sssNo || !e.government?.philhealthNo || !e.government?.pagibigNo || !e.government?.tinNo).length
+  if (noGov) exceptions.push({ id: 'no-gov', message: `${noGov} active employee${noGov === 1 ? ' has' : 's have'} incomplete government ID numbers.`, tone: 'warning', to: '/statutory' })
+  if (workLogs) exceptions.push({ id: 'pending-logs', message: `${workLogs} hourly/output record${workLogs === 1 ? ' is' : 's are'} not approved yet and won't be paid until approved.`, tone: 'warning', to: '/payroll-inputs' })
+
+  const pending = periods.filter((p) => p.status === 'draft' || p.status === 'review')
+  const totalOf = (select: (l: (typeof lines)[number]) => number) => sum(lines.map(select))
+  const sumDeductionLines = (items: { amount: number }[]) => sum(items.map((i) => i.amount))
+  const trend = periods
+    .slice(0, 6)
+    .reverse()
+    .map((p) => {
+      const ls = db.payrollLines.filter((l) => l.periodId === p.id)
+      return { run: p.payrollNumber, grossPay: sum(ls.map((l) => l.grossPay)), deductions: sum(ls.map((l) => l.totalDeductions)), netPay: sum(ls.map((l) => l.netPay)) }
+    })
+  const deductionBreakdown = [
+    { name: 'SSS', value: totalOf((l) => l.sssEmployeeShare) },
+    { name: 'PhilHealth', value: totalOf((l) => l.philhealthEmployeeShare) },
+    { name: 'Pag-IBIG', value: totalOf((l) => l.pagibigEmployeeShare) },
+    { name: 'Withholding tax', value: totalOf((l) => l.withholdingTax) },
+    { name: 'Loans', value: totalOf((l) => sumDeductionLines(l.loanDeductions)) },
+    { name: 'Other deductions', value: totalOf((l) => sumDeductionLines(l.otherDeductions)) },
+  ].filter((d) => d.value > 0)
+  const pipeline = [
+    { stage: 'Draft', runs: periods.filter((p) => p.status === 'draft').length },
+    { stage: 'In review', runs: periods.filter((p) => p.status === 'review').length },
+    { stage: 'Approved', runs: periods.filter((p) => p.status === 'approved').length },
+    { stage: 'Finalized', runs: periods.filter((p) => p.status === 'finalized').length },
+  ]
+  return {
+    current: focus ? { id: focus.id, payrollNumber: focus.payrollNumber, label: focus.label, status: focus.status, payDate: focus.payDate, employees: lines.length } : undefined,
+    totals,
+    counts: {
+      periods: periods.length,
+      pendingRuns: pending.length,
+      awaitingApproval: periods.filter((p) => p.status === 'review').length,
+      approvedNotFinalized: periods.filter((p) => p.status === 'approved').length,
+    },
+    pendingRecords: { workLogs, overtime, leave, adjustments },
+    exceptions,
+    trend,
+    deductionBreakdown,
+    pipeline,
+  }
+}

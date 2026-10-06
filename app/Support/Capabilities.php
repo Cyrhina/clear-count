@@ -15,7 +15,7 @@ final class Capabilities
         'schedules.view', 'schedules.manage',
         'overtime.view', 'overtime.log', 'overtime.approve', 'compensation_approvals.manage',
         'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types',
-        'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize',
+        'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize', 'payroll.inputs.view',
         'statutory.view', 'statutory.edit', 'payslips.view', 'payslips.generate',
         'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage',
         'thirteenth_month.view', 'thirteenth_month.manage',
@@ -38,14 +38,13 @@ final class Capabilities
             'reports.view', 'approvals.view',
             'notifications.view', 'notifications.send', 'branches.manage',
         ],
+        // Payroll from approved records; time, output and leave are read through Payroll Inputs.
         'payroll_admin' => [
-            'dashboard.view', 'employees.view', 'employees.bank.edit', 'attendance.view', 'schedules.view',
-            'overtime.view', 'overtime.log', 'overtime.approve', 'leave.view',
-            'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize',
+            'dashboard.view', 'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize', 'payroll.inputs.view',
             'statutory.view', 'statutory.edit', 'payslips.view', 'payslips.generate',
             'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage',
             'thirteenth_month.view', 'thirteenth_month.manage',
-            'reports.view', 'reports.payroll.view', 'approvals.view', 'notifications.view', 'settings.payroll.edit',
+            'reports.view', 'reports.payroll.view', 'notifications.view', 'settings.payroll.edit',
         ],
         'manager' => [
             'dashboard.view', 'attendance.view', 'attendance.approve', 'schedules.view',

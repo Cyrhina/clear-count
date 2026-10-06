@@ -9,6 +9,7 @@ import {
   Gauge,
   Gift,
   Landmark,
+  ListChecks,
   LayoutDashboard,
   LineChart,
   Moon,
@@ -74,6 +75,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Payroll',
     items: [
       { label: 'Payroll Runs', path: '/payroll', icon: Wallet, plainCards: true, capability: 'payroll.view' },
+      { label: 'Payroll Inputs', path: '/payroll-inputs', icon: ListChecks, plainCards: true, capability: 'payroll.inputs.view' },
       { label: 'Bonuses & Incentives', path: '/bonuses', icon: Gift, plainCards: true, capability: 'bonuses.view', feature: 'bonuses_incentives' },
       {
         label: '13th Month Pay',
@@ -83,7 +85,7 @@ export const ADMIN_NAV: NavGroup[] = [
         capability: 'thirteenth_month.view',
         feature: 'thirteenth_month',
       },
-      { label: 'Statutory Contributions', path: '/statutory', icon: Landmark, plainCards: true, capability: 'statutory.view' },
+      { label: 'Statutory & Tax', path: '/statutory', icon: Landmark, plainCards: true, capability: 'statutory.view' },
       { label: 'Payslips', path: '/payslips', icon: ReceiptText, capability: 'payslips.view' },
     ],
   },

@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('leave', [OpsController::class, 'leave'])->middleware('permission:leave.view')->name('leave');
         Route::get('payroll', [OpsController::class, 'payrollIndex'])->middleware('permission:payroll.view')->name('payroll.index');
         Route::get('payroll/{id}', [OpsController::class, 'payrollShow'])->middleware('permission:payroll.view')->name('payroll.show');
+        Route::get('payroll-inputs', [OpsController::class, 'payrollInputs'])->middleware('permission:payroll.inputs.view')->name('payroll.inputs');
         Route::get('bonuses', [OpsController::class, 'bonusesIndex'])->middleware('permission:bonuses.view')->name('bonuses.index');
         Route::get('bonuses/{bonusId}/payslips/{employeeId}', [OpsController::class, 'bonusPayslip'])->middleware('permission:bonuses.view')->name('bonuses.payslip');
         Route::get('thirteenth-month-pay', [OpsController::class, 'thirteenthIndex'])->middleware('permission:thirteenth_month.view')->name('thirteenth.index');

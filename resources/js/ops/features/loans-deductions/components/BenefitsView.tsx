@@ -1,8 +1,9 @@
-import { CalendarClock, Pencil, Search } from 'lucide-react'
+import { CalendarClock, Pencil } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
-import { Input } from '@ops/components/ui/Input'
+import { FilterField } from '@ops/components/ui/FiltersPopover'
+import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
@@ -183,16 +184,26 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
         {!isAllowance && <StatTile label="Employee contributions / month" value={formatCurrency(employeeContributions)} />}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee or benefit…" className="pl-9" />
-        </div>
-        <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} className="w-40" />
-        <p className="ml-auto text-sm text-muted-foreground">
-          {filtered.length} of {rows.length} records
-        </p>
-      </div>
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search employee or benefit…"
+        activeCount={status !== 'all' ? 1 : 0}
+        onClear={() => {
+          setSearch('')
+          setStatus('all')
+        }}
+        trailing={
+          <>
+            {filtered.length} of {rows.length} records
+          </>
+        }
+        filters={
+          <FilterField label="Status">
+            <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} />
+          </FilterField>
+        }
+      />
 
       {isLoading ? (
         <Skeleton className="h-64" />

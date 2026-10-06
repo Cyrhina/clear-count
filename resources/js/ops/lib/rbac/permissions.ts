@@ -25,6 +25,7 @@ export type Capability =
   | 'payroll.run'
   | 'payroll.approve'
   | 'payroll.finalize'
+  | 'payroll.inputs.view'
   | 'statutory.view'
   | 'statutory.edit'
   | 'payslips.view'
@@ -76,6 +77,7 @@ const ALL_ADMIN_CAPS: Capability[] = [
   'payroll.run',
   'payroll.approve',
   'payroll.finalize',
+  'payroll.inputs.view',
   'statutory.view',
   'statutory.edit',
   'payslips.view',
@@ -137,20 +139,16 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'notifications.send',
     'branches.manage',
   ],
+  // Runs payroll from approved records: payroll runs and their inputs, statutory and tax, payslips, loans and
+  // deductions, bonuses, 13th month and payroll reports. Time, output and leave are approved by HR and managers —
+  // payroll only reads them (Payroll Inputs).
   payroll_admin: [
     'dashboard.view',
-    'employees.view',
-    'employees.bank.edit',
-    'attendance.view',
-    'schedules.view',
-    'overtime.view',
-    'overtime.log',
-    'overtime.approve',
-    'leave.view',
     'payroll.view',
     'payroll.run',
     'payroll.approve',
     'payroll.finalize',
+    'payroll.inputs.view',
     'statutory.view',
     'statutory.edit',
     'payslips.view',
@@ -163,7 +161,6 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'thirteenth_month.manage',
     'reports.view',
     'reports.payroll.view',
-    'approvals.view',
     'notifications.view',
     'settings.payroll.edit',
   ],
