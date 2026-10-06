@@ -1,5 +1,6 @@
 import { daysUntil, describeDeadline, nextDueDate, toIsoDate } from '@ops/lib/payroll/complianceDeadlines'
-import { getAttendanceAdjustments } from '@ops/lib/services/attendanceService'
+import { getEmployees } from '@ops/lib/services/employeeService'
+import { getAttendanceAdjustments, getAttendanceRecords } from '@ops/lib/services/attendanceService'
 import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
 import { getLeaveRequests } from '@ops/lib/services/leaveService'
 import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
@@ -285,4 +286,48 @@ export async function getAdminDashboardOverview(session: SessionUser): Promise<A
     ],
     reminders,
   }
+}
+
+export interface WorkforceCharts {
+  /** Last working days, oldest first: head counts by attendance outcome (leave comes from approved leave requests). */
+  attendance: { day: string; present: number; late: number; undertime: number; absent: number; onLeave: number }[]
+  /** Headcount per department, largest first. */
+  headcount: { department: string; active: number; inactive: number }[]
+}
+
+const ATTENDANCE_DAYS = 7
+
+/** Live attendance and headcount charts for the HR dashboard, derived from the employee roster, attendance records and leave requests. */
+export async function getWorkforceCharts(session: SessionUser): Promise<WorkforceCharts> {
+  const [employees, records, leaves] = await Promise.all([getEmployees(session), getAttendanceRecords(session), getLeaveRequests(session)])
+
+  const dates = [...new Set(records.map((r) => r.date))].sort().slice(-ATTENDANCE_DAYS)
+  const approvedLeaves = leaves.filter((l) => l.status === 'approved')
+  const attendance = dates.map((date) => {
+    const day = records.filter((r) => r.date === date)
+    const count = (status: string) => day.filter((r) => r.status === status).length
+    const [, m, d] = date.split('-').map(Number)
+    return {
+      day: `${MONTHS[m - 1]} ${d}`,
+      present: count('present'),
+      late: count('late'),
+      undertime: count('undertime'),
+      absent: count('absent'),
+      onLeave: approvedLeaves.filter((l) => l.dateFrom <= date && l.dateTo >= date).length,
+    }
+  })
+
+  const byDepartment = new Map<string, { active: number; inactive: number }>()
+  for (const e of employees) {
+    const key = e.employment.department || 'Unassigned'
+    const entry = byDepartment.get(key) ?? { active: 0, inactive: 0 }
+    if (e.employment.status === 'active') entry.active += 1
+    else entry.inactive += 1
+    byDepartment.set(key, entry)
+  }
+  const headcount = [...byDepartment.entries()]
+    .map(([department, counts]) => ({ department, ...counts }))
+    .sort((a, b) => b.active + b.inactive - (a.active + a.inactive))
+
+  return { attendance, headcount }
 }

@@ -5,6 +5,9 @@ export type Capability =
   | 'employees.view'
   | 'employees.edit'
   | 'employees.compensation.edit'
+  | 'employees.government.edit'
+  | 'employees.bank.edit'
+  | 'employees.separate'
   | 'attendance.view'
   | 'attendance.adjust'
   | 'attendance.approve'
@@ -34,6 +37,7 @@ export type Capability =
   | 'thirteenth_month.manage'
   | 'ess.view'
   | 'reports.view'
+  | 'reports.payroll.view'
   | 'insights.view'
   | 'approvals.view'
   | 'notifications.view'
@@ -52,6 +56,9 @@ const ALL_ADMIN_CAPS: Capability[] = [
   'employees.view',
   'employees.edit',
   'employees.compensation.edit',
+  'employees.government.edit',
+  'employees.bank.edit',
+  'employees.separate',
   'attendance.view',
   'attendance.adjust',
   'attendance.approve',
@@ -80,6 +87,7 @@ const ALL_ADMIN_CAPS: Capability[] = [
   'thirteenth_month.view',
   'thirteenth_month.manage',
   'reports.view',
+  'reports.payroll.view',
   'insights.view',
   'approvals.view',
   'notifications.view',
@@ -96,12 +104,16 @@ const ALL_ADMIN_CAPS: Capability[] = [
 export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
   super_admin: [...ALL_ADMIN_CAPS, 'platform.admin'],
   company_admin: ALL_ADMIN_CAPS,
+  // People and time: records, attendance, schedules, leave, overtime, structure and announcements. No pay rates,
+  // payroll, bank details or separations — those stay with payroll and the Company Admin.
   hr_admin: [
     'dashboard.view',
     'employees.view',
     'employees.edit',
+    'employees.government.edit',
     'attendance.view',
     'attendance.adjust',
+    'attendance.approve',
     'schedules.view',
     'schedules.manage',
     'overtime.view',
@@ -111,14 +123,24 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'leave.request',
     'leave.approve',
     'leave.manage_types',
+    'compensation_approvals.manage',
+    'payroll.view',
+    'payslips.view',
+    'loans.view',
+    'loans.manage',
+    'bonuses.view',
+    'bonuses.manage',
+    'thirteenth_month.view',
     'reports.view',
     'approvals.view',
     'notifications.view',
-    'onboarding.manage',
+    'notifications.send',
+    'branches.manage',
   ],
   payroll_admin: [
     'dashboard.view',
     'employees.view',
+    'employees.bank.edit',
     'attendance.view',
     'schedules.view',
     'overtime.view',
@@ -140,6 +162,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'thirteenth_month.view',
     'thirteenth_month.manage',
     'reports.view',
+    'reports.payroll.view',
     'approvals.view',
     'notifications.view',
     'settings.payroll.edit',
@@ -154,6 +177,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'leave.view',
     'leave.approve',
     'reports.view',
+    'reports.payroll.view',
     'approvals.view',
     'notifications.view',
     'ess.view',

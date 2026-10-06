@@ -1,4 +1,6 @@
-import { buildXlsx, downloadBlob, type XlsxCell, type XlsxColumnType } from '@ops/lib/utils/xlsx'
+import { BRAND } from '@ops/lib/brand'
+import { buildXlsx, downloadBlob, type XlsxCell, type XlsxColumnType, type XlsxPalette } from '@ops/lib/utils/xlsx'
+import type { Company } from '@ops/types/domain'
 
 /** What a report hands to "Export to Excel": the table exactly as exported (first row = header). */
 export interface ExcelExport {
@@ -108,17 +110,94 @@ export function formatGeneratedAt(date: Date): string {
   return new Intl.DateTimeFormat('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
-export function downloadReportWorkbook({
-  companyName,
+/** Who the report is for: shown at the top-right of every export, next to the logo on the left. */
+export interface ReportCompany {
+  name: string
+  /** The company's logo (any image URL / data URL). Falls back to the FBS Pay logo. */
+  logoUrl?: string
+  addressLines: string[]
+  contactLine?: string
+}
+
+export const REPORT_BRAND = { name: BRAND.name, subtitle: BRAND.subtitle, tagline: BRAND.tagline, closing: 'Better Workplaces. Brighter Futures.' }
+export const DEFAULT_REPORT_LOGO = '/brand/fbs-pay-light.png'
+
+export const REPORT_NOTES = ['This report is for payroll processing purposes only.', 'Figures are rounded to the nearest cent.']
+
+/** Builds the header details (name, logo, address, contacts) for a company; safe with a missing company. */
+export function companyHeaderFor(company?: Company): ReportCompany {
+  const a = company?.registeredAddress
+  const street = [a?.buildingUnit, a?.street].filter(Boolean).join(', ')
+  const area = [a?.barangay, a?.city].filter(Boolean).join(', ')
+  const region = [[a?.province, a?.zipCode].filter(Boolean).join(' '), a?.country].filter(Boolean).join(', ')
+  return {
+    name: company?.name ?? 'Frontline Business Solutions',
+    logoUrl: company?.logoUrl,
+    addressLines: [street, [area, region].filter(Boolean).join(', ')].filter(Boolean),
+    contactLine: [company?.email, company?.website?.replace(/^https?:\/\//, '')].filter(Boolean).join('   |   ') || undefined,
+  }
+}
+
+function themeHex(name: string, fallback: string): string {
+  const raw = typeof document === 'undefined' ? '' : getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw.slice(1).toUpperCase() : fallback
+}
+
+/** The current brand colors (follows the company's logo theme) as xlsx palette values. */
+function exportPalette(): XlsxPalette {
+  return { primary: themeHex('--color-brand-700', '247A41'), dark: themeHex('--color-brand-900', '184828'), light: themeHex('--color-brand-50', 'E7FBEF') }
+}
+
+/** Any image URL → PNG bytes (the xlsx picture format), or undefined if it can't be loaded. */
+async function loadLogoPng(url: string): Promise<Uint8Array | undefined> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = reject
+      el.src = url
+    })
+    const size = 192
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return undefined
+    const scale = Math.min(size / img.width, size / img.height)
+    const w = img.width * scale
+    const h = img.height * scale
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    return blob ? new Uint8Array(await blob.arrayBuffer()) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Summary cards currently shown on the report (the stat tiles), so the Excel export carries the same ones — none when the report has none. */
+export function collectSummaryCards(): { label: string; value: string }[] {
+  if (typeof document === 'undefined') return []
+  return [...document.querySelectorAll('.report-print .stat-tile')].flatMap((tile) => {
+    const label = tile.querySelector(':scope > div > p')?.textContent?.trim()
+    const value = tile.querySelector(':scope > p')?.textContent?.trim()
+    return label && value ? [{ label, value }] : []
+  })
+}
+
+export async function downloadReportWorkbook({
+  company,
   title,
   meta,
   generatedBy,
+  summary,
   data,
 }: {
-  companyName: string
+  company: ReportCompany
   title: string
   meta: ReportMetaItem[]
   generatedBy?: string
+  /** Summary cards to show above the table; omit for reports without them. */
+  summary?: { label: string; value: string }[]
   data: ExcelExport
 }) {
   const [headerRow = [], ...rest] = data.rows
@@ -147,18 +226,27 @@ export function downloadReportWorkbook({
   }
 
   const now = new Date()
-  const metaParts = [...meta.map((m) => `${m.label}: ${m.value}`), `Exported on: ${formatExportDate(now)}`]
-  if (generatedBy) metaParts.push(`Exported by: ${generatedBy}`)
+  const logoPng = (await loadLogoPng(company.logoUrl || DEFAULT_REPORT_LOGO)) ?? (company.logoUrl ? await loadLogoPng(DEFAULT_REPORT_LOGO) : undefined)
 
   const blob = buildXlsx({
     sheetName: title,
-    companyName,
+    brandName: REPORT_BRAND.name,
+    brandTagline: REPORT_BRAND.subtitle,
+    brandSlogan: REPORT_BRAND.tagline,
+    companyName: company.name,
+    companyAddress: company.addressLines.join(', ') || undefined,
+    companyContact: company.contactLine,
+    logoPng,
     title,
-    metaLine: metaParts.join('  |  '),
+    metaLines: meta.map((m) => `${m.label}: ${m.value}`),
+    summary: summary && summary.length > 0 ? summary : undefined,
     header,
     columnTypes,
     body: typedBody,
     footer: typedFooter,
+    notes: [...REPORT_NOTES, CONFIDENTIALITY_NOTE, `Generated on ${formatGeneratedAt(now)}${generatedBy ? ` by ${generatedBy}` : ''}.`],
+    closingTagline: REPORT_BRAND.closing,
+    palette: exportPalette(),
   })
   downloadBlob(`${stripExtension(data.filename)}.xlsx`, blob)
 }

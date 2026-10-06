@@ -8,7 +8,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { downloadReportWorkbook } from '@ops/features/reports/reportExport'
+import { companyHeaderFor, downloadReportWorkbook } from '@ops/features/reports/reportExport'
 import { useBenefitPlans, useDeductionPlans } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -37,6 +37,7 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
   const { user } = useSession()
   const { company } = useTenant()
   const canEdit = usePermission('employees.edit')
+  const canSeparate = usePermission('employees.separate')
   const canPayrollGroup = usePermission('settings.payroll.edit')
   const [kind, setKind] = useState<BulkKind | null>(null)
   const chosen = employees.filter((e) => selected.includes(e.id))
@@ -53,8 +54,8 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
       formatBaseRateShort(e.compensation.payType, e.compensation.basicPay, e.compensation.outputUnit),
       e.employment.status,
     ])
-    downloadReportWorkbook({
-      companyName: company?.name ?? 'Frontline Business Solutions',
+    void downloadReportWorkbook({
+      company: companyHeaderFor(company),
       title: 'Selected Employees',
       meta: [{ label: 'Employees', value: String(chosen.length) }],
       generatedBy: user.name,
@@ -99,7 +100,7 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
         <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={exportSelected}>
           Export
         </Button>
-        {canEdit && (
+        {canSeparate && (
           <Button size="sm" variant="secondary" icon={<UserMinus className="size-3.5" />} onClick={() => setKind('deactivate')}>
             Deactivate
           </Button>

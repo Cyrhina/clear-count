@@ -36,6 +36,9 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
 
   'employees.view': { label: 'View employees', description: 'Browse the employee directory and profiles.', group: 'Workforce' },
   'employees.edit': { label: 'Edit employees', description: 'Add, update, archive, and restore employee records.', group: 'Workforce' },
+  'employees.government.edit': { label: 'Edit government IDs', description: 'Update SSS, PhilHealth, Pag-IBIG and TIN numbers on employee records.', group: 'Workforce' },
+  'employees.bank.edit': { label: 'Edit bank details', description: 'Update the bank account an employee is paid into.', group: 'Workforce' },
+  'employees.separate': { label: 'Separate & deactivate employees', description: 'Record resignations and terminations, and deactivate or reactivate employees (this affects final pay).', group: 'Workforce' },
   'onboarding.manage': { label: 'Manage onboarding', description: 'Run the company onboarding checklist and setup steps.', group: 'Workforce' },
   'branches.manage': { label: 'Manage branches', description: 'Create branches and assign or transfer employees between them.', group: 'Workforce' },
 
@@ -72,6 +75,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'thirteenth_month.manage': { label: 'Manage 13th month pay', description: 'Generate, finalize, and issue 13th month payslips.', group: 'Compensation & Benefits' },
 
   'reports.view': { label: 'View reports', description: 'Open, export, and print workforce and payroll reports.', group: 'Analytics & Reports' },
+  'reports.payroll.view': { label: 'View payroll & tax reports', description: 'Open payroll, statutory, tax and compensation reports. Without it, only workforce reports (employee list, compensation, benefits, headcount, attendance, leave) are available.', group: 'Analytics & Reports' },
   'insights.view': { label: 'View insights', description: 'See analytics and decision-support insights.', group: 'Analytics & Reports' },
   'approvals.view': { label: 'Approvals inbox', description: 'See pending requests that need action.', group: 'Analytics & Reports' },
 
@@ -90,7 +94,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
 export const ROLE_DESCRIPTION: Record<Role, string> = {
   super_admin: 'Full platform access across all companies, including platform administration.',
   company_admin: 'Full access to everything in this company — people, payroll, settings, and billing.',
-  hr_admin: 'Manages employee records, attendance, overtime, leave, and onboarding.',
+  hr_admin: 'Manages people and time — employee records, attendance, schedules, leave, overtime, approvals, benefits, loans and deductions. Views payroll results and 13th month; no payroll processing, bank details, or separations.',
   payroll_admin: 'Runs payroll end to end — statutory contributions, payslips, loans, bonuses, and 13th month pay.',
   manager: 'Approves their team’s attendance, overtime, and leave, and views team reports.',
   employee: 'Self-service only — own payslips, leave, attendance, and notifications.',

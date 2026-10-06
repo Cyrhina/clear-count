@@ -1,3 +1,4 @@
+import { BRAND } from '@ops/lib/brand'
 import { formatDate } from '@ops/lib/utils/format'
 import type { Company, Employee, PayslipEmailKind } from '@ops/types/domain'
 
@@ -8,7 +9,7 @@ export const PAYSLIP_EMAIL_KIND_LABEL: Record<PayslipEmailKind, string> = {
 }
 
 /** Payslip notifications are sent by the platform's payroll mailer on the company's behalf. */
-export const PAYSLIP_EMAIL_SENDER = { name: 'FBS Payroll', address: 'noreply@fbspayroll.com', tagline: 'Simple. Accurate. On Time.' }
+export const PAYSLIP_EMAIL_SENDER = { name: 'FBS Pay', address: 'noreply@fbspayroll.com', tagline: BRAND.tagline }
 
 export interface PayslipEmailContent {
   senderName: string

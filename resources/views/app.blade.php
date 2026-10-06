@@ -30,8 +30,8 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="icon" href="/brand/fbs-pay-light.png" type="image/png" media="(prefers-color-scheme: light)">
+        <link rel="icon" href="/brand/fbs-pay-dark.png" type="image/png" media="(prefers-color-scheme: dark)">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         @fonts

@@ -1,5 +1,6 @@
 import { ChevronsLeft, ChevronsRight, Lock, X } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
+import { BRAND_NAME, BrandLogo } from '@ops/components/ui/BrandLogo'
 import { useSession } from '@ops/hooks/useSession'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
@@ -103,8 +104,8 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
     <div className={cn('flex items-center gap-2 px-2 pb-6', collapsed ? 'justify-center px-0' : 'justify-between')}>
       <div className="flex min-w-0 items-center gap-2">
-        <img src="/favicon.svg" alt="" className="size-7 shrink-0" />
-        {!collapsed && <span className="truncate font-display text-sm font-semibold tracking-tight text-sidebar-foreground">FBS OPS</span>}
+        <BrandLogo className="size-7" />
+        {!collapsed && <span className="truncate font-display text-sm font-semibold tracking-tight text-sidebar-foreground">{BRAND_NAME}</span>}
       </div>
       {!collapsed && <NotificationsBell />}
     </div>
@@ -165,8 +166,8 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobil
         >
           <div className="flex items-center justify-between pb-6">
             <div className="flex items-center gap-2 px-2">
-              <img src="/favicon.svg" alt="" className="size-7 shrink-0" />
-              <span className="font-display text-sm font-semibold tracking-tight text-sidebar-foreground">FBS OPS</span>
+              <BrandLogo className="size-7" />
+              <span className="font-display text-sm font-semibold tracking-tight text-sidebar-foreground">{BRAND_NAME}</span>
             </div>
             <div className="flex items-center gap-1">
               <NotificationsBell />

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react'
 import { Suspense, useEffect, useState } from 'react'
 import { AppShell } from '@ops/components/layout/AppShell'
 import { ToastProvider } from '@ops/components/ui/Toast'
+import { BrandSplash } from '@ops/components/ui/BrandLogo'
 import { CompanyThemeApplier } from '@ops/components/layout/CompanyThemeApplier'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
 import { seedSamplePayrollRuns } from '@ops/mock-data/payrollRuns'
@@ -44,7 +45,7 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
     void seeded.then(() => setReady(true))
   }, [email, role])
 
-  if (!ready) return null
+  if (!ready) return <BrandSplash />
   const Page = OPS_PAGES[pageKey] ?? OPS_PAGES.forbidden
 
   return (

@@ -91,6 +91,9 @@ function EmployeeProfileContent() {
   const [pendingGroupId, setPendingGroupId] = useState<string | null | undefined>(undefined)
   const canEditProfile = usePermission('employees.edit')
   const canEditCompensation = usePermission('employees.compensation.edit')
+  const canEditGovernment = usePermission('employees.government.edit')
+  const canEditBank = usePermission('employees.bank.edit')
+  const canSeparate = usePermission('employees.separate')
 
   function stopEditing() {
     setEditingSection(null)
@@ -162,17 +165,17 @@ function EmployeeProfileContent() {
             ) : (
               <StatusBadge status={employee.employment.status} />
             )}
-            {employee.employment.status === 'active' && (
+            {canSeparate && employee.employment.status === 'active' && (
               <Button size="sm" variant="secondary" onClick={() => setStatusDialog('inactive')}>
                 Deactivate
               </Button>
             )}
-            {employee.employment.status !== 'archived' && (
+            {canSeparate && employee.employment.status !== 'archived' && (
               <Button size="sm" variant="destructive" icon={<Archive className="size-4" />} onClick={() => setSeparateOpen(true)}>
                 Separate Employee
               </Button>
             )}
-            {employee.employment.status !== 'active' && (
+            {canSeparate && employee.employment.status !== 'active' && (
               <Button size="sm" onClick={() => setStatusDialog('active')}>
                 Reactivate
               </Button>
@@ -379,7 +382,7 @@ function EmployeeProfileContent() {
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
               <Card.Title>Government Information</Card.Title>
-              {canEditProfile && editingSection !== 'government' && (
+              {canEditGovernment && editingSection !== 'government' && (
                 <SectionEditButton onClick={() => setEditingSection('government')} />
               )}
             </div>
@@ -408,7 +411,7 @@ function EmployeeProfileContent() {
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
               <Card.Title>Bank/Payment</Card.Title>
-              {canEditProfile && editingSection !== 'bank' && (
+              {canEditBank && editingSection !== 'bank' && (
                 <SectionEditButton onClick={() => setEditingSection('bank')} />
               )}
             </div>

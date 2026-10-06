@@ -21,6 +21,7 @@ class DemoSeeder extends Seeder
 
         $accounts = [
             ['Andrea', 'Villareal', 'andrea.villareal@fbs.com', 'company_admin', null],
+            ['Grace', 'Ocampo', 'hr@fbs.com', 'hr_admin', null],
             ['Payroll', 'Manager', 'payroll@fbs.com', 'payroll_admin', null],
             ['Demo', 'Employee', 'employee@fbs.com', 'employee', $own?->id],
         ];

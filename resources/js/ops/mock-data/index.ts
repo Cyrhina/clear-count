@@ -1,3 +1,4 @@
+import { generateActivityLog } from '@ops/mock-data/generators/activityLog'
 import { generateAttendanceRecords } from '@ops/mock-data/generators/attendance'
 import { generateBenefitPlans, generateBenefits, generateDeductionPlans, generateEmployeeDeductions } from '@ops/mock-data/generators/benefitsDeductions'
 import { generateBonuses } from '@ops/mock-data/generators/bonuses'
@@ -152,7 +153,7 @@ export const db = {
   bonuses: generateBonuses(employees),
   compensationApprovals: generateCompensationApprovals(employees),
   holidays,
-  activityLog: [] as ActivityLogEntry[],
+  activityLog: generateActivityLog(users, employees) as ActivityLogEntry[],
   payrollPeriods: [] as PayrollPeriod[],
   payrollLines: [] as PayrollLine[],
   thirteenthMonthRuns: [] as ThirteenthMonthRun[],

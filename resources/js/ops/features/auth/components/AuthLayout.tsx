@@ -1,5 +1,7 @@
-import { Banknote, Cloud, Mail, Receipt, ShieldCheck, Timer, UsersRound } from 'lucide-react'
+import { Cloud, Mail, Receipt, ShieldCheck, Timer, UsersRound } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { BRAND_NAME, BrandLogo } from '@ops/components/ui/BrandLogo'
+import { BRAND } from '@ops/lib/brand'
 import { cn } from '@ops/lib/utils/cn'
 
 const FEATURE_BADGES = [
@@ -42,12 +44,11 @@ function BrandingHero() {
 
       <div className="relative">
         <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-brand-600 shadow-soft">
-            <Banknote className="size-5 text-white" />
-          </div>
+          <BrandLogo className="size-11 rounded-2xl shadow-soft" />
           <div>
-            <p className="font-display text-lg font-semibold leading-tight tracking-tight">FBS Payroll</p>
-            <p className="text-xs text-muted-foreground">Simple. Accurate. On Time.</p>
+            <p className="font-display text-lg font-semibold leading-tight tracking-tight">{BRAND_NAME}</p>
+            <p className="text-xs text-muted-foreground">{BRAND.subtitle}</p>
+            <p className="text-xs font-semibold italic text-brand-600">{BRAND.tagline}</p>
           </div>
         </div>
 
@@ -105,12 +106,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
         <div className="w-full max-w-sm">
           <div className="mb-6 flex items-center gap-2.5 lg:hidden">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600">
-              <Banknote className="size-4 text-white" />
-            </div>
+            <BrandLogo className="size-9 rounded-xl" />
             <div>
-              <p className="font-display text-base font-semibold tracking-tight">FBS Payroll</p>
-              <p className="text-xs text-muted-foreground">Simple. Accurate. On Time.</p>
+              <p className="font-display text-base font-semibold tracking-tight">{BRAND_NAME}</p>
+              <p className="text-xs text-muted-foreground">{BRAND.subtitle}</p>
+            <p className="text-xs font-semibold italic text-brand-600">{BRAND.tagline}</p>
             </div>
           </div>
 

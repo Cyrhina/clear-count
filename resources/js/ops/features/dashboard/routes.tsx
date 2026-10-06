@@ -6,6 +6,7 @@ import { Card } from '@ops/components/ui/Card'
 import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { AdminDashboard } from '@ops/features/dashboard/components/AdminDashboard'
+import { HrDashboard } from '@ops/features/dashboard/components/HrDashboard'
 import { useDashboardData } from '@ops/features/dashboard/hooks/useDashboardData'
 import { useSession } from '@ops/hooks/useSession'
 import { formatDate } from '@ops/lib/utils/format'
@@ -13,10 +14,13 @@ import { formatDate } from '@ops/lib/utils/format'
 export function DashboardPage() {
   const { user } = useSession()
 
-  // Company Admin gets the enriched operational dashboard; every other role
-  // (HR/Payroll Admin, Manager, Super Admin) keeps the existing dashboard below untouched.
+  // Company Admin and HR Admin get their own operational dashboards; every other role
+  // (Payroll Admin, Manager, Super Admin) keeps the existing dashboard below untouched.
   if (user.role === 'company_admin') {
     return <AdminDashboard />
+  }
+  if (user.role === 'hr_admin') {
+    return <HrDashboard />
   }
 
   return <DefaultDashboard />

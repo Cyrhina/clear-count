@@ -1,17 +1,17 @@
 /**
  * Company color theme from the logo: find the logo's dominant color, spread it into the 11-step `brand` scale
  * the whole UI is built on (`--color-brand-50 … 950` → buttons, links, charts, focus rings, badges) and tint the
- * sidebar. Lightness steps are fixed (the same ones as the default teal scale) so text on `brand-600` stays
+ * sidebar. Lightness steps are fixed (the same ones as the default green scale) so text on `brand-600` stays
  * readable whatever the logo's color — only hue and saturation come from the logo.
  */
 
 export const BRAND_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const
 export type BrandShade = (typeof BRAND_SHADES)[number]
 
-/** The built-in teal theme, used when a company hasn't turned on the logo theme. */
-export const DEFAULT_BRAND_COLOR = '#1f6f5f'
+/** The built-in FBS Pay green theme, used when a company hasn't turned on the logo theme. */
+export const DEFAULT_BRAND_COLOR = '#2d9450'
 
-const LIGHTNESS: Record<BrandShade, number> = { 50: 96, 100: 90, 200: 80, 300: 65, 400: 47, 500: 34, 600: 27, 700: 22, 800: 18, 900: 15, 950: 8 }
+const LIGHTNESS: Record<BrandShade, number> = { 50: 95, 100: 90, 200: 80, 300: 67, 400: 56, 500: 46, 600: 39, 700: 31, 800: 24, 900: 19, 950: 12 }
 
 interface Hsl {
   h: number
@@ -137,7 +137,7 @@ export function applyBrandTheme(hex: string | undefined | null) {
   for (const shade of BRAND_SHADES) root.style.setProperty(`--color-brand-${shade}`, scale[shade])
   const { h, s } = rgbToHsl(...hexToRgb(hex))
   const tint = Math.min(35, s)
-  root.style.setProperty('--brand-sidebar', hslToHex({ h, s: tint, l: 11 }))
+  root.style.setProperty('--brand-sidebar', hslToHex({ h, s: tint, l: 12 }))
   root.style.setProperty('--brand-sidebar-dark', hslToHex({ h, s: tint * 0.5, l: 6 }))
   root.style.setProperty('--brand-sidebar-muted', hslToHex({ h, s: tint * 0.4, l: 62 }))
 }

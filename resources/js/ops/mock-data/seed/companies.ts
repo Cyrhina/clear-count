@@ -4,7 +4,7 @@ export const companies: Company[] = [
   {
     id: 'co_frontline',
     name: 'Frontline Business Solutions',
-    tradeName: 'FBS OPS',
+    tradeName: 'FBS Pay',
     planTier: 'professional',
     billingInterval: 'monthly',
     nextRenewalDate: '2026-10-15',

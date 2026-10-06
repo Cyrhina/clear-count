@@ -1,4 +1,5 @@
 import { ArrowLeft, Printer } from 'lucide-react'
+import { PoweredByBrand } from '@ops/components/ui/BrandLogo'
 import { Link, useParams } from 'react-router-dom'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Badge } from '@ops/components/ui/Badge'
@@ -172,6 +173,7 @@ export function ThirteenthMonthPayslipDocument({
       <p className="pb-6 text-center text-[10px] uppercase tracking-wide text-muted-foreground/70 print:text-foreground/50">
         This is a system-generated document and does not require a signature.
       </p>
+      <PoweredByBrand />
     </Card>
   )
 }

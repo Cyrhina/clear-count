@@ -104,8 +104,19 @@ export interface ActivityLogEntry {
   companyId: string
   timestamp: string
   actor: string
+  actorRole?: Role
+  /** What happened, as a sentence — shown as the description in the details panel. */
   action: string
   details?: string
+  /** Where it happened, e.g. "Payroll". Entries from before modules existed have none. */
+  module?: 'Payroll' | 'Employees' | 'Attendance' | 'Leave' | 'Reports' | 'Loans & Deductions' | 'User Access'
+  /** The verb pill: Exported, Processed, Updated, Approved, Generated, Added, Viewed, Finalized, Invited, Deactivated … */
+  kind?: string
+  /** What it happened to (list title) and its secondary line. */
+  title?: string
+  subtitle?: string
+  /** A file produced by the action (exports). */
+  file?: { name: string; size: string }
 }
 
 export interface Holiday {

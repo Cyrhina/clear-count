@@ -1,23 +1,22 @@
-import { Eye, ShieldCheck } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
-import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { useToast } from '@ops/components/ui/Toast'
+import { ActivityLogPanel } from '@ops/features/user-access/components/ActivityLogPanel'
 import { InviteUserDialog } from '@ops/features/user-access/components/InviteUserDialog'
 import { RolePermissionsDialog } from '@ops/features/user-access/components/RolePermissionsDialog'
-import { useActivityLog, useUsers } from '@ops/features/user-access/hooks/useUsers'
+import { useUsers } from '@ops/features/user-access/hooks/useUsers'
 import { ROLE_DESCRIPTION, groupCapabilities } from '@ops/features/user-access/permissionCatalog'
 import { useSession } from '@ops/hooks/useSession'
 import { ROLE_PERMISSIONS, type Capability } from '@ops/lib/rbac/permissions'
 import { setUserActive, updateUserRole } from '@ops/lib/services/userService'
-import { formatDate } from '@ops/lib/utils/format'
 import type { Role } from '@ops/types/domain'
 
 const ROLE_OPTIONS = [
@@ -143,30 +142,6 @@ function PermissionsTab() {
   )
 }
 
-function ActivityLogTab() {
-  const log = useActivityLog()
-
-  if (log.length === 0) {
-    return <EmptyState icon={ShieldCheck} title="No activity yet" description="Role changes and account updates will be logged here." />
-  }
-
-  return (
-    <div className="space-y-3">
-      {log.map((entry) => (
-        <div key={entry.id} className="flex gap-3 border-l-2 border-border pl-4">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">{entry.action}</p>
-            <p className="text-xs text-muted-foreground">
-              {entry.actor} &middot; {formatDate(entry.timestamp)}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export function UserAccessPage() {
   const { refetch } = useUsers()
 
@@ -191,7 +166,7 @@ export function UserAccessPage() {
           <PermissionsTab />
         </TabsContent>
         <TabsContent value="activity">
-          <ActivityLogTab />
+          <ActivityLogPanel />
         </TabsContent>
       </Tabs>
     </div>

@@ -174,7 +174,7 @@ function ApiKeysTab() {
       {isLoading ? (
         <Skeleton className="h-40" />
       ) : apiKeys.length === 0 ? (
-        <EmptyState title="No API keys yet" description="Generate a key to let external systems authenticate with FBS OPS." />
+        <EmptyState title="No API keys yet" description="Generate a key to let external systems authenticate with FBS Pay." />
       ) : (
         <Table>
           <TableHeader>
@@ -230,10 +230,10 @@ function AddWebhookDialog({ onCreated }: { onCreated: () => void }) {
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Add Webhook</DialogTitle>
-        <DialogDescription>FBS OPS will POST an event payload to this URL when it occurs.</DialogDescription>
+        <DialogDescription>FBS Pay will POST an event payload to this URL when it occurs.</DialogDescription>
         <div className="mt-5 space-y-4">
           <FormField label="Endpoint URL" required>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/webhooks/fbs-ops" />
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/webhooks/fbs-pay" />
           </FormField>
           <FormField label="Event">
             <Select value={event} onValueChange={(v) => setEvent(v as WebhookEvent)} options={WEBHOOK_EVENT_OPTIONS} />

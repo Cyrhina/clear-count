@@ -1,4 +1,5 @@
 import { CalendarDays, Gift, Heart, Info, TrendingDown, TrendingUp, Trophy, User } from 'lucide-react'
+import { PoweredByBrand } from '@ops/components/ui/BrandLogo'
 import type { LucideIcon } from 'lucide-react'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Card } from '@ops/components/ui/Card'
@@ -353,6 +354,7 @@ export function PayslipCard({
       <p className="pb-6 text-center text-[10px] uppercase tracking-wide text-muted-foreground/70 print:text-foreground/50">
         This is a system-generated document and does not require a signature.
       </p>
+      <PoweredByBrand />
     </Card>
   )
 }

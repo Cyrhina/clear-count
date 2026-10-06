@@ -6,10 +6,10 @@ import { useTaxAlerts } from '@ops/features/dashboard/hooks/useDashboardData'
 import type { TaxAlertLevel } from '@ops/lib/services/taxComplianceService'
 import { cn } from '@ops/lib/utils/cn'
 
-const LEVEL: Record<TaxAlertLevel, { icon: typeof CircleAlert; emoji: string; box: string; text: string }> = {
-  review: { icon: CircleAlert, emoji: '🔴', box: 'border-danger/30 bg-danger/5', text: 'text-danger' },
-  approaching: { icon: AlertTriangle, emoji: '🟡', box: 'border-warning/30 bg-warning/5', text: 'text-warning' },
-  within: { icon: CheckCircle2, emoji: '🟢', box: 'border-success/30 bg-success/5', text: 'text-success' },
+const LEVEL: Record<TaxAlertLevel, { icon: typeof CircleAlert; tile: string; box: string; text: string }> = {
+  review: { icon: CircleAlert, tile: 'bg-danger/10 text-danger', box: 'border-danger/30 bg-danger/5', text: 'text-danger' },
+  approaching: { icon: AlertTriangle, tile: 'bg-warning/10 text-warning', box: 'border-warning/30 bg-warning/5', text: 'text-warning' },
+  within: { icon: CheckCircle2, tile: 'bg-success/10 text-success', box: 'border-success/30 bg-success/5', text: 'text-success' },
 }
 
 /** Most alerts of each kind shown on the dashboard — the rest are one click away in the Tax Monitoring report. */
@@ -52,8 +52,8 @@ export function TaxAlertsCard() {
                   to="/reports/tax-monitoring?tab=basic"
                   className={cn('flex items-start gap-3 rounded-xl border p-3.5 transition-colors hover:bg-card', level.box)}
                 >
-                  <span aria-hidden="true" className="text-base leading-5">
-                    {level.emoji}
+                  <span aria-hidden="true" className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', level.tile)}>
+                    <level.icon className="size-[18px]" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className={cn('text-sm font-semibold', level.text)}>{alert.title}</p>

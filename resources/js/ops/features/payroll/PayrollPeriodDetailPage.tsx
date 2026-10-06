@@ -35,7 +35,7 @@ import { getBonuses } from '@ops/lib/services/bonusService'
 import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
 import { getLoans } from '@ops/lib/services/loanService'
 import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
-import { downloadReportWorkbook } from '@ops/features/reports/reportExport'
+import { companyHeaderFor, downloadReportWorkbook } from '@ops/features/reports/reportExport'
 import { approvePayroll, finalizePayroll, getStatutoryConfig, holdEmployeesInPeriod, releaseEmployeesInPeriod, runPayroll } from '@ops/lib/services/payrollService'
 import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
 import { getThirteenthMonthLines, getThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthService'
@@ -167,8 +167,8 @@ export function PayrollPeriodDetailPage() {
     const chosen = lines.filter((l) => selection.selected.has(l.employeeId))
     const header = ['Employee', 'Position', 'Gross Pay', 'Total Deductions', 'Net Pay']
     const rows = chosen.map((l) => [employeeName(l.employeeId), employeeById.get(l.employeeId)?.employment.position ?? '', l.grossPay, l.totalDeductions, l.netPay])
-    downloadReportWorkbook({
-      companyName: company?.name ?? 'Frontline Business Solutions',
+    void downloadReportWorkbook({
+      company: companyHeaderFor(company),
       title: `Payroll ${period.payrollNumber} — selected employees`,
       meta: [{ label: 'Payroll Period', value: period.label }, { label: 'Employees', value: String(chosen.length) }],
       generatedBy: user.name,

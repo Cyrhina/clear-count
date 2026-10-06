@@ -67,7 +67,7 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <h2 className="font-display text-2xl font-semibold tracking-tight">Welcome Back!</h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">Log in to your FBS Payroll account to continue.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">Log in to your FBS Pay account to continue.</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-4">
         <div>

@@ -35,6 +35,7 @@ import { CustomReportBuilder } from '@ops/features/reports/components/CustomRepo
 import { ReportCategorySection, type ReportCategory } from '@ops/features/reports/components/shared'
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
 import { DeMinimisBenefitsReport, TaxMonitoringReport, TaxableCompensationReport, ThirteenthMonthBenefitsReport, WithholdingTaxSummaryReport } from '@ops/features/reports/components/TaxComplianceReports'
+import { usePermission } from '@ops/hooks/usePermission'
 import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
 
 const BASIC_CATEGORIES: ReportCategory[] = [
@@ -214,7 +215,16 @@ function renderAdvancedReport(id: string) {
   }
 }
 
+/** Reports anyone with `reports.view` may open; everything else needs `reports.payroll.view` (it shows pay, tax, or cost). */
+const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'headcount-analysis', 'attendance-absenteeism', 'leave-utilization'])
+
+function visibleCategories(categories: ReportCategory[], canPayroll: boolean): ReportCategory[] {
+  if (canPayroll) return categories
+  return categories.map((c) => ({ ...c, reports: c.reports.filter((r) => WORKFORCE_REPORT_IDS.has(r.id)) })).filter((c) => c.reports.length > 0)
+}
+
 export function ReportsPage() {
+  const canPayroll = usePermission('reports.payroll.view')
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'advanced' ? 'advanced' : 'basic'
 
@@ -233,13 +243,13 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="basic" className="space-y-6">
-          {BASIC_CATEGORIES.map((category) => (
+          {visibleCategories(BASIC_CATEGORIES, canPayroll).map((category) => (
             <ReportCategorySection key={category.label} category={category} tab="basic" />
           ))}
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
-          {ADVANCED_CATEGORIES.map((category) => (
+          {visibleCategories(ADVANCED_CATEGORIES, canPayroll).map((category) => (
             <ReportCategorySection key={category.label} category={category} tab="advanced" />
           ))}
         </TabsContent>
@@ -263,7 +273,8 @@ export function ReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>()
   const [searchParams] = useSearchParams()
   const { usage, isLoading: usageLoading } = useSubscriptionUsage()
-  const meta = reportId ? REPORT_LOOKUP[reportId] : undefined
+  const canPayroll = usePermission('reports.payroll.view')
+  const meta = reportId && (canPayroll || WORKFORCE_REPORT_IDS.has(reportId)) ? REPORT_LOOKUP[reportId] : undefined
 
   // The `?tab=` query param records which tab the user opened this report from, so the back
   // link restores it exactly — including after a full page reload. Fall back to the report's
