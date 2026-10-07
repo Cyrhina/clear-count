@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { FormField } from '@ops/components/ui/FormField'
+import { LeavePreview } from '@ops/features/leave/components/LeavePreview'
+import { LeaveDurationField } from '@ops/features/leave/components/LeaveDurationField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
@@ -17,7 +19,8 @@ const schema = z.object({
   employeeId: z.string().min(1, 'Select an employee'),
   leaveTypeId: z.string().min(1, 'Select a leave type'),
   dateFrom: z.string().min(1, 'Required'),
-  dateTo: z.string().min(1, 'Required'),
+  dateTo: z.string().optional(),
+  dayPortion: z.enum(['full', 'half_am', 'half_pm']),
   reason: z.string().optional(),
 })
 
@@ -41,13 +44,22 @@ export function LeaveRequestDialog({
     handleSubmit,
     control,
     reset,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { dayPortion: 'full' } })
+  const dayPortion = watch('dayPortion')
+  const isHalf = dayPortion !== 'full'
+  const [employeeId, leaveTypeId, dateFrom, dateTo] = watch(['employeeId', 'leaveTypeId', 'dateFrom', 'dateTo'])
 
   async function onSubmit(values: FormValues) {
-    await submitLeaveRequest(user, values)
+    const dateTo = isHalf ? values.dateFrom : values.dateTo
+    if (!dateTo) return setError('dateTo', { message: 'Required' })
+    if (dateTo < values.dateFrom) return setError('dateTo', { message: 'Must be on or after the start date' })
+    const result = await submitLeaveRequest(user, { ...values, dateTo })
+    if (!result.ok) return // the live preview above already shows why
     notify({ title: 'Leave request submitted', tone: 'success' })
-    reset()
+    reset({ dayPortion: 'full' })
     setOpen(false)
     onCreated()
   }
@@ -90,12 +102,17 @@ export function LeaveRequestDialog({
               )}
             />
           </FormField>
-          <FormField label="From" required error={errors.dateFrom?.message}>
+          <Controller control={control} name="dayPortion" render={({ field }) => <LeaveDurationField value={field.value} onChange={field.onChange} />} />
+          <FormField label={isHalf ? 'Date' : 'From'} required error={errors.dateFrom?.message} className={isHalf ? 'col-span-2' : undefined}>
             <Input type="date" {...register('dateFrom')} />
           </FormField>
-          <FormField label="To" required error={errors.dateTo?.message}>
-            <Input type="date" {...register('dateTo')} />
-          </FormField>
+          {!isHalf && (
+            <FormField label="To" required error={errors.dateTo?.message}>
+              <Input type="date" {...register('dateTo')} />
+            </FormField>
+          )}
+
+          <LeavePreview employeeId={employeeId} leaveTypeId={leaveTypeId} dateFrom={dateFrom} dateTo={dateTo} dayPortion={dayPortion} />
           <FormField label="Reason" className="col-span-2">
             <Textarea {...register('reason')} placeholder="Optional context for the approver." />
           </FormField>

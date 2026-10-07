@@ -12,6 +12,7 @@ import { useRowSelection } from '@ops/hooks/useRowSelection'
 import { useSession } from '@ops/hooks/useSession'
 import { decideLeaveRequest, decideLeaveRequests } from '@ops/lib/services/leaveService'
 import { cn } from '@ops/lib/utils/cn'
+import { portionSuffix } from '@ops/lib/leave/leaveDays'
 import { formatDate } from '@ops/lib/utils/format'
 import type { Employee, LeaveRequest, LeaveType } from '@ops/types/domain'
 
@@ -77,7 +78,8 @@ export function LeaveRequestsList({
                   <span className="ml-2 text-xs font-normal text-muted-foreground">{leaveType?.name}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}
+                  {request.dayPortion && request.dayPortion !== 'full' ? formatDate(request.dateFrom) : <>{formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}</>}
+                  {portionSuffix(request) && <span className="ml-2 rounded-md bg-brand-100 px-1.5 py-0.5 font-medium text-brand-800">{portionSuffix(request)}</span>}
                 </p>
                 {request.reason && <p className="mt-2 text-sm text-foreground">{request.reason}</p>}
               </div>

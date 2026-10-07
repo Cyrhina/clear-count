@@ -96,15 +96,15 @@ export function ManagerDashboard({ greetingName }: { greetingName: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="sage" watermark={Users} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Team Today</Card.Title>
               <Card.Description>Attendance {asOf}</Card.Description>
             </div>
             <ViewAllLink to="/attendance" />
           </Card.Header>
-          <Card.Body className="pt-2">
+          <Card.Body className="relative pt-2">
             {todayTotal === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">No attendance records yet.</p>
             ) : (
@@ -139,15 +139,15 @@ export function ManagerDashboard({ greetingName }: { greetingName: string }) {
           </Card.Body>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <Card.Header className="items-center">
+        <Card data-tint="lavender" watermark={CheckCircle2} className="relative overflow-hidden lg:col-span-2">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Team Attendance Summary</Card.Title>
               <Card.Description>Daily outcomes for your team, last 7 working days</Card.Description>
             </div>
             <ViewAllLink to="/attendance" />
           </Card.Header>
-          <Card.Body className="h-72 pt-2">
+          <Card.Body className="relative h-72 pt-2">
             {chartsLoading || !charts ? (
               <Skeleton className="h-full w-full" />
             ) : charts.attendance.length === 0 ? (
@@ -219,6 +219,7 @@ export function ManagerDashboard({ greetingName }: { greetingName: string }) {
                       <p className="text-xs text-muted-foreground">
                         {l.leaveType} · {formatDate(l.dateFrom)}
                         {l.dateTo !== l.dateFrom && ` – ${formatDate(l.dateTo)}`}
+                        {l.halfDay && ` · Half day (${l.halfDay})`}
                       </p>
                     </div>
                     <Badge tone="brand">

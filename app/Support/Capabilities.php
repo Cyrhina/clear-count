@@ -48,7 +48,7 @@ final class Capabilities
         ],
         // Their team only (branch-scoped): attendance, work and output, leave and overtime approvals, team reports.
         'manager' => [
-            'dashboard.view', 'employees.view', 'attendance.view', 'attendance.adjust', 'schedules.view',
+            'dashboard.view', 'employees.view', 'attendance.view', 'attendance.adjust', 'schedules.view', 'schedules.manage',
             'overtime.view', 'overtime.log', 'leave.view', 'compensation_approvals.manage',
             'reports.view', 'approvals.view', 'notifications.view', 'ess.view',
         ],

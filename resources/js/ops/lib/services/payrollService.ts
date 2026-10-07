@@ -1,11 +1,13 @@
+import { leaveDayFraction } from '@ops/lib/leave/leaveDays'
 import { bonusAmountFor, bonusAppliesToEmployee, includedInRegularPayroll } from '@ops/lib/payroll/bonusMatching'
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
-import { allocateMonthly, loanConfigNameFor, payScheduleFor } from '@ops/lib/payroll/payFrequency'
+import { allocateMonthly, loanConfigNameFor, payScheduleFor, periodsPerMonthFor } from '@ops/lib/payroll/payFrequency'
 import { basicPayFor, dailyRateFor, hourlyRateFor, monthlyEquivalentFor, workLogsForPeriod } from '@ops/lib/payroll/rateBasis'
 import { formatPayrollNumber, nextPayrollSequence, payrollYearOf } from '@ops/lib/payroll/payrollNumber'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
-import type { BonusIncentive, Employee, OvertimeRecord, PayrollDeductionLine, PayrollLine, PayrollPeriod, PayrollPeriodStatus, SessionUser, SssBracket, StatutoryConfig } from '@ops/types/domain'
+import { marginalRateOn, taxBracketsFor, taxFrequencyForPay, withholdingTaxOn } from '@ops/lib/payroll/withholdingTax'
+import type { BonusIncentive, Employee, OvertimeRecord, PayrollDeductionLine, PayrollFrequency, PayrollLine, PayrollPeriod, PayrollPeriodStatus, SessionUser, SssBracket, StatutoryConfig } from '@ops/types/domain'
 
 /** Case/whitespace-insensitive match between a bonus/13th-month payout label and a real payroll period's label — the seam that lets those modules' approved records flow into a run without a hard foreign key to a period that may not exist yet when they're created. */
 function periodLabelMatches(label: string, period: PayrollPeriod): boolean {
@@ -53,26 +55,25 @@ export async function createPayrollPeriod(session: SessionUser, input: CreatePer
   return period
 }
 
-/** Whether an approved leave of a paid leave type covers `date` — a paid-leave day is paid, never deducted as an absence. */
-function coveredByPaidLeave(companyId: string, employeeId: string, date: string): boolean {
-  return db.leaveRequests.some((r) => {
-    if (r.employeeId !== employeeId || r.status !== 'approved' || r.dateFrom > date || r.dateTo < date) return false
+/** How much of `date` an approved paid leave covers: 1 for a full-day leave, 0.5 for a half-day leave — a covered day is paid, never deducted as an absence. */
+function paidLeaveCoverage(companyId: string, employeeId: string, date: string): number {
+  const covered = db.leaveRequests.reduce((sum, r) => {
+    if (r.employeeId !== employeeId || r.status !== 'approved' || r.dateFrom > date || r.dateTo < date) return sum
     const type = db.leaveTypes.find((t) => t.id === r.leaveTypeId && t.companyId === companyId)
-    return !!type && type.isPaid !== false
-  })
+    return type && type.isPaid !== false ? sum + leaveDayFraction(r) : sum
+  }, 0)
+  return Math.min(1, covered)
 }
 
 /** Absent days in the period, split into unpaid absences (deducted) and paid-leave days (paid). */
 function attendanceOutcome(companyId: string, employeeId: string, startDate: string, endDate: string): { unpaidAbsentDays: number; paidLeaveDays: number } {
   const absences = db.attendanceRecords.filter((r) => r.employeeId === employeeId && r.status === 'absent' && r.date >= startDate && r.date <= endDate)
-  const paidLeaveDays = absences.filter((r) => coveredByPaidLeave(companyId, employeeId, r.date)).length
+  const paidLeaveDays = absences.reduce((sum, r) => sum + paidLeaveCoverage(companyId, employeeId, r.date), 0)
   return { unpaidAbsentDays: absences.length - paidLeaveDays, paidLeaveDays }
 }
 
 function taxFor(taxable: number, config: StatutoryConfig): number {
-  const bracket = config.taxBrackets.find((b) => taxable >= b.min && (b.max === null || taxable < b.max))
-  if (!bracket) return 0
-  return bracket.baseTax + (taxable - bracket.min) * bracket.rate
+  return withholdingTaxOn(taxable, config.taxBrackets)
 }
 
 function sssBracketFor(basicPay: number, brackets: SssBracket[]): SssBracket | undefined {
@@ -101,9 +102,12 @@ export interface MonthlyStatutory {
   pagibigEmployer: number
   /** Monthly compensation income subject to withholding: basis − employee SSS, PhilHealth, Pag-IBIG. */
   monthlyTaxable: number
+  /** Monthly-equivalent withholding tax: the tax of one pay period (on the pay frequency's bracket table) × pay periods per month. */
   withholdingTax: number
-  /** Marginal bracket rate — applied to taxable extras (overtime, taxable bonuses) paid in a cutoff. */
+  /** Marginal bracket rate of the pay frequency's table — applied to taxable extras (overtime, taxable bonuses) paid in a cutoff. */
   marginalRate: number
+  /** Marginal rate on the ANNUAL table at this employee's annualized taxable pay — for lump sums paid once a year (13th month). */
+  annualMarginalRate: number
 }
 
 /**
@@ -115,7 +119,7 @@ export interface MonthlyStatutory {
  *  - BIR: TRAIN monthly table on basis − employee contributions.
  * The single source for the payroll engine, the Statutory Contributions employee view, and payslips.
  */
-export function monthlyStatutoryFor(config: StatutoryConfig, employee: Employee): MonthlyStatutory {
+export function monthlyStatutoryFor(config: StatutoryConfig, employee: Employee, payFrequency?: PayrollFrequency, periodsPerMonth = 1): MonthlyStatutory {
   const monthlyBasis = monthlyEquivalentFor(employee)
 
   const sssBracket = sssBracketFor(monthlyBasis, config.sssBrackets)
@@ -138,8 +142,15 @@ export function monthlyStatutoryFor(config: StatutoryConfig, employee: Employee)
   const pagibigEmployer = Math.min(round2(fundSalary * pagibigRate), config.pagibigEmployerAmount)
 
   const monthlyTaxable = Math.max(0, monthlyBasis - sssEmployee - philhealthEmployee - pagibigEmployee)
-  const withholdingTax = round2(taxFor(monthlyTaxable, config))
-  const marginalRate = config.taxBrackets.find((b) => monthlyTaxable >= b.min && (b.max === null || monthlyTaxable < b.max))?.rate ?? 0
+  // Tax is figured on one pay period's taxable pay against the table for that pay frequency (monthly when none is given).
+  const taxFrequency = payFrequency ? taxFrequencyForPay(payFrequency, periodsPerMonth) : 'monthly'
+  const table = taxBracketsFor(config, taxFrequency)
+  const ppm = taxFrequency === 'monthly' || !table ? 1 : Math.max(periodsPerMonth, 0.0001)
+  const periodTaxable = monthlyTaxable / ppm
+  const withholdingTax = table ? round2(withholdingTaxOn(periodTaxable, table) * ppm) : round2(taxFor(monthlyTaxable, config))
+  const marginalRate = table ? marginalRateOn(periodTaxable, table) : marginalRateOn(monthlyTaxable, config.taxBrackets)
+  const annualTable = taxBracketsFor(config, 'annual')
+  const annualMarginalRate = annualTable ? marginalRateOn(monthlyTaxable * 12, annualTable) : marginalRateOn(monthlyTaxable, config.taxBrackets)
 
   return {
     monthlyBasis,
@@ -155,6 +166,7 @@ export function monthlyStatutoryFor(config: StatutoryConfig, employee: Employee)
     monthlyTaxable,
     withholdingTax,
     marginalRate,
+    annualMarginalRate,
   }
 }
 
@@ -266,7 +278,7 @@ function computeLine(session: SessionUser, period: PayrollPeriod, config: Statut
 
   // Statutory: full monthly amounts, then each allocated to this cutoff per its Payroll Settings schedule
   // (equal split by pay frequency, one specific cutoff, or a custom split).
-  const monthly = monthlyStatutoryFor(config, employee)
+  const monthly = monthlyStatutoryFor(config, employee, schedule.frequency, schedule.periodsPerMonth)
   // In a final-pay run the contributions and withholding tax are prorated with the salary (workedFraction is 1 otherwise).
   const alloc = (amount: number, name: string) => prorate(allocateMonthly(amount, schedule, configNamed(session.companyId, name)))
   const sssEmployeeShare = alloc(monthly.sssEmployee, 'SSS Contribution')
@@ -279,9 +291,28 @@ function computeLine(session: SessionUser, period: PayrollPeriod, config: Statut
   // Withholding tax: the monthly TRAIN tax on regular compensation, allocated like the others, plus
   // taxable extras paid this cutoff (overtime, taxable bonuses) at the employee's marginal rate — a
   // simplified stand-in for BIR's annualized method that never alters the regular withholding.
-  const baseWithholdingTax = Math.round(alloc(monthly.withholdingTax, 'Withholding Tax'))
+  // The withholding table is the one for this pay date's frequency (annual, monthly, semi-monthly, weekly or daily):
+  // the pay period's taxable pay (basic − absences − the contributions taken this period) is looked up in it directly.
+  // Bi-weekly and custom pay periods have no BIR table of their own, so they use the closest one (see taxFrequencyForPay).
+  // Only if a company has emptied that table does tax fall back to the monthly tax split by the allocation settings.
+  const taxFrequency = taxFrequencyForPay(schedule.frequency, schedule.periodsPerMonth)
+  const taxTable = taxBracketsFor(config, taxFrequency)
+  const cutoffsInRun = schedule.cutoffsCovered?.length ?? 1
+  let baseWithholdingTax: number
+  let marginalRate = monthly.marginalRate
+  let withholdingTaxBasis: PayrollLine['withholdingTaxBasis']
+  if (taxFrequency && taxTable) {
+    const contributions = sssEmployeeShare + philhealthEmployeeShare + pagibigEmployeeShare
+    const regularPay = basicPayAmount + paidLeaveEarning.reduce((sum, e) => sum + e.amount, 0) - absenceDeduction
+    const taxable = Math.max(0, round2((regularPay - contributions) / cutoffsInRun))
+    baseWithholdingTax = Math.round(withholdingTaxOn(taxable, taxTable) * cutoffsInRun)
+    marginalRate = marginalRateOn(taxable, taxTable)
+    withholdingTaxBasis = { frequency: taxFrequency, taxable, regularTax: baseWithholdingTax, marginalRate, cutoffs: cutoffsInRun }
+  } else {
+    baseWithholdingTax = Math.round(alloc(monthly.withholdingTax, 'Withholding Tax'))
+  }
   const taxableBonusAmount = approvedBonuses.filter((b) => b.taxable).reduce((sum, b) => sum + bonusAmountFor(b, employee), 0)
-  const extrasWithholdingTax = Math.round((taxableBonusAmount + overtimePay) * monthly.marginalRate)
+  const extrasWithholdingTax = Math.round((taxableBonusAmount + overtimePay) * marginalRate)
   const withholdingTax = baseWithholdingTax + extrasWithholdingTax
 
   const absenceLines = absenceDeduction > 0 ? [{ label: 'Absences', amount: absenceDeduction }] : []
@@ -374,6 +405,7 @@ function computeLine(session: SessionUser, period: PayrollPeriod, config: Statut
       pagibigEmployer: monthly.pagibigEmployer,
       withholdingTax: monthly.withholdingTax,
     },
+    withholdingTaxBasis,
     overtimePay: round2(overtimePay),
     benefitsProvided,
     benefitAllowances: benefitAllowances.map((b) => b.name),
@@ -401,20 +433,24 @@ export function computeSeparateBonusPayslip(session: SessionUser, bonus: BonusIn
   if (!config) return undefined
 
   const grossBonus = bonusAmountFor(bonus, employee)
-  const taxRate = bonus.taxable ? marginalTaxRate(config, employee) : 0
+  const taxRate = bonus.taxable ? marginalTaxRateFor(session, employee) : 0
   const withholdingTax = Math.round(grossBonus * taxRate)
   return { bonus, employee, grossBonus, withholdingTax, netPay: Math.round(grossBonus - withholdingTax), taxRate }
 }
 
 /** The employee's marginal withholding bracket rate — the same simplified rate the regular run applies to taxable bonuses. */
-function marginalTaxRate(config: StatutoryConfig, employee: Employee): number {
-  return monthlyStatutoryFor(config, employee).marginalRate
+function marginalTaxRate(config: StatutoryConfig, employee: Employee, frequency?: PayrollFrequency, periodsPerMonth?: number): number {
+  return monthlyStatutoryFor(config, employee, frequency, periodsPerMonth).marginalRate
 }
 
 /** Marginal withholding rate for an employee under the company's statutory config (0 if none configured). */
-export function marginalTaxRateFor(session: SessionUser, employee: Employee): number {
+export function marginalTaxRateFor(session: SessionUser, employee: Employee, basis: 'pay_date' | 'annual' = 'pay_date'): number {
   const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
-  return config ? marginalTaxRate(config, employee) : 0
+  if (!config) return 0
+  if (basis === 'annual') return monthlyStatutoryFor(config, employee).annualMarginalRate
+  const group = findEmployeePayrollGroup(db.payrollGroups.filter((g) => g.companyId === session.companyId), employee.id)
+  const frequency = group?.frequency ?? 'semi_monthly'
+  return marginalTaxRate(config, employee, frequency, periodsPerMonthFor(frequency, group))
 }
 
 /** Computes a line exactly as `runPayroll` would, without saving it or changing any state — for report previews. */

@@ -1,3 +1,4 @@
+import { useSession } from '@ops/hooks/useSession'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
@@ -6,9 +7,11 @@ import { ShiftTemplatesTab } from '@ops/features/schedules/components/ShiftTempl
 import { TeamsTab } from '@ops/features/schedules/components/TeamsTab'
 
 export function SchedulesPage() {
+  const { user } = useSession()
+  const teamOnly = Boolean(user.branchId)
   return (
     <PlainCards>
-      <PageHeader title="Schedules" description="View and manage every employee's schedule — shifts, rest days and flexible hours — and choose who supervises each team." />
+      <PageHeader title="Schedules" description={teamOnly ? "Plan your team's shifts and rest days, and see who is working, resting or on leave." : "View and manage every employee's schedule — shifts, rest days and flexible hours — and choose who supervises each team."} />
       <Tabs defaultValue="roster">
         <TabsList>
           <TabsTrigger value="roster">Roster</TabsTrigger>

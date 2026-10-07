@@ -104,15 +104,15 @@ export function PayrollDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <Card.Header className="items-center">
+        <Card data-tint="lavender" watermark={Wallet} className="relative overflow-hidden lg:col-span-2">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Payroll Cost by Run</Card.Title>
               <Card.Description>Gross pay, deductions and net pay — latest runs</Card.Description>
             </div>
             <ViewAllLink to="/payroll" />
           </Card.Header>
-          <Card.Body className="h-64 pt-2">
+          <Card.Body className="relative h-64 pt-2">
             {data.trend.length === 0 ? (
               <p className="py-20 text-center text-sm text-muted-foreground">{NO_RUN_HINT}.</p>
             ) : (
@@ -132,15 +132,15 @@ export function PayrollDashboard() {
           </Card.Body>
         </Card>
 
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="sage" watermark={Landmark} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Deductions</Card.Title>
               <Card.Description>{current ? `${formatCurrency(totals.totalDeductions)} in ${current.payrollNumber}` : NO_RUN_HINT}</Card.Description>
             </div>
             <ViewAllLink to="/loans-deductions" />
           </Card.Header>
-          <Card.Body className="h-64 pt-2">
+          <Card.Body className="relative h-64 pt-2">
             {data.deductionBreakdown.length === 0 ? (
               <p className="py-20 text-center text-sm text-muted-foreground">No deductions yet.</p>
             ) : (
@@ -161,8 +161,8 @@ export function PayrollDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="lavender" watermark={CheckCircle2} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Payroll Run Status</Card.Title>
               <Card.Description>
@@ -171,7 +171,7 @@ export function PayrollDashboard() {
             </div>
             <ViewAllLink to="/payroll" />
           </Card.Header>
-          <Card.Body className="h-56 pt-2">
+          <Card.Body className="relative h-56 pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.pipeline} margin={{ left: -16, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
@@ -188,15 +188,15 @@ export function PayrollDashboard() {
           </Card.Body>
         </Card>
 
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="peach" watermark={CalendarClock} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Pending Time / Output Records</Card.Title>
               <Card.Description>{pendingRecordsTotal} waiting on HR or managers — not paid until approved</Card.Description>
             </div>
             <ViewAllLink to="/payroll-inputs" />
           </Card.Header>
-          <Card.Body className="h-56 pt-2">
+          <Card.Body className="relative h-56 pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pendingChart} layout="vertical" margin={{ left: 8, right: 16, top: 4 }}>
                 <CartesianGrid horizontal={false} stroke="var(--color-border)" />

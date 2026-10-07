@@ -42,7 +42,9 @@ const initials = (e: Employee) => `${e.personal.firstName[0] ?? ''}${e.personal.
 export function RosterTab() {
   const { user } = useSession()
   const { notify } = useToast()
-  const { branches } = useTenant()
+  const { branches: companyBranches } = useTenant()
+  // Branch-scoped users (managers) only ever see their own branch.
+  const branches = useMemo(() => (user.branchId ? companyBranches.filter((b) => b.id === user.branchId) : companyBranches), [companyBranches, user.branchId])
   const canManage = usePermission('schedules.manage')
 
   const [view, setView] = useState<RosterView>('week')

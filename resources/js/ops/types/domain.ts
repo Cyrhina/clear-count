@@ -539,7 +539,10 @@ export interface StatutoryConfig {
   /** Maximum monthly Pag-IBIG share (₱200 = 2% of the ₱10,000 maximum fund salary). */
   pagibigEmployeeAmount: number
   pagibigEmployerAmount: number
+  /** BIR withholding table for MONTHLY pay (the other pay periods are in `taxBracketTables`). */
   taxBrackets: TaxBracket[]
+  /** BIR withholding tables for the other pay periods — the table used is the one for the pay date's frequency. */
+  taxBracketTables?: Partial<Record<'annual' | 'semi_monthly' | 'weekly' | 'daily', TaxBracket[]>>
   /** PhilHealth premium base is clamped to this range (defaults ₱10,000 – ₱100,000). */
   philhealthSalaryFloor?: number
   philhealthSalaryCeiling?: number
@@ -597,6 +600,16 @@ export interface PayrollLine {
     pagibigEmployee: number
     pagibigEmployer: number
     withholdingTax: number
+  }
+  /** How withholding tax was figured when the line was computed from its pay period's own bracket table (not the monthly split). */
+  withholdingTaxBasis?: {
+    frequency: 'annual' | 'monthly' | 'semi_monthly' | 'weekly' | 'daily'
+    /** Taxable pay of one pay period: basic − absences − employee SSS, PhilHealth and Pag-IBIG. */
+    taxable: number
+    /** Tax on that taxable pay per the bracket table (× the cutoffs the run covers). */
+    regularTax: number
+    marginalRate: number
+    cutoffs: number
   }
   /** Overtime / night differential pay, taxed at the marginal rate on top of regular withholding. */
   overtimePay?: number

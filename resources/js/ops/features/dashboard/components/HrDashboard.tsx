@@ -91,15 +91,15 @@ export function HrDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="lavender" watermark={Clock3} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Attendance</Card.Title>
               <Card.Description>Daily outcomes, last 7 working days</Card.Description>
             </div>
             <ViewAllLink to="/attendance" />
           </Card.Header>
-          <Card.Body className="h-64 pt-2">
+          <Card.Body className="relative h-64 pt-2">
             {chartsLoading || !charts ? (
               <Skeleton className="h-full w-full" />
             ) : charts.attendance.length === 0 ? (
@@ -123,15 +123,15 @@ export function HrDashboard() {
           </Card.Body>
         </Card>
 
-        <Card>
-          <Card.Header className="items-center">
+        <Card data-tint="sage" watermark={Users} className="relative overflow-hidden">
+          <Card.Header className="relative items-center">
             <div>
               <Card.Title>Headcount</Card.Title>
               <Card.Description>Employees per department</Card.Description>
             </div>
             <ViewAllLink to="/employees" />
           </Card.Header>
-          <Card.Body className="pt-2" style={{ height: headcountHeight }}>
+          <Card.Body className="relative pt-2" style={{ height: headcountHeight }}>
             {chartsLoading || !charts ? (
               <Skeleton className="h-full w-full" />
             ) : charts.headcount.length === 0 ? (

@@ -6,12 +6,11 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import { EmptyState } from '@ops/components/ui/EmptyState'
+import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { OvertimeApplicationDialog } from '@ops/features/ess/components/OvertimeApplicationDialog'
-import { ESS_ACCENTS, EssCardWatermark } from '@ops/features/ess/components/EssMetricCard'
-import type { EssAccent } from '@ops/features/ess/components/EssMetricCard'
 import { getOtRateById, usePayrollRatesStore } from '@ops/features/company-settings/payrollRatesStore'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useMyOtApplications, useOtApplicationStore } from '@ops/features/ess/otApplicationStore'
@@ -49,22 +48,6 @@ const OT_STATUS_TONE: Record<OtApplication['status'], 'warning' | 'success' | 'd
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
-}
-
-/** Soft-tinted KPI card matching the ESS dashboard's metric-card look — plain (no link), just a label/value/hint over a gradient + icon watermark. */
-function KpiCard({ label, value, hint, icon: Icon, accent }: { label: string; value: string; hint?: string; icon: typeof Timer; accent: EssAccent }) {
-  const a = ESS_ACCENTS[accent]
-  return (
-    <div
-      className="relative flex flex-col gap-2 overflow-hidden rounded-2xl border border-slate-100 bg-card p-5 shadow-sm dark:border-white/10"
-      style={{ backgroundImage: a.gradient }}
-    >
-      <EssCardWatermark icon={Icon} className={a.watermark} />
-      <p className="relative text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="relative font-display text-2xl font-semibold tracking-tight">{value}</p>
-      {hint && <p className="relative text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  )
 }
 
 function ApplicationDetailsDialog({ application, onOpenChange }: { application: OtApplication | null; onOpenChange: (open: boolean) => void }) {
@@ -151,26 +134,26 @@ export function EssOvertimePage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard
+        <MetricCard
           label="Total OT Hours Approved"
           value={`${totalApprovedHours.toFixed(1)} hrs`}
           hint="This month"
           icon={Timer}
-          accent="teal"
+          tone="primary"
         />
-        <KpiCard
+        <MetricCard
           label="Pending Applications"
           value={`${pendingCount} ${pendingCount === 1 ? 'Request' : 'Requests'}`}
           hint="Awaiting manager approval"
           icon={Hourglass}
-          accent="amber"
+          tone="warning"
         />
-        <KpiCard
+        <MetricCard
           label="Estimated OT / Night Diff Pay"
           value={formatCurrency(estimatedPay)}
           hint="Pending + approved, this history"
           icon={Wallet}
-          accent="indigo"
+          tone="accent"
         />
       </div>
 

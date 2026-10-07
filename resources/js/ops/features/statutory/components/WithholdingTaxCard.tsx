@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@ops/components/ui/Toast'
 import { useSession } from '@ops/hooks/useSession'
 import { updateStatutoryConfig } from '@ops/lib/services/payrollService'
+import { TAX_FREQUENCIES, taxBracketsFor, taxFrequencyLabel, type TaxFrequency } from '@ops/lib/payroll/withholdingTax'
+import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { StatutoryConfig, TaxBracket } from '@ops/types/domain'
 
@@ -26,6 +28,8 @@ export function WithholdingTaxCard({
 }) {
   const { user } = useSession()
   const { notify } = useToast()
+  const [frequency, setFrequency] = useState<TaxFrequency>('monthly')
+  const brackets = taxBracketsFor(config, frequency) ?? []
 
   const {
     register,
@@ -33,24 +37,25 @@ export function WithholdingTaxCard({
     handleSubmit,
     reset,
     formState: { isSubmitting, isDirty },
-  } = useForm<FormValues>({ defaultValues: { taxBrackets: config.taxBrackets } })
+  } = useForm<FormValues>({ defaultValues: { taxBrackets: brackets } })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'taxBrackets' })
 
   useEffect(() => {
-    reset({ taxBrackets: config.taxBrackets })
-  }, [config, reset])
+    reset({ taxBrackets: taxBracketsFor(config, frequency) ?? [] })
+  }, [config, frequency, reset])
 
   async function onSubmit(values: FormValues) {
-    await updateStatutoryConfig(user, { taxBrackets: values.taxBrackets })
-    notify({ title: 'Withholding tax brackets updated', tone: 'success' })
+    if (frequency === 'monthly') await updateStatutoryConfig(user, { taxBrackets: values.taxBrackets })
+    else await updateStatutoryConfig(user, { taxBracketTables: { ...config.taxBracketTables, [frequency]: values.taxBrackets } })
+    notify({ title: `${taxFrequencyLabel(frequency)} withholding tax brackets updated`, tone: 'success' })
     onSaved()
   }
 
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center justify-between">
-        <Card.Title>Withholding Tax Brackets (Monthly)</Card.Title>
+        <Card.Title>Withholding Tax Brackets ({taxFrequencyLabel(frequency)})</Card.Title>
         {canEdit && (
           <Button
             type="button"
@@ -62,6 +67,24 @@ export function WithholdingTaxCard({
             Add Bracket Row
           </Button>
         )}
+      </div>
+
+      <div className="mb-4 space-y-2">
+        <div className="inline-flex flex-wrap rounded-lg border border-border bg-muted/50 p-0.5 text-xs font-medium" role="group" aria-label="Pay frequency">
+          {TAX_FREQUENCIES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setFrequency(t.value)}
+              className={cn('rounded-md px-3 py-1.5 transition-colors', frequency === t.value ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Brackets apply to the taxable income of one {TAX_FREQUENCIES.find((t) => t.value === frequency)?.unit}. Payroll uses the table of each employee's pay frequency on the pay date (daily, weekly, semi-monthly or monthly); the annual table is used for once-a-year payouts such as the 13th Month Pay. Bi-weekly pay uses the semi-monthly table, and custom pay periods use the table closest to their length.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>

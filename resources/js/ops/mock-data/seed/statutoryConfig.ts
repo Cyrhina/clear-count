@@ -1,4 +1,4 @@
-import type { SssBracket, StatutoryConfig } from '@ops/types/domain'
+import type { SssBracket, StatutoryConfig, TaxBracket } from '@ops/types/domain'
 import { companies } from '@ops/mock-data/seed/companies'
 
 /**
@@ -23,6 +23,20 @@ function buildSssBrackets(): SssBracket[] {
 
 const SSS_BRACKETS = buildSssBrackets()
 
+/**
+ * BIR withholding tables by pay period (TRAIN, 2023 onward). Each is the annual table scaled to the pay period:
+ * the first bracket is exempt, then 15% / 20% / 25% / 30% / 35% over the bracket minimum.
+ */
+const taxTable = (mins: number[], baseTaxes: number[]): TaxBracket[] =>
+  mins.map((min, i) => ({ min, max: mins[i + 1] ?? null, rate: [0, 0.15, 0.2, 0.25, 0.3, 0.35][i], baseTax: baseTaxes[i] }))
+
+const TAX_TABLES = {
+  annual: taxTable([0, 250_000, 400_000, 800_000, 2_000_000, 8_000_000], [0, 0, 22_500, 102_500, 402_500, 2_202_500]),
+  semi_monthly: taxTable([0, 10_417, 16_667, 33_333, 83_333, 333_333], [0, 0, 937.5, 4_270.7, 16_770.7, 91_770.7]),
+  weekly: taxTable([0, 4_808, 7_692, 15_385, 38_462, 153_846], [0, 0, 432.6, 1_971.2, 7_740.45, 42_355.65]),
+  daily: taxTable([0, 685, 1_096, 2_192, 5_479, 21_918], [0, 0, 61.65, 280.85, 1_102.6, 6_034.3]),
+}
+
 export const statutoryConfigs: StatutoryConfig[] = companies.map((company) => ({
   companyId: company.id,
   sssBrackets: SSS_BRACKETS,
@@ -46,4 +60,5 @@ export const statutoryConfigs: StatutoryConfig[] = companies.map((company) => ({
     { min: 166667, max: 666667, rate: 0.3, baseTax: 33541.8 },
     { min: 666667, max: null, rate: 0.35, baseTax: 183541.8 },
   ],
+  taxBracketTables: structuredClone(TAX_TABLES),
 }))

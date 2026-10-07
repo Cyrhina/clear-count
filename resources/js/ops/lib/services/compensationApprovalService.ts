@@ -87,6 +87,46 @@ export async function getCompensationApprovals(session: SessionUser): Promise<Co
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 }
 
+export interface WorkLogInput {
+  employeeId: string
+  workDate: string
+  quantity: number
+  description: string
+}
+
+/** An employee files their own hours (hourly) or units completed (output-based); it waits as pending for the manager. */
+export async function submitWorkLog(session: SessionUser, input: WorkLogInput): Promise<CompensationApproval | undefined> {
+  if (session.employeeId !== input.employeeId || !(input.quantity > 0)) return undefined
+  const employee = db.employees.find((e) => e.id === input.employeeId && e.companyId === session.companyId)
+  if (!employee) return undefined
+  const isOutput = employee.compensation.payType === 'output_based'
+  const rate = employee.compensation.basicPay
+  const entry: CompensationApproval = {
+    id: `${employee.id}_compappr_${crypto.randomUUID().slice(0, 8)}`,
+    companyId: session.companyId,
+    employeeId: employee.id,
+    type: isOutput ? 'output' : 'hourly',
+    workDate: input.workDate,
+    quantity: input.quantity,
+    unitLabel: isOutput ? (employee.compensation.outputUnit ?? 'Per Unit') : 'hrs',
+    rate,
+    amount: Math.round(input.quantity * rate * 100) / 100,
+    description: input.description,
+    status: 'pending',
+    submittedAt: new Date().toISOString(),
+  }
+  db.compensationApprovals.push(entry)
+  return entry
+}
+
+/** Withdraws the employee's own entry while it is still pending. */
+export async function withdrawWorkLog(session: SessionUser, id: string): Promise<boolean> {
+  const index = db.compensationApprovals.findIndex((a) => a.id === id && a.employeeId === session.employeeId && a.status === 'pending')
+  if (index < 0) return false
+  db.compensationApprovals.splice(index, 1)
+  return true
+}
+
 /** Decides one or many pending entries at once — backs both the per-row actions and Bulk Approve/Reject. */
 export async function decideCompensationApprovals(
   session: SessionUser,

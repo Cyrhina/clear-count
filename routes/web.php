@@ -36,6 +36,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('ess/payslips/{lineId}', [OpsController::class, 'essPayslipsShow'])->middleware('permission:ess.view')->name('ess.payslips.show');
         Route::get('ess/attendance', [OpsController::class, 'essAttendance'])->middleware('permission:ess.view')->name('ess.attendance');
         Route::get('ess/overtime', [OpsController::class, 'essOvertime'])->middleware('permission:ess.view')->name('ess.overtime');
+        Route::get('ess/schedule', [OpsController::class, 'essSchedule'])->middleware('permission:ess.view')->name('ess.schedule');
+        Route::get('ess/work-output', [OpsController::class, 'essWorkOutput'])->middleware('permission:ess.view')->name('ess.work-output');
         Route::get('ess/leave', [OpsController::class, 'essLeave'])->middleware('permission:ess.view')->name('ess.leave');
         Route::get('ess/loans', [OpsController::class, 'essLoans'])->middleware('permission:ess.view')->name('ess.loans');
         Route::get('notifications', [OpsController::class, 'notifications'])->middleware('permission:notifications.view')->name('notifications');

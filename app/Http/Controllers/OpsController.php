@@ -143,6 +143,16 @@ class OpsController extends Controller
         return $this->page('ess.overtime', $request);
     }
 
+    public function essSchedule(Request $request): Response
+    {
+        return $this->page('ess.schedule', $request);
+    }
+
+    public function essWorkOutput(Request $request): Response
+    {
+        return $this->page('ess.work-output', $request);
+    }
+
     public function essLeave(Request $request): Response
     {
         return $this->page('ess.leave', $request);

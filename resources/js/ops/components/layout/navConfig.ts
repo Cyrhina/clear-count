@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarRange,
   ClipboardCheck,
+  ClipboardList,
   Clock,
   CreditCard,
   Gauge,
@@ -123,6 +124,7 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [
       { label: 'My Team', path: '/employees', icon: Users },
       { label: 'Attendance', path: '/attendance', icon: Clock },
+      { label: 'Schedules', path: '/schedules', icon: CalendarRange },
       { label: 'Leave', path: '/leave', icon: CalendarDays },
       { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon },
     ],
@@ -139,7 +141,9 @@ export const MANAGER_NAV: NavGroup[] = [
     label: 'My Info',
     items: [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
+      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange },
       { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
+      { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
       { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
       { label: 'My Leave', path: '/ess/leave', icon: CalendarDays },
       { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
@@ -156,7 +160,9 @@ export const EMPLOYEE_NAV: NavGroup[] = [
     items: [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
       { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
+      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange },
       { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
+      { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
       { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
       { label: 'My Leave', path: '/ess/leave', icon: CalendarDays },
       { label: 'My Loans & Deductions', path: '/ess/loans', icon: CreditCard },

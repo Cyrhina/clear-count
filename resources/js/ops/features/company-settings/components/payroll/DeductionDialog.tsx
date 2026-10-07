@@ -78,6 +78,8 @@ export function DeductionDialog({ deduction, onSaved, trigger }: { deduction?: D
   }, [open, deduction, reset])
 
   const allocationMethod = watch('allocationMethod')
+  // Withholding tax is looked up in the BIR table of the pay date's frequency, so it is never split by an allocation method.
+  const isWithholdingTax = watch('name').trim().toLowerCase() === 'withholding tax'
 
   async function onSubmit(values: FormValues) {
     const input = {
@@ -133,13 +135,13 @@ export function DeductionDialog({ deduction, onSaved, trigger }: { deduction?: D
           </FormField>
           <FormField
             label="Monthly Allocation Method"
-            hint="How a monthly amount is spread across this employee's Payroll Group periods. Preview only."
+            hint={isWithholdingTax ? 'Not used for Withholding Tax: it follows the BIR table for the pay date frequency (Statutory → Withholding Tax).' : "How a monthly amount is spread across this employee's Payroll Group periods. Preview only."}
             className="col-span-2"
           >
             <Controller
               control={control}
               name="allocationMethod"
-              render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={ALLOCATION_METHOD_OPTIONS} />}
+              render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={ALLOCATION_METHOD_OPTIONS} disabled={isWithholdingTax} />}
             />
           </FormField>
           {allocationMethod === 'specific_cutoff' && (

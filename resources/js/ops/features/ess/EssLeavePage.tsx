@@ -10,6 +10,8 @@ import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FormField } from '@ops/components/ui/FormField'
+import { LeavePreview } from '@ops/features/leave/components/LeavePreview'
+import { LeaveDurationField } from '@ops/features/leave/components/LeaveDurationField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
@@ -18,12 +20,14 @@ import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
 import { useSession } from '@ops/hooks/useSession'
 import { submitLeaveRequest } from '@ops/lib/services/leaveService'
+import { portionSuffix } from '@ops/lib/leave/leaveDays'
 import { formatDate } from '@ops/lib/utils/format'
 
 const schema = z.object({
   leaveTypeId: z.string().min(1, 'Select a leave type'),
   dateFrom: z.string().min(1, 'Required'),
-  dateTo: z.string().min(1, 'Required'),
+  dateTo: z.string().optional(),
+  dayPortion: z.enum(['full', 'half_am', 'half_pm']),
   reason: z.string().optional(),
 })
 
@@ -40,13 +44,22 @@ function RequestLeaveDialog({ employeeId, onCreated }: { employeeId: string; onC
     handleSubmit,
     control,
     reset,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { dayPortion: 'full' } })
+  const dayPortion = watch('dayPortion')
+  const isHalf = dayPortion !== 'full'
+  const [leaveTypeId, dateFrom, dateTo] = watch(['leaveTypeId', 'dateFrom', 'dateTo'])
 
   async function onSubmit(values: FormValues) {
-    await submitLeaveRequest(user, { ...values, employeeId })
+    const dateTo = isHalf ? values.dateFrom : values.dateTo
+    if (!dateTo) return setError('dateTo', { message: 'Required' })
+    if (dateTo < values.dateFrom) return setError('dateTo', { message: 'Must be on or after the start date' })
+    const result = await submitLeaveRequest(user, { ...values, employeeId, dateTo })
+    if (!result.ok) return // the live preview above already shows why
     notify({ title: 'Leave request submitted', description: 'Your manager will review it shortly.', tone: 'success' })
-    reset()
+    reset({ dayPortion: 'full' })
     setOpen(false)
     onCreated()
   }
@@ -75,12 +88,17 @@ function RequestLeaveDialog({ employeeId, onCreated }: { employeeId: string; onC
               )}
             />
           </FormField>
-          <FormField label="From" required error={errors.dateFrom?.message}>
+          <Controller control={control} name="dayPortion" render={({ field }) => <LeaveDurationField value={field.value} onChange={field.onChange} />} />
+          <FormField label={isHalf ? 'Date' : 'From'} required error={errors.dateFrom?.message} className={isHalf ? 'col-span-2' : undefined}>
             <Input type="date" {...register('dateFrom')} />
           </FormField>
-          <FormField label="To" required error={errors.dateTo?.message}>
-            <Input type="date" {...register('dateTo')} />
-          </FormField>
+          {!isHalf && (
+            <FormField label="To" required error={errors.dateTo?.message}>
+              <Input type="date" {...register('dateTo')} />
+            </FormField>
+          )}
+
+          <LeavePreview employeeId={employeeId} leaveTypeId={leaveTypeId} dateFrom={dateFrom} dateTo={dateTo} dayPortion={dayPortion} />
           <FormField label="Reason" className="col-span-2">
             <Textarea {...register('reason')} placeholder="Optional context for your manager." />
           </FormField>
@@ -139,7 +157,8 @@ export function EssLeavePage() {
                 <div>
                   <p className="text-sm font-medium">{leaveTypeById.get(request.leaveTypeId)?.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}
+                    {request.dayPortion && request.dayPortion !== 'full' ? formatDate(request.dateFrom) : <>{formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}</>}
+                    {portionSuffix(request) && <span className="ml-2 rounded-md bg-brand-100 px-1.5 py-0.5 font-medium text-brand-800">{portionSuffix(request)}</span>}
                   </p>
                   {request.reason && <p className="mt-2 text-sm text-foreground">{request.reason}</p>}
                 </div>

@@ -1,3 +1,4 @@
+import { workingDaysBetween } from '@ops/lib/leave/leaveDays'
 import { scopeForSession } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type { Employee, PayrollPeriod, SessionUser } from '@ops/types/domain'
@@ -80,12 +81,6 @@ const inRange = (date: string, from: string, to: string) => date >= from && date
 const overlaps = (aFrom: string, aTo: string, from: string, to: string) => aFrom <= to && aTo >= from
 const fullName = (e: Employee) => `${e.personal.firstName} ${e.personal.lastName}`
 
-function daysBetween(from: string, to: string, windowFrom: string, windowTo: string): number {
-  const start = new Date(`${from > windowFrom ? from : windowFrom}T00:00:00`)
-  const end = new Date(`${to < windowTo ? to : windowTo}T00:00:00`)
-  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
-}
-
 /** The inputs a payroll run reads for a period — read-only; approvals happen in Attendance, Overtime, Leave and Approvals. */
 export async function getPayrollInputs(session: SessionUser, periodId: string): Promise<PayrollInputs | undefined> {
   const period: PayrollPeriod | undefined = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
@@ -152,7 +147,7 @@ export async function getPayrollInputs(session: SessionUser, periodId: string): 
     const type = leaveTypes.get(l.leaveTypeId)
     if (!type || type.isPaid !== false) continue
     const e = byId.get(l.employeeId)!
-    const days = daysBetween(l.dateFrom, l.dateTo, from, to) * (l.dayPortion && l.dayPortion !== 'full' ? 0.5 : 1)
+    const days = l.dayPortion && l.dayPortion !== 'full' ? 0.5 : workingDaysBetween(l.employeeId, l.dateFrom > from ? l.dateFrom : from, l.dateTo < to ? l.dateTo : to)
     other.push({ id: l.id, kind: 'Leave without pay', employeeId: e.id, employeeNumber: e.employeeNumber, name: fullName(e), detail: `${type.name} · ${days} day${days === 1 ? '' : 's'}`, status: 'Approved' })
   }
 

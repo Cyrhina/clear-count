@@ -1,0 +1,53 @@
+- generic [ref=f31e2]:
+  - generic [ref=f31e3]:
+    - generic [ref=f31e4]:
+      - generic [ref=f31e7]:
+        - generic [ref=f31e8]:
+          - img "FBS Pay" [ref=f31e9]
+          - generic [ref=f31e10]:
+            - paragraph [ref=f31e11]: FBS Pay
+            - paragraph [ref=f31e12]: Payroll Management System
+            - paragraph [ref=f31e13]: Simple, Accurate, and Smarter Payroll.
+        - heading "Empowering Your People, Every Pay Cycle" [level=1] [ref=f31e14]
+        - paragraph [ref=f31e15]: A reliable payroll system for a more organized and productive workplace.
+      - paragraph [ref=f31e19]: Payslip
+      - generic [ref=f31e37]:
+        - generic [ref=f31e38]: Secure Access
+        - generic [ref=f31e43]: Accurate Records
+        - generic [ref=f31e48]: Compliant with PH Labor Laws
+        - generic [ref=f31e54]: Cloud-Based & Accessible
+    - generic [ref=f31e58]:
+      - generic [ref=f31e59]: v1.0.0
+      - generic [ref=f31e60]:
+        - heading "Welcome Back!" [level=2] [ref=f31e61]
+        - paragraph [ref=f31e62]: Log in to your FBS Pay account to continue.
+        - generic [ref=f31e63]:
+          - generic [ref=f31e64]:
+            - generic [ref=f31e65]: Email Address
+            - textbox "Email Address" [ref=f31e68]:
+              - /placeholder: Enter your email address
+          - generic [ref=f31e69]:
+            - generic [ref=f31e70]: Password
+            - generic [ref=f31e72]:
+              - textbox "Password" [ref=f31e73]:
+                - /placeholder: Enter your password
+              - button "Show password" [ref=f31e75]
+          - generic [ref=f31e79]:
+            - generic [ref=f31e80]:
+              - checkbox "Keep me signed in" [checked] [ref=f31e81]
+              - checkbox [checked] [aria-hidden]
+              - text: Keep me signed in
+            - link "Forgot password?" [ref=f31e82] [cursor=pointer]:
+              - /url: /forgot-password
+          - button "Log In" [ref=f31e83]
+        - generic [ref=f31e86]: or
+        - button "Sign in with Microsoft" [ref=f31e90]
+        - generic [ref=f31e91]:
+          - paragraph [ref=f31e92]: Quick Demo Login
+          - generic [ref=f31e93]:
+            - button "Company Admin" [ref=f31e94]
+            - button "HR / Payroll Manager" [ref=f31e95]
+            - button "Employee" [ref=f31e96]
+        - paragraph [ref=f31e97]: Your data is safe with us.
+  - region "Notifications (F8)":
+    - list

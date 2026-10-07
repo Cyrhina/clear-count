@@ -260,7 +260,7 @@ export function PayslipCard({
       type: 'Withholding Tax',
       description: 'BIR Withholding Tax',
       amount: line.withholdingTax,
-      hint: ms ? hint(ms.withholdingTax, line.withholdingTax, 'Withholding Tax') : undefined,
+      hint: ms && !line.withholdingTaxBasis ? hint(ms.withholdingTax, line.withholdingTax, 'Withholding Tax') : undefined,
     },
   ]
 

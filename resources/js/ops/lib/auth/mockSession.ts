@@ -22,9 +22,11 @@ const defaultUser = users[0]
  * so this login-gate feature never has to touch that seed data.
  */
 export const DEMO_ACCOUNTS: { email: string; password: string; userId: string; roleLabel: string }[] = [
-  { email: 'andrea.villareal@fbs.com', password: 'password123', userId: 'u_fl_admin', roleLabel: 'Company Admin' },
-  { email: 'payroll@fbs.com', password: 'password123', userId: 'u_fl_payroll', roleLabel: 'HR / Payroll Manager' },
-  { email: 'employee@fbs.com', password: 'password123', userId: 'u_fl_employee', roleLabel: 'Employee' },
+  { email: 'company_admin.consignado@frontlinebusiness.com.ph', password: '123123qQ!', userId: 'u_fl_admin', roleLabel: 'Company Admin' },
+  { email: 'payroll_admin.consignado@frontlinebusiness.com.ph', password: '123123qQ!', userId: 'u_fl_payroll', roleLabel: 'Payroll Admin' },
+  { email: 'hr_admin.consignado@frontlinebusiness.com.ph', password: '123123qQ!', userId: 'u_fl_hr', roleLabel: 'HR Admin' },
+  { email: 'manager.consignado@frontlinebusiness.com.ph', password: '123123qQ!', userId: 'u_fl_manager', roleLabel: 'Manager' },
+  { email: 'employee.consignado@frontlinebusiness.com.ph', password: '123123qQ!', userId: 'u_fl_employee', roleLabel: 'Employee' },
 ]
 
 export const useSessionStore = create<SessionState>()(

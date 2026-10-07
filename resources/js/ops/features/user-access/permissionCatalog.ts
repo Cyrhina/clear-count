@@ -101,7 +101,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   company_admin: 'Full access to everything in this company — people, payroll, settings, and billing.',
   hr_admin: 'Manages people and time — employee records, attendance, schedules, leave, overtime, approvals, benefits, loans and deductions. Views payroll results and 13th month; no payroll processing, bank details, or separations.',
   payroll_admin: 'Runs payroll from approved records — payroll runs and inputs, statutory and tax, payslips, loans and deductions, bonuses, 13th month, and payroll reports.',
-  manager: 'Manages their team — views attendance and requests adjustments, approves work and output, views overtime and leave requests (and files overtime for the team), views leave credits, and sees team reports. No biometrics import, adjustment approvals, pay details, or payroll.',
+  manager: 'Manages their team — views attendance and requests adjustments, plans the shift schedule of the team, approves work and output, views overtime and leave requests (and files overtime for the team), views leave credits, and sees team reports. No biometrics import, adjustment approvals, pay details, or payroll.',
   employee: 'Self-service only — own payslips, leave, attendance, and notifications.',
 }
 

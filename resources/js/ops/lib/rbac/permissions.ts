@@ -184,6 +184,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'attendance.view',
     'attendance.adjust',
     'schedules.view',
+    'schedules.manage',
     'overtime.view',
     'overtime.log',
     'leave.view',

@@ -1,3 +1,4 @@
+import { taxFrequencyLabel } from '@ops/lib/payroll/withholdingTax'
 import { loanConfigNameFor, allocateMonthly as allocateForDisplay, describeAllocation, periodsPerCycleForFrequency, type PaySchedule } from '@ops/lib/payroll/payFrequency'
 import { basicPayFor, dailyRateFor, hourlyRateFor, monthlyEquivalentFor, type BasicPayResult } from '@ops/lib/payroll/rateBasis'
 import { formatCurrency } from '@ops/lib/utils/format'
@@ -287,13 +288,15 @@ export function buildComputationBreakdown(params: {
 
   const taxMonthly = ms?.withholdingTax ?? line.withholdingTax * 2
   const taxAlloc = realAllocation(taxMonthly, line.withholdingTax, configByName.get('Withholding Tax')?.allocationMethod, schedule)
-  const regularTax = ms ? Math.round(allocateForDisplay(taxMonthly, schedule, configByName.get('Withholding Tax'))) : line.withholdingTax
+  const regularTax = line.withholdingTaxBasis ? line.withholdingTaxBasis.regularTax : ms ? Math.round(allocateForDisplay(taxMonthly, schedule, configByName.get('Withholding Tax'))) : line.withholdingTax
   const extrasTax = Math.max(0, line.withholdingTax - regularTax)
   deductions.push({
     label: 'Withholding Tax',
     currentPeriodAmount: line.withholdingTax,
-    formula: `TRAIN monthly table on taxable pay (basic − SSS, PhilHealth, Pag-IBIG) = ${formatCurrency(taxMonthly)} monthly; ${describeAllocation(taxMonthly, regularTax, schedule, configByName.get('Withholding Tax')?.allocationMethod)}${extrasTax > 0 ? ` + ${formatCurrency(extrasTax)} on overtime/taxable bonuses at the marginal rate` : ''}`,
-    allocation: taxAlloc.detail,
+    formula: line.withholdingTaxBasis
+      ? `${taxFrequencyLabel(line.withholdingTaxBasis.frequency)} BIR table on this pay date's taxable pay ${formatCurrency(line.withholdingTaxBasis.taxable)}${line.withholdingTaxBasis.cutoffs > 1 ? ` per cutoff × ${line.withholdingTaxBasis.cutoffs} cutoffs` : ''} (basic − absences − SSS, PhilHealth, Pag-IBIG) = ${formatCurrency(line.withholdingTaxBasis.regularTax)}${extrasTax > 0 ? ` + ${formatCurrency(extrasTax)} on overtime/taxable bonuses at the ${Math.round(line.withholdingTaxBasis.marginalRate * 100)}% marginal rate` : ''}`
+      : `TRAIN monthly table on taxable pay (basic − SSS, PhilHealth, Pag-IBIG) = ${formatCurrency(taxMonthly)} monthly; ${describeAllocation(taxMonthly, regularTax, schedule, configByName.get('Withholding Tax')?.allocationMethod)}${extrasTax > 0 ? ` + ${formatCurrency(extrasTax)} on overtime/taxable bonuses at the marginal rate` : ''}`,
+    allocation: line.withholdingTaxBasis ? undefined : taxAlloc.detail,
   })
 
   for (const loanDeduction of line.loanDeductions) {

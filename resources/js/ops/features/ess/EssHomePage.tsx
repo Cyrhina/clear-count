@@ -1,3 +1,4 @@
+import { portionSuffix } from '@ops/lib/leave/leaveDays'
 import {
   Bell,
   CalendarDays,
@@ -13,12 +14,11 @@ import {
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Avatar } from '@ops/components/ui/Avatar'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
+import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
-import { ESS_ACCENTS, EssCardWatermark, EssMetricCard } from '@ops/features/ess/components/EssMetricCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
 import { useNotifications } from '@ops/features/notifications/hooks/useNotifications'
@@ -162,62 +162,43 @@ export function EssHomePage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero header */}
-      <Card className="flex flex-col items-start gap-4 overflow-hidden p-6 sm:flex-row sm:items-center">
-        <Avatar name={user.name} size="lg" />
-        <div className="flex-1">
+      {/* Header — same layout as the other portals' dashboards */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {timeOfDayGreeting()}, {user.name.split(' ')[0]}!
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Here&apos;s your self-service summary for today.</p>
         </div>
-        <p className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground">
-          {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })} &middot;{' '}
-          {new Date().toLocaleDateString('en-PH', { weekday: 'long' })}
+        <p className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground">
+          {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })} | {new Date().toLocaleDateString('en-PH', { weekday: 'long' })}
         </p>
-      </Card>
+      </div>
 
       {/* Metric cards — one per Self-Service nav item that has a natural summary number */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <EssMetricCard
-          to="/ess/attendance"
-          accent="teal"
-          icon={Clock}
+        <MetricCard
           label="Attendance Today"
           value={todayRecord ? STATUS_LABEL[todayRecord.status] : 'No record'}
-          linkLabel="View attendance"
+          icon={Clock}
+          tone="primary"
+          footer={{ label: 'View attendance', to: '/ess/attendance' }}
         />
-        <EssMetricCard
-          to="/ess/leave"
-          accent="emerald"
-          icon={CalendarDays}
-          label="Leave Credits"
-          value={`${totalLeaveCredits} days`}
-          linkLabel="View leave"
-        />
-        <EssMetricCard
-          to="/ess/loans"
-          accent="amber"
-          icon={CreditCard}
-          label="Loans & Deductions"
-          value={formatCurrency(totalMonthlyDeduction)}
-          linkLabel="View details"
-        />
-        <EssMetricCard
-          to="/ess/payslips"
-          accent="indigo"
-          icon={ReceiptText}
+        <MetricCard label="Leave Credits" value={`${totalLeaveCredits} days`} icon={CalendarDays} tone="success" footer={{ label: 'View leave', to: '/ess/leave' }} />
+        <MetricCard label="Loans & Deductions" value={formatCurrency(totalMonthlyDeduction)} icon={CreditCard} tone="warning" footer={{ label: 'View details', to: '/ess/loans' }} />
+        <MetricCard
           label="Last Payslip"
           value={latestFinalizedLine ? formatCurrency(latestFinalizedLine.netPay) : '—'}
           hint={latestPeriod ? formatDate(latestPeriod.payDate) : undefined}
-          linkLabel="View payslip"
+          icon={ReceiptText}
+          tone="accent"
+          footer={{ label: 'View payslip', to: '/ess/payslips' }}
         />
       </div>
 
       {/* My Attendance + My Leave */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="relative overflow-hidden border-slate-100 lg:col-span-2 dark:border-white/10" style={{ backgroundImage: ESS_ACCENTS.teal.gradient }}>
-          <EssCardWatermark icon={Clock} className={ESS_ACCENTS.teal.watermark} />
+        <Card data-tint="lavender" watermark={Clock} className="relative overflow-hidden lg:col-span-2">
           <Card.Header className="relative items-center">
             <Card.Title>My Attendance</Card.Title>
             <Link to="/ess/attendance" className="text-xs font-medium text-primary">
@@ -250,8 +231,7 @@ export function EssHomePage() {
           </Card.Body>
         </Card>
 
-        <Card className="relative overflow-hidden border-slate-100 dark:border-white/10" style={{ backgroundImage: ESS_ACCENTS.emerald.gradient }}>
-          <EssCardWatermark icon={CalendarDays} className={ESS_ACCENTS.emerald.watermark} />
+        <Card data-tint="sage" watermark={CalendarDays} className="relative overflow-hidden">
           <Card.Header className="relative items-center">
             <Card.Title>My Leave</Card.Title>
             <Link to="/ess/leave" className="text-xs font-medium text-primary">
@@ -268,7 +248,8 @@ export function EssHomePage() {
                     <div>
                       <p className="text-sm font-medium leading-tight">{leaveTypeById.get(request.leaveTypeId)?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}
+                        {request.dayPortion && request.dayPortion !== 'full' ? formatDate(request.dateFrom) : <>{formatDate(request.dateFrom)} &ndash; {formatDate(request.dateTo)}</>}
+                        {portionSuffix(request) && ` · ${portionSuffix(request)}`}
                       </p>
                     </div>
                     <StatusBadge status={request.status} />
@@ -282,8 +263,7 @@ export function EssHomePage() {
 
       {/* Quick Actions + Notifications + Payslip history */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="relative overflow-hidden border-slate-100 dark:border-white/10" style={{ backgroundImage: ESS_ACCENTS.indigo.gradient }}>
-          <EssCardWatermark icon={Zap} className={ESS_ACCENTS.indigo.watermark} />
+        <Card data-tint="lavender" watermark={Zap} className="relative overflow-hidden">
           <Card.Header className="relative">
             <Card.Title>Quick Actions</Card.Title>
           </Card.Header>
@@ -303,8 +283,7 @@ export function EssHomePage() {
           </Card.Body>
         </Card>
 
-        <Card className="relative overflow-hidden border-slate-100 dark:border-white/10" style={{ backgroundImage: ESS_ACCENTS.amber.gradient }}>
-          <EssCardWatermark icon={Bell} className={ESS_ACCENTS.amber.watermark} />
+        <Card data-tint="peach" watermark={Bell} className="relative overflow-hidden">
           <Card.Header className="relative items-center">
             <Card.Title>Recent Notifications</Card.Title>
             <Link to="/notifications" className="text-xs font-medium text-primary">
@@ -330,8 +309,7 @@ export function EssHomePage() {
           </Card.Body>
         </Card>
 
-        <Card className="relative overflow-hidden border-slate-100 dark:border-white/10" style={{ backgroundImage: ESS_ACCENTS.indigo.gradient }}>
-          <EssCardWatermark icon={ReceiptText} className={ESS_ACCENTS.indigo.watermark} />
+        <Card data-tint="sage" watermark={ReceiptText} className="relative overflow-hidden">
           <Card.Header className="relative">
             <div>
               <Card.Title>Payslip History</Card.Title>

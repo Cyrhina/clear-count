@@ -58,6 +58,20 @@ function linkStaffEmployees() {
   }
 }
 linkStaffEmployees()
+
+/** The demo Employee login is paid by hours worked, so My Work & Output, approvals and payroll all show real figures for them. */
+function makeDemoEmployeeHourly() {
+  const employee = employees.find((e) => e.id === 'co_frontline_emp_0001')
+  if (!employee) return
+  employee.employment.status = 'active'
+  delete employee.employment.dateSeparated
+  delete employee.employment.separationReason
+  employee.employment.category = 'field_worker'
+  employee.compensation.payType = 'hourly'
+  employee.compensation.basicPay = 110
+  employee.compensation.outputUnit = null
+}
+makeDemoEmployeeHourly()
 // The attendance generator follows each company's default (Standard Day) shift, not the last template listed.
 const schedulesByCompany = new Map(schedules.filter((s) => s.id.endsWith('_sched_default')).map((s) => [s.companyId, s]))
 const attendanceRecords = generateAttendanceRecords(employees, schedulesByCompany)

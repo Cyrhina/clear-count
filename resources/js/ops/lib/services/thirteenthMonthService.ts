@@ -1,3 +1,4 @@
+import { leaveDayFraction } from '@ops/lib/leave/leaveDays'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { marginalTaxRateFor } from '@ops/lib/services/payrollService'
 import { monthlyEquivalentFor } from '@ops/lib/payroll/rateBasis'
@@ -106,12 +107,13 @@ function minutesOf(time: string): number {
   return h * 60 + m
 }
 
-/** Whether an approved leave of a paid leave type covers `date` for this employee (so an absence that day is paid, not deducted). */
-function coveredByPaidLeave(employeeId: string, date: string, companyId: string): boolean {
+/** How much of `date` approved paid leave covers for this employee (1 full day, 0.5 half day) — the covered part of an absence is paid, not deducted. */
+function paidLeaveCoverage(employeeId: string, date: string, companyId: string): number {
   const paidTypeIds = new Set(db.leaveTypes.filter((t) => t.companyId === companyId && t.isPaid !== false).map((t) => t.id))
-  return db.leaveRequests.some(
-    (r) => r.employeeId === employeeId && r.status === 'approved' && paidTypeIds.has(r.leaveTypeId) && r.dateFrom <= date && r.dateTo >= date,
-  )
+  const covered = db.leaveRequests
+    .filter((r) => r.employeeId === employeeId && r.status === 'approved' && paidTypeIds.has(r.leaveTypeId) && r.dateFrom <= date && r.dateTo >= date)
+    .reduce((sum, r) => sum + leaveDayFraction(r), 0)
+  return Math.min(1, covered)
 }
 
 export interface ThirteenthMonthDeductions {
@@ -147,13 +149,18 @@ export function thirteenthMonthDeductionsFor(session: SessionUser, employee: Emp
   const undertimeHours = Math.round((undertimeMinutes / 60) * 100) / 100
 
   // Unpaid absences: absent days not covered by an approved paid leave.
-  const absenceDates = records.filter((r) => r.status === 'absent' && !coveredByPaidLeave(employee.id, r.date, session.companyId)).map((r) => r.date)
+  const absences = records
+    .filter((r) => r.status === 'absent')
+    .map((r) => ({ date: r.date, unpaid: 1 - paidLeaveCoverage(employee.id, r.date, session.companyId) }))
+    .filter((a) => a.unpaid > 0)
+  const absenceDates = absences.map((a) => a.date)
+  const absenceDays = absences.reduce((sum, a) => sum + a.unpaid, 0)
 
   return {
     hourlyRate,
     dailyRate,
     undertime: { hours: undertimeHours, dates: undertimeDates, amount: Math.round(undertimeHours * hourlyRate) },
-    unpaidAbsences: { days: absenceDates.length, dates: absenceDates, amount: Math.round(absenceDates.length * dailyRate) },
+    unpaidAbsences: { days: absenceDays, dates: absenceDates, amount: Math.round(absenceDays * dailyRate) },
   }
 }
 
@@ -178,7 +185,7 @@ export function computeThirteenthMonthLine(
   const annualBasicEarned = Math.max(0, grossBasicEarned - undertimeDeduction - absenceDeduction)
   const thirteenthMonthPay = Math.round(annualBasicEarned / 12)
   const taxableExcess = Math.max(0, thirteenthMonthPay - THIRTEENTH_MONTH_TAX_EXEMPT_CEILING)
-  const withholdingTax = taxableExcess > 0 ? Math.round(taxableExcess * marginalTaxRateFor(session, employee)) : 0
+  const withholdingTax = taxableExcess > 0 ? Math.round(taxableExcess * marginalTaxRateFor(session, employee, 'annual')) : 0
 
   return {
     id: crypto.randomUUID(),

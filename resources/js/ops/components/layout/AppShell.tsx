@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { MobileDemoBar } from '@ops/components/layout/MobileDemoBar'
 import { Sidebar } from '@ops/components/layout/Sidebar'
 import { Topbar } from '@ops/components/layout/Topbar'
-import { ADMIN_NAV } from '@ops/components/layout/navConfig'
+import { ADMIN_NAV, EMPLOYEE_NAV, MANAGER_NAV } from '@ops/components/layout/navConfig'
 import { CardThemeContext } from '@ops/components/ui/cardTheme'
 import { useSession } from '@ops/hooks/useSession'
 
@@ -23,11 +23,14 @@ export function AppShell() {
   const location = useLocation()
   const { user } = useSession()
   const isEssRoute = location.pathname.startsWith('/ess')
-  const softCards = user.role === 'company_admin' && !isEssRoute
+  // Every portal uses the Company Admin's soft card theme (platform super admins have no cards to style).
+  const softCards = user.role !== 'super_admin'
   // Each page's cards carry that page's sidebar icon as their corner watermark, unless the nav item opts out.
-  const pageNavItem = ADMIN_NAV.flatMap((g) => g.items).find(
-    (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
-  )
+  const roleNav = user.role === 'employee' ? EMPLOYEE_NAV : user.role === 'manager' ? MANAGER_NAV : ADMIN_NAV
+  const pageNavItem = roleNav
+    .flatMap((g) => g.items)
+    .filter((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0]
   const pageIcon = pageNavItem?.plainCards ? undefined : pageNavItem?.icon
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { leaveRequestDays } from '@ops/lib/leave/leaveDays'
 import { formatPayrollNumber } from '@ops/lib/payroll/payrollNumber'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { getPayrollLines, getPayrollPeriods, previewPayrollLine } from '@ops/lib/services/payrollService'
@@ -107,7 +108,7 @@ export async function getLeaveSummary(session: SessionUser): Promise<LeaveSummar
     if (request.companyId !== session.companyId || request.status !== 'approved') continue
     if (!employeeById.has(request.employeeId)) continue
     const key = `${request.employeeId}::${request.leaveTypeId}`
-    const days = (new Date(request.dateTo).getTime() - new Date(request.dateFrom).getTime()) / 86_400_000 + 1
+    const days = leaveRequestDays(request)
     totals.set(key, (totals.get(key) ?? 0) + days)
   }
 

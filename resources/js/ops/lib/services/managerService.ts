@@ -2,6 +2,7 @@ import { getAttendanceAdjustments, getAttendanceRecords } from '@ops/lib/service
 import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { getLeaveRequests, getLeaveTypes } from '@ops/lib/services/leaveService'
+import { leaveRequestDays } from '@ops/lib/leave/leaveDays'
 import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
@@ -14,7 +15,6 @@ const addDaysKey = (date: string, days: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 const fullName = (e: Employee) => `${e.personal.firstName} ${e.personal.lastName}`
-const daysInclusive = (from: string, to: string) => Math.max(1, Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86_400_000) + 1)
 
 // ---------- Dashboard ----------
 
@@ -31,7 +31,7 @@ export interface ManagerDashboard {
   missingRecords: number
   onLeaveToday: number
   pending: { leave: number; overtime: number; nightDiff: number; hours: number; output: number; corrections: number }
-  upcomingLeave: { id: string; employee: string; leaveType: string; dateFrom: string; dateTo: string; days: number }[]
+  upcomingLeave: { id: string; employee: string; leaveType: string; dateFrom: string; dateTo: string; days: number; halfDay?: 'AM' | 'PM' }[]
   /** Team members absent or late on `attendanceDate`. */
   attention: { id: string; employee: string; status: 'absent' | 'late' | 'undertime' }[]
 }
@@ -81,7 +81,7 @@ export async function getManagerDashboard(session: SessionUser): Promise<Manager
       .slice(0, 6)
       .flatMap((l) => {
         const e = byId.get(l.employeeId)
-        return e ? [{ id: l.id, employee: fullName(e), leaveType: typeName.get(l.leaveTypeId) ?? 'Leave', dateFrom: l.dateFrom, dateTo: l.dateTo, days: daysInclusive(l.dateFrom, l.dateTo) }] : []
+        return e ? [{ id: l.id, employee: fullName(e), leaveType: typeName.get(l.leaveTypeId) ?? 'Leave', dateFrom: l.dateFrom, dateTo: l.dateTo, days: leaveRequestDays(l), halfDay: l.dayPortion === 'half_am' ? 'AM' : l.dayPortion === 'half_pm' ? 'PM' : undefined }] : []
       }),
     attention: day
       .filter((r) => r.status === 'absent' || r.status === 'late' || r.status === 'undertime')

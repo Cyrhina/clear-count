@@ -48,7 +48,7 @@ export function EmployeeContributionsTable({ config }: { config: StatutoryConfig
           const workingDays = workingDaysPerMonthFor(workSchedule)
           // Split divisor: ÷1 monthly, ÷2 semi-monthly, ÷4 weekly, ÷22/26 daily, periods-in-month for bi-weekly/custom.
           const periodsPerMonth = periodsPerCycleForFrequency(frequency, periodsPerMonthFor(frequency, group, workSchedule), workingDays)
-          const m = monthlyStatutoryFor(config, employee)
+          const m = monthlyStatutoryFor(config, employee, frequency, periodsPerMonthFor(frequency, group, workSchedule))
           const employeeTotal = m.sssEmployee + m.philhealthEmployee + m.pagibigEmployee + m.withholdingTax
           return {
             employee,
