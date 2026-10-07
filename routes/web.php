@@ -11,6 +11,7 @@ Route::redirect('/', '/login')->name('home');
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::group(['ops' => true], function () {
         Route::get('dashboard', [OpsController::class, 'dashboard'])->middleware('permission:dashboard.view')->name('dashboard');
+        Route::get('my-profile', [OpsController::class, 'myProfile'])->middleware('permission:profile.view')->name('my-profile');
         Route::get('employees', [OpsController::class, 'employees'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [OpsController::class, 'employee'])->middleware('permission:employees.view')->name('employees.show');
         Route::get('attendance', [OpsController::class, 'attendance'])->middleware('permission:attendance.view')->name('attendance');

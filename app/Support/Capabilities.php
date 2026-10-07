@@ -9,9 +9,9 @@ namespace App\Support;
 final class Capabilities
 {
     public const ADMIN = [
-        'dashboard.view', 'employees.view', 'employees.edit', 'employees.compensation.edit',
+        'dashboard.view', 'employees.view', 'employees.pay.view', 'employees.edit', 'employees.compensation.edit',
         'employees.government.edit', 'employees.bank.edit', 'employees.separate',
-        'attendance.view', 'attendance.adjust', 'attendance.approve',
+        'attendance.view', 'attendance.adjust', 'attendance.approve', 'attendance.import',
         'schedules.view', 'schedules.manage',
         'overtime.view', 'overtime.log', 'overtime.approve', 'compensation_approvals.manage',
         'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types',
@@ -19,7 +19,7 @@ final class Capabilities
         'statutory.view', 'statutory.edit', 'payslips.view', 'payslips.generate',
         'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage',
         'thirteenth_month.view', 'thirteenth_month.manage',
-        'reports.view', 'reports.payroll.view', 'insights.view', 'approvals.view',
+        'reports.view', 'reports.workforce.view', 'reports.payroll.view', 'insights.view', 'approvals.view',
         'notifications.view', 'notifications.send',
         'users.manage', 'settings.company.edit', 'settings.payroll.edit', 'branches.manage',
         'integrations.manage', 'subscription.manage', 'onboarding.manage',
@@ -30,26 +30,27 @@ final class Capabilities
         'company_admin' => self::ADMIN,
         // People, time, benefits and loans; views payroll results. No payroll processing, bank details or separations.
         'hr_admin' => [
-            'dashboard.view', 'employees.view', 'employees.edit', 'employees.government.edit',
-            'attendance.view', 'attendance.adjust', 'attendance.approve', 'schedules.view', 'schedules.manage',
+            'dashboard.view', 'profile.view', 'employees.view', 'employees.pay.view', 'employees.edit', 'employees.government.edit',
+            'attendance.view', 'attendance.adjust', 'attendance.approve', 'attendance.import', 'schedules.view', 'schedules.manage',
             'overtime.view', 'overtime.log', 'overtime.approve',
             'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types', 'compensation_approvals.manage',
             'payroll.view', 'payslips.view', 'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage', 'thirteenth_month.view',
-            'reports.view', 'approvals.view',
+            'reports.view', 'reports.workforce.view', 'approvals.view',
             'notifications.view', 'notifications.send', 'branches.manage',
         ],
         // Payroll from approved records; time, output and leave are read through Payroll Inputs.
         'payroll_admin' => [
-            'dashboard.view', 'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize', 'payroll.inputs.view',
+            'dashboard.view', 'profile.view', 'payroll.view', 'payroll.run', 'payroll.approve', 'payroll.finalize', 'payroll.inputs.view',
             'statutory.view', 'statutory.edit', 'payslips.view', 'payslips.generate',
             'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage',
             'thirteenth_month.view', 'thirteenth_month.manage',
             'reports.view', 'reports.payroll.view', 'notifications.view', 'settings.payroll.edit',
         ],
+        // Their team only (branch-scoped): attendance, work and output, leave and overtime approvals, team reports.
         'manager' => [
-            'dashboard.view', 'attendance.view', 'attendance.approve', 'schedules.view',
-            'overtime.view', 'overtime.approve', 'leave.view', 'leave.approve',
-            'reports.view', 'reports.payroll.view', 'approvals.view', 'notifications.view', 'ess.view',
+            'dashboard.view', 'employees.view', 'attendance.view', 'attendance.adjust', 'schedules.view',
+            'overtime.view', 'overtime.log', 'leave.view', 'compensation_approvals.manage',
+            'reports.view', 'approvals.view', 'notifications.view', 'ess.view',
         ],
         'employee' => ['ess.view', 'notifications.view'],
     ];
@@ -57,6 +58,6 @@ final class Capabilities
     /** @return list<string> */
     public static function all(): array
     {
-        return array_values(array_unique([...self::ADMIN, 'ess.view', 'platform.admin']));
+        return array_values(array_unique([...self::ADMIN, 'ess.view', 'platform.admin', 'profile.view']));
     }
 }

@@ -15,6 +15,7 @@ export const users: SessionUser[] = [
     role: 'hr_admin',
     name: 'Patrick Ong',
     email: 'patrick.ong@frontlinebusiness.com.ph',
+    employeeId: 'co_frontline_emp_0002',
     isActive: true,
   },
   {
@@ -23,6 +24,7 @@ export const users: SessionUser[] = [
     role: 'payroll_admin',
     name: 'Karen Sison',
     email: 'karen.sison@frontlinebusiness.com.ph',
+    employeeId: 'co_frontline_emp_0003',
     isActive: true,
   },
   {

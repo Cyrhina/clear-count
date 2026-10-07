@@ -97,6 +97,10 @@ export const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'Account',
+    items: [{ label: 'My Profile', path: '/my-profile', icon: UserCircle, capability: 'profile.view' }],
+  },
+  {
     label: 'Settings',
     items: [
       { label: 'Company & Payroll Settings', path: '/company-settings', icon: Settings, plainCards: true, capability: 'settings.company.edit' },
@@ -117,19 +121,29 @@ export const MANAGER_NAV: NavGroup[] = [
   {
     label: 'My Team',
     items: [
+      { label: 'My Team', path: '/employees', icon: Users },
       { label: 'Attendance', path: '/attendance', icon: Clock },
-      { label: 'Schedules', path: '/schedules', icon: CalendarRange },
-      { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon },
       { label: 'Leave', path: '/leave', icon: CalendarDays },
+      { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon },
     ],
   },
   {
+    label: 'Approvals',
+    items: [{ label: 'Approvals', path: '/approvals', icon: ClipboardCheck }],
+  },
+  {
     label: 'Analytics and Reports',
-    items: [{ label: 'Reports', path: '/reports', icon: LineChart }],
+    items: [{ label: 'Team Reports', path: '/reports', icon: LineChart }],
   },
   {
     label: 'My Info',
-    items: [{ label: 'My Profile', path: '/ess', icon: UserCircle, exactMatch: true }],
+    items: [
+      { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
+      { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
+      { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
+      { label: 'My Leave', path: '/ess/leave', icon: CalendarDays },
+      { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
+    ],
   },
 ]
 

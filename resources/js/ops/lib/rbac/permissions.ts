@@ -2,7 +2,9 @@ import type { Role } from '@ops/types/domain'
 
 export type Capability =
   | 'dashboard.view'
+  | 'profile.view'
   | 'employees.view'
+  | 'employees.pay.view'
   | 'employees.edit'
   | 'employees.compensation.edit'
   | 'employees.government.edit'
@@ -11,6 +13,7 @@ export type Capability =
   | 'attendance.view'
   | 'attendance.adjust'
   | 'attendance.approve'
+  | 'attendance.import'
   | 'schedules.view'
   | 'schedules.manage'
   | 'overtime.view'
@@ -38,6 +41,7 @@ export type Capability =
   | 'thirteenth_month.manage'
   | 'ess.view'
   | 'reports.view'
+  | 'reports.workforce.view'
   | 'reports.payroll.view'
   | 'insights.view'
   | 'approvals.view'
@@ -55,6 +59,7 @@ export type Capability =
 const ALL_ADMIN_CAPS: Capability[] = [
   'dashboard.view',
   'employees.view',
+  'employees.pay.view',
   'employees.edit',
   'employees.compensation.edit',
   'employees.government.edit',
@@ -63,6 +68,7 @@ const ALL_ADMIN_CAPS: Capability[] = [
   'attendance.view',
   'attendance.adjust',
   'attendance.approve',
+  'attendance.import',
   'schedules.view',
   'schedules.manage',
   'overtime.view',
@@ -89,6 +95,7 @@ const ALL_ADMIN_CAPS: Capability[] = [
   'thirteenth_month.view',
   'thirteenth_month.manage',
   'reports.view',
+  'reports.workforce.view',
   'reports.payroll.view',
   'insights.view',
   'approvals.view',
@@ -110,12 +117,15 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
   // payroll, bank details or separations — those stay with payroll and the Company Admin.
   hr_admin: [
     'dashboard.view',
+    'profile.view',
     'employees.view',
+    'employees.pay.view',
     'employees.edit',
     'employees.government.edit',
     'attendance.view',
     'attendance.adjust',
     'attendance.approve',
+    'attendance.import',
     'schedules.view',
     'schedules.manage',
     'overtime.view',
@@ -134,6 +144,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'bonuses.manage',
     'thirteenth_month.view',
     'reports.view',
+    'reports.workforce.view',
     'approvals.view',
     'notifications.view',
     'notifications.send',
@@ -144,6 +155,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
   // payroll only reads them (Payroll Inputs).
   payroll_admin: [
     'dashboard.view',
+    'profile.view',
     'payroll.view',
     'payroll.run',
     'payroll.approve',
@@ -164,17 +176,19 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'notifications.view',
     'settings.payroll.edit',
   ],
+  // Their team only (branch-scoped): view attendance and request adjustments (for themselves and their team — HR approves),
+  // approve work and output, view overtime and leave requests (and file overtime for the team), view leave credits, team reports. View-only team roster without pay details; no payroll.
   manager: [
     'dashboard.view',
+    'employees.view',
     'attendance.view',
-    'attendance.approve',
+    'attendance.adjust',
     'schedules.view',
     'overtime.view',
-    'overtime.approve',
+    'overtime.log',
     'leave.view',
-    'leave.approve',
+    'compensation_approvals.manage',
     'reports.view',
-    'reports.payroll.view',
     'approvals.view',
     'notifications.view',
     'ess.view',

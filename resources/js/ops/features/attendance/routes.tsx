@@ -69,6 +69,7 @@ export function AttendancePage() {
   const { employees, refetch: refetchEmployees } = useEmployees()
   const { branches } = useTenant()
   const canAdjust = usePermission('attendance.adjust')
+  const canImport = usePermission('attendance.import')
 
   const [search, setSearch] = useState('')
   const [branchId, setBranchId] = useState('all')
@@ -232,7 +233,7 @@ export function AttendancePage() {
                 </Button>
               )}
             </div>
-            <ImportBiometricsDialog date={date} onImported={refetchDaily} />
+            {canImport && <ImportBiometricsDialog date={date} onImported={refetchDaily} />}
           </div>
           {isLoadingAttendance ? (
             <Skeleton className="h-72" />

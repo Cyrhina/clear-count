@@ -1,6 +1,8 @@
 import { buildSampleLoans, buildSamplePayslips } from '@ops/features/ess/sampleData'
-import { getAttendanceAdjustments } from '@ops/lib/services/attendanceService'
+import { getAttendanceAdjustments, getAttendanceRecords } from '@ops/lib/services/attendanceService'
+import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
 import { getLeaveRequests } from '@ops/lib/services/leaveService'
+import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { formatCurrency } from '@ops/lib/utils/format'
@@ -27,7 +29,7 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
     const pendingAdjustments = adjustments.filter((a) => a.status === 'pending')
     const pendingLeave = leaveRequests.filter((r) => r.status === 'pending')
 
-    if (pendingLeave.length > 0) {
+    if (pendingLeave.length > 0 && roleHasCapability(session.role, 'leave.approve')) {
       notifications.push({
         id: 'pending-leave',
         message: `${pendingLeave.length} leave request${pendingLeave.length === 1 ? '' : 's'} awaiting your approval`,
@@ -37,7 +39,7 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
         highlightId: pendingLeave[0].id,
       })
     }
-    if (pendingAdjustments.length > 0) {
+    if (pendingAdjustments.length > 0 && roleHasCapability(session.role, 'attendance.approve')) {
       notifications.push({
         id: 'pending-adjustments',
         message: `${pendingAdjustments.length} attendance adjustment${pendingAdjustments.length === 1 ? '' : 's'} awaiting your approval`,
@@ -47,6 +49,46 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
         highlightId: pendingAdjustments[0].id,
         tab: 'adjustments',
       })
+    }
+  }
+
+  // Team alerts for whoever approves overtime, submitted hours/output, or attendance (managers, HR).
+  if (roleHasCapability(session.role, 'overtime.approve')) {
+    const pendingOvertime = (await getOvertimeRecords(session)).filter((o) => o.status === 'pending')
+    if (pendingOvertime.length > 0) {
+      notifications.push({
+        id: 'pending-overtime',
+        message: `${pendingOvertime.length} overtime / night differential request${pendingOvertime.length === 1 ? '' : 's'} awaiting your approval`,
+        tone: 'warning',
+        timestamp: new Date().toISOString(),
+        link: '/overtime',
+        highlightId: pendingOvertime[0].id,
+      })
+    }
+  }
+  if (roleHasCapability(session.role, 'compensation_approvals.manage')) {
+    const pendingWork = (await getCompensationApprovals(session)).filter((a) => a.status === 'pending')
+    if (pendingWork.length > 0) {
+      notifications.push({
+        id: 'pending-work-output',
+        message: `${pendingWork.length} hours / output submission${pendingWork.length === 1 ? '' : 's'} awaiting approval`,
+        tone: 'warning',
+        timestamp: new Date().toISOString(),
+        link: '/approvals',
+        highlightId: pendingWork[0].id,
+      })
+    }
+  }
+  if (roleHasCapability(session.role, 'attendance.view')) {
+    const records = await getAttendanceRecords(session)
+    const latest = [...new Set(records.map((r) => r.date))].sort().pop()
+    const absent = latest ? records.filter((r) => r.date === latest && r.status === 'absent').length : 0
+    const incomplete = latest ? records.filter((r) => r.date === latest && r.status !== 'absent' && (!r.timeIn || !r.timeOut)).length : 0
+    if (absent > 0) {
+      notifications.push({ id: 'team-absent', message: `${absent} team member${absent === 1 ? ' was' : 's were'} absent on ${latest}`, tone: 'default', timestamp: new Date().toISOString(), link: '/attendance' })
+    }
+    if (incomplete > 0) {
+      notifications.push({ id: 'team-missing-time', message: `${incomplete} attendance record${incomplete === 1 ? ' is' : 's are'} missing a time in or time out on ${latest}`, tone: 'warning', timestamp: new Date().toISOString(), link: '/attendance' })
     }
   }
 

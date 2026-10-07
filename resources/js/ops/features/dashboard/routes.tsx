@@ -7,6 +7,7 @@ import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { AdminDashboard } from '@ops/features/dashboard/components/AdminDashboard'
 import { HrDashboard } from '@ops/features/dashboard/components/HrDashboard'
+import { ManagerDashboard } from '@ops/features/dashboard/components/ManagerDashboard'
 import { PayrollDashboard } from '@ops/features/dashboard/components/PayrollDashboard'
 import { useDashboardData } from '@ops/features/dashboard/hooks/useDashboardData'
 import { useSession } from '@ops/hooks/useSession'
@@ -15,8 +16,8 @@ import { formatDate } from '@ops/lib/utils/format'
 export function DashboardPage() {
   const { user } = useSession()
 
-  // Company, HR and Payroll Admin get their own operational dashboards; every other role
-  // (Manager, Super Admin) keeps the existing dashboard below untouched.
+  // Company, HR, Payroll Admin and Manager get their own operational dashboards; every other role
+  // (Super Admin) keeps the existing dashboard below untouched.
   if (user.role === 'company_admin') {
     return <AdminDashboard />
   }
@@ -25,6 +26,9 @@ export function DashboardPage() {
   }
   if (user.role === 'payroll_admin') {
     return <PayrollDashboard />
+  }
+  if (user.role === 'manager') {
+    return <ManagerDashboard greetingName={user.name.split(' ')[0]} />
   }
 
   return <DefaultDashboard />

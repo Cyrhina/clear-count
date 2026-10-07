@@ -96,20 +96,23 @@ export function EmployeeListPage() {
       return sortDirection === 'asc' ? result : -result
     })
 
-  const canBulkEdit = usePermission('employees.edit') || usePermission('settings.payroll.edit')
+  const canManageRoster = usePermission('employees.edit')
+  const canBulkEdit = canManageRoster || usePermission('settings.payroll.edit')
   const selection = useRowSelection(useMemo(() => filtered.map((e) => e.id), [filtered]))
   const allDepartments = useMemo(() => [...new Set(employees.map((e) => e.employment.department))].sort(), [employees])
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Employees"
-        description="View, add, and manage everyone on the company roster."
+        title={canManageRoster ? 'Employees' : 'My Team'}
+        description={canManageRoster ? 'View, add, and manage everyone on the company roster.' : 'Your team — their positions, departments, schedules, and attendance.'}
         actions={
-          <div className="flex items-center gap-2">
-            <ImportEmployeesDialog onImported={refetch} />
-            <AddEmployeeDialog onCreated={refetch} />
-          </div>
+          canManageRoster && (
+            <div className="flex items-center gap-2">
+              <ImportEmployeesDialog onImported={refetch} />
+              <AddEmployeeDialog onCreated={refetch} />
+            </div>
+          )
         }
       />
 

@@ -35,6 +35,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'ess.view': { label: 'Employee self-service', description: 'Access the personal portal: own payslips, leave, attendance, and profile.', group: 'Overview' },
 
   'employees.view': { label: 'View employees', description: 'Browse the employee directory and profiles.', group: 'Workforce' },
+  'employees.pay.view': { label: 'View pay & sensitive details', description: 'See pay rates, compensation history, benefits, government IDs, bank details, and documents on employee profiles. Without it, only personal and employment details are shown.', group: 'Workforce' },
   'employees.edit': { label: 'Edit employees', description: 'Add, update, archive, and restore employee records.', group: 'Workforce' },
   'employees.government.edit': { label: 'Edit government IDs', description: 'Update SSS, PhilHealth, Pag-IBIG and TIN numbers on employee records.', group: 'Workforce' },
   'employees.bank.edit': { label: 'Edit bank details', description: 'Update the bank account an employee is paid into.', group: 'Workforce' },
@@ -44,6 +45,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
 
   'attendance.view': { label: 'View attendance', description: 'See time logs, daily attendance, and biometric records.', group: 'Time & Attendance' },
   'attendance.adjust': { label: 'Adjust attendance', description: 'Correct time logs and file attendance adjustments.', group: 'Time & Attendance' },
+  'attendance.import': { label: 'Import biometrics', description: 'Upload punch logs from a biometrics device and apply them to attendance.', group: 'Time & Attendance' },
   'attendance.approve': { label: 'Approve attendance adjustments', description: 'Approve or reject attendance correction requests.', group: 'Time & Attendance' },
   'schedules.view': { label: 'View schedules', description: 'See the shift roster, teams and supervisors, and shift templates.', group: 'Time & Attendance' },
   'schedules.manage': { label: 'Manage schedules', description: 'Assign shifts and rest days, copy the roster, and assign team supervisors.', group: 'Time & Attendance' },
@@ -56,6 +58,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'leave.approve': { label: 'Approve leave', description: 'Approve or reject leave requests.', group: 'Leave' },
   'leave.manage_types': { label: 'Manage leave types', description: 'Configure leave types, credits, and paid/unpaid rules.', group: 'Leave' },
 
+  'profile.view': { label: 'My Profile', description: 'Open your own account page — your details, role, and access.', group: 'Overview' },
   'payroll.view': { label: 'View payroll runs', description: 'See payroll periods, computations, and totals.', group: 'Payroll' },
   'payroll.run': { label: 'Run payroll', description: 'Create payroll periods and calculate employee pay.', group: 'Payroll' },
   'payroll.approve': { label: 'Approve payroll', description: 'Review and approve calculated payroll runs.', group: 'Payroll' },
@@ -76,6 +79,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'thirteenth_month.manage': { label: 'Manage 13th month pay', description: 'Generate, finalize, and issue 13th month payslips.', group: 'Compensation & Benefits' },
 
   'reports.view': { label: 'View reports', description: 'Open, export, and print workforce and payroll reports.', group: 'Analytics & Reports' },
+  'reports.workforce.view': { label: 'View workforce reports', description: 'Open employee, compensation, benefits, statutory, and tax reports. Without it (and without payroll reports), only team reports — attendance, leave, overtime, hours, and output — are available.', group: 'Analytics & Reports' },
   'reports.payroll.view': { label: 'View payroll & tax reports', description: 'Open payroll, statutory, tax and compensation reports. Without it, only workforce reports (employee list, compensation, benefits, statutory contributions, tax & compliance, headcount, attendance, leave) are available.', group: 'Analytics & Reports' },
   'insights.view': { label: 'View insights', description: 'See analytics and decision-support insights.', group: 'Analytics & Reports' },
   'approvals.view': { label: 'Approvals inbox', description: 'See pending requests that need action.', group: 'Analytics & Reports' },
@@ -97,7 +101,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   company_admin: 'Full access to everything in this company — people, payroll, settings, and billing.',
   hr_admin: 'Manages people and time — employee records, attendance, schedules, leave, overtime, approvals, benefits, loans and deductions. Views payroll results and 13th month; no payroll processing, bank details, or separations.',
   payroll_admin: 'Runs payroll from approved records — payroll runs and inputs, statutory and tax, payslips, loans and deductions, bonuses, 13th month, and payroll reports.',
-  manager: 'Approves their team’s attendance, overtime, and leave, and views team reports.',
+  manager: 'Manages their team — views attendance and requests adjustments, approves work and output, views overtime and leave requests (and files overtime for the team), views leave credits, and sees team reports. No biometrics import, adjustment approvals, pay details, or payroll.',
   employee: 'Self-service only — own payslips, leave, attendance, and notifications.',
 }
 

@@ -18,6 +18,11 @@ class OpsController extends Controller
         return $this->page('dashboard', $request);
     }
 
+    public function myProfile(Request $request): Response
+    {
+        return $this->page('my-profile', $request);
+    }
+
     public function employees(Request $request): Response
     {
         return $this->page('employees.index', $request);

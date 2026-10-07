@@ -9,6 +9,7 @@ import { LeaveFilterBar } from '@ops/features/leave/components/LeaveFilterBar'
 import { LeaveRequestDialog } from '@ops/features/leave/components/LeaveRequestDialog'
 import { LeaveRequestsList } from '@ops/features/leave/components/LeaveRequestsList'
 import { LeaveTypesPanel } from '@ops/features/leave/components/LeaveTypesPanel'
+import { TeamLeaveCreditsPanel } from '@ops/features/leave/components/TeamLeaveCreditsPanel'
 import { HIERARCHY_LABEL, HIERARCHY_LEVELS, getEmployeeHierarchyLevel } from '@ops/features/leave/hierarchyUtil'
 import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
 import { useHighlightTarget } from '@ops/hooks/useHighlightTarget'
@@ -34,6 +35,8 @@ function LeaveContent() {
   const { leaveTypes, refetch: refetchLeaveTypes } = useLeaveTypes()
   const { employees, refetch: refetchEmployees } = useEmployees()
   const canRequest = usePermission('leave.request')
+  const canManageTypes = usePermission('leave.manage_types')
+  const canApprove = usePermission('leave.approve')
   const { highlightId } = useHighlightTarget()
   const [activeTab, setActiveTab] = useState('requests')
 
@@ -107,14 +110,14 @@ function LeaveContent() {
     <div className="space-y-5">
       <PageHeader
         title="Leave Management"
-        description="Leave requests, approvals, and company leave types."
+        description={canApprove ? 'Leave requests, approvals, and company leave types.' : 'Your team\'s leave requests and leave credits.'}
         actions={activeTab === 'requests' && canRequest && <LeaveRequestDialog employees={employees} leaveTypes={leaveTypes} onCreated={refetch} />}
       />
 
       <Tabs defaultValue="requests" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="requests">Requests</TabsTrigger>
-          <TabsTrigger value="types">Leave Types & Credits</TabsTrigger>
+          <TabsTrigger value="types">{canManageTypes ? 'Leave Types & Credits' : 'Leave Credits'}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests" className="space-y-4">
@@ -156,7 +159,11 @@ function LeaveContent() {
         </TabsContent>
 
         <TabsContent value="types">
-          <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} onCreditsGranted={refetchEmployees} />
+          {canManageTypes ? (
+            <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} onCreditsGranted={refetchEmployees} />
+          ) : (
+            <TeamLeaveCreditsPanel employees={employees} leaveTypes={leaveTypes} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

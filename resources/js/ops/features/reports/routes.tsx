@@ -33,6 +33,7 @@ import {
 } from '@ops/features/reports/components/BasicReports'
 import { CustomReportBuilder } from '@ops/features/reports/components/CustomReportBuilder'
 import { ReportCategorySection, type ReportCategory } from '@ops/features/reports/components/shared'
+import { HoursWorkedReport, OutputSummaryReport } from '@ops/features/reports/components/TeamReports'
 import { BonusReport, PayrollHistoryReport, ThirteenthMonthPayReport } from '@ops/features/reports/components/PayrollRecordReports'
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
 import { DeMinimisBenefitsReport, TaxMonitoringReport, TaxableCompensationReport, ThirteenthMonthBenefitsReport, WithholdingTaxSummaryReport } from '@ops/features/reports/components/TaxComplianceReports'
@@ -45,6 +46,13 @@ const BASIC_CATEGORIES: ReportCategory[] = [
     reports: [
       { id: 'employee-master-list', label: 'Employee Master List', description: 'Full profile and demographic export.' },
       { id: 'employee-compensation', label: 'Employee Compensation Report', description: 'Breakdown of basic rates, allowances, and pay frequency.' },
+    ],
+  },
+  {
+    label: 'Team Reports',
+    reports: [
+      { id: 'hours-worked', label: 'Hours Worked', description: 'Regular hours, submitted hours, and approved OT / night differential per employee.' },
+      { id: 'output-summary', label: 'Output Summary', description: 'Output submitted, approved and pending per employee.' },
     ],
   },
   {
@@ -151,6 +159,10 @@ function renderBasicReport(id: string) {
       return <BonusReport />
     case 'thirteenth-month-pay-report':
       return <ThirteenthMonthPayReport />
+    case 'hours-worked':
+      return <HoursWorkedReport />
+    case 'output-summary':
+      return <OutputSummaryReport />
     case 'payslip-report':
       return <PayslipReportView />
     case 'overtime-report':
@@ -225,16 +237,40 @@ function renderAdvancedReport(id: string) {
   }
 }
 
-/** Reports anyone with `reports.view` may open; everything else needs `reports.payroll.view` (it shows pay, tax, or cost). */
-const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'sss-contribution', 'philhealth-contribution', 'pagibig-contribution', 'consolidated-statutory', 'tax-monitoring', 'taxable-compensation', 'thirteenth-month-benefits', 'de-minimis-benefits', 'withholding-tax-summary', 'bir-1601c', 'bir-2316', 'headcount-analysis', 'attendance-absenteeism', 'leave-utilization'])
+/**
+ * Three tiers: team reports (everyone with `reports.view` — a manager sees their own team's attendance, leave, overtime, hours and
+ * output), workforce reports (`reports.workforce.view` — employee, benefits, statutory and tax reports), and everything else
+ * (`reports.payroll.view` — payroll, accounting and cost reports).
+ */
+const TEAM_REPORT_IDS = new Set(['hours-worked', 'output-summary', 'overtime-report', 'attendance-absenteeism', 'leave-utilization'])
+const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'sss-contribution', 'philhealth-contribution', 'pagibig-contribution', 'consolidated-statutory', 'tax-monitoring', 'taxable-compensation', 'thirteenth-month-benefits', 'de-minimis-benefits', 'withholding-tax-summary', 'bir-1601c', 'bir-2316', 'headcount-analysis'])
 
-function visibleCategories(categories: ReportCategory[], canPayroll: boolean): ReportCategory[] {
-  if (canPayroll) return categories
-  return categories.map((c) => ({ ...c, reports: c.reports.filter((r) => WORKFORCE_REPORT_IDS.has(r.id)) })).filter((c) => c.reports.length > 0)
+type ReportTier = 'payroll' | 'workforce' | 'team'
+
+function useReportTier(): ReportTier {
+  const canPayroll = usePermission('reports.payroll.view')
+  const canWorkforce = usePermission('reports.workforce.view')
+  return canPayroll ? 'payroll' : canWorkforce ? 'workforce' : 'team'
+}
+
+function reportAllowed(id: string, tier: ReportTier) {
+  return tier === 'payroll' || TEAM_REPORT_IDS.has(id) || (tier === 'workforce' && WORKFORCE_REPORT_IDS.has(id))
+}
+
+function visibleCategories(categories: ReportCategory[], tier: ReportTier): ReportCategory[] {
+  if (tier === 'payroll') return categories
+  const filtered = categories.map((c) => ({ ...c, reports: c.reports.filter((r) => reportAllowed(r.id, tier)) })).filter((c) => c.reports.length > 0)
+  if (tier !== 'team') return filtered
+  // A manager's reports are all about their team: fold the overtime report into Team Reports, without the payroll framing.
+  const overtime = { id: 'overtime-report', label: 'Overtime Summary', description: 'Overtime and night differential hours per employee.' }
+  return filtered
+    .map((c) => ({ ...c, reports: c.reports.filter((r) => r.id !== 'overtime-report') }))
+    .map((c) => (c.label === 'Team Reports' ? { ...c, reports: [...c.reports, overtime] } : c))
+    .filter((c) => c.reports.length > 0)
 }
 
 export function ReportsPage() {
-  const canPayroll = usePermission('reports.payroll.view')
+  const tier = useReportTier()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'advanced' ? 'advanced' : 'basic'
 
@@ -244,7 +280,10 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Reports" description="Basic payroll/employee reports and advanced analytics for the Company Admin Portal." />
+      <PageHeader
+        title={tier === 'team' ? 'Team Reports' : 'Reports'}
+        description={tier === 'team' ? 'Attendance, leave, overtime, hours and output for your team.' : 'Basic payroll/employee reports and advanced analytics.'}
+      />
 
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList>
@@ -253,13 +292,13 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="basic" className="space-y-6">
-          {visibleCategories(BASIC_CATEGORIES, canPayroll).map((category) => (
+          {visibleCategories(BASIC_CATEGORIES, tier).map((category) => (
             <ReportCategorySection key={category.label} category={category} tab="basic" />
           ))}
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
-          {visibleCategories(ADVANCED_CATEGORIES, canPayroll).map((category) => (
+          {visibleCategories(ADVANCED_CATEGORIES, tier).map((category) => (
             <ReportCategorySection key={category.label} category={category} tab="advanced" />
           ))}
         </TabsContent>
@@ -283,8 +322,8 @@ export function ReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>()
   const [searchParams] = useSearchParams()
   const { usage, isLoading: usageLoading } = useSubscriptionUsage()
-  const canPayroll = usePermission('reports.payroll.view')
-  const meta = reportId && (canPayroll || WORKFORCE_REPORT_IDS.has(reportId)) ? REPORT_LOOKUP[reportId] : undefined
+  const tier = useReportTier()
+  const meta = reportId && reportAllowed(reportId, tier) ? REPORT_LOOKUP[reportId] : undefined
 
   // The `?tab=` query param records which tab the user opened this report from, so the back
   // link restores it exactly — including after a full page reload. Fall back to the report's

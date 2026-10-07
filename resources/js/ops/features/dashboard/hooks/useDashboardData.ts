@@ -8,6 +8,8 @@ import {
   getPayrollDashboard,
   getWorkforceCharts,
 } from '@ops/lib/services/dashboardService'
+import { getManagerDashboard } from '@ops/lib/services/managerService'
+import type { ManagerDashboard } from '@ops/lib/services/managerService'
 import { getTaxAlerts, type TaxAlerts } from '@ops/lib/services/taxComplianceService'
 import type { AdminDashboardOverview, DashboardStats, PayrollDashboard, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
 
@@ -110,6 +112,24 @@ export function usePayrollDashboard() {
     let cancelled = false
     setData(null)
     getPayrollDashboard(user).then((result) => {
+      if (!cancelled) setData(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  return { data, isLoading: data === null }
+}
+
+export function useManagerDashboard() {
+  const { user } = useSession()
+  const [data, setData] = useState<ManagerDashboard | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setData(null)
+    getManagerDashboard(user).then((result) => {
       if (!cancelled) setData(result)
     })
     return () => {

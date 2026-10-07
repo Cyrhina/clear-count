@@ -1,8 +1,10 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu, UserCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { ThemeToggle } from '@ops/components/ui/ThemeToggle'
 import { ROLE_LABELS, RoleSwitcherDropdown, TierSwitcherDropdown } from '@ops/components/layout/DemoSwitchers'
+import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { cn } from '@ops/lib/utils/cn'
@@ -10,6 +12,7 @@ import { cn } from '@ops/lib/utils/cn'
 export function Topbar({ onOpenMobileNav }: { onOpenMobileNav?: () => void }) {
   const { user, logout } = useSession()
   const { company, activeBranch } = useTenant()
+  const canViewProfile = usePermission('profile.view')
 
   function onLogout() {
     logout()
@@ -65,6 +68,14 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav?: () => void }) {
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-44 rounded-xl border border-border bg-card p-1 shadow-soft-lg">
+              {canViewProfile && (
+                <DropdownMenu.Item asChild>
+                  <Link to="/my-profile" className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-muted">
+                    <UserCircle className="size-3.5" />
+                    My Profile
+                  </Link>
+                </DropdownMenu.Item>
+              )}
               <DropdownMenu.Item
                 onSelect={onLogout}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-danger outline-none data-[highlighted]:bg-muted"

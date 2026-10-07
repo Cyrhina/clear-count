@@ -99,6 +99,7 @@ export function OvertimePage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const { summary, isLoading: summaryLoading } = useOvertimeSummary(refreshKey)
   const canApprove = usePermission('overtime.approve')
+  const canFile = usePermission('overtime.log')
 
   const [search, setSearch] = useState('')
   const [type, setType] = useState('all')
@@ -187,7 +188,7 @@ export function OvertimePage() {
             <Button variant="secondary" icon={<Download className="size-4" />} onClick={handleExport}>
               Export Summary
             </Button>
-            <NewOvertimeRequestDialog employees={employees} onCreated={refetchAll} />
+            {canFile && <NewOvertimeRequestDialog employees={employees} onCreated={refetchAll} />}
           </div>
         }
       />

@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
+import { EmptyState } from '@ops/components/ui/EmptyState'
+import { FilterField, SortControl } from '@ops/components/ui/FiltersPopover'
+import type { SortDirection } from '@ops/components/ui/FiltersPopover'
+import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
+import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
@@ -29,6 +34,10 @@ export function EssPayslipsPage() {
   const { highlightId } = useHighlightTarget()
   const navigate = useNavigate()
   const [preview, setPreview] = useState<{ period: PayrollPeriod; line: PayrollLine } | null>(null)
+  const [search, setSearch] = useState('')
+  const [year, setYear] = useState('all')
+  const [sortBy, setSortBy] = useState('payDate')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   if (isLoading) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
@@ -48,10 +57,56 @@ export function EssPayslipsPage() {
         return { line, period, otHours }
       })
 
+  const years = [...new Set(rows.map((r) => r.period.payDate.slice(0, 4)))].sort().reverse()
+  const query = search.trim().toLowerCase()
+  const visible = rows
+    .filter(
+      ({ period }) =>
+        (year === 'all' || period.payDate.startsWith(year)) &&
+        (!query || `${period.label} ${period.payrollNumber} ${period.payDate}`.toLowerCase().includes(query)),
+    )
+    .sort((a, b) => {
+      const result = sortBy === 'netPay' ? a.line.netPay - b.line.netPay : a.period.payDate.localeCompare(b.period.payDate)
+      return sortDirection === 'asc' ? result : -result
+    })
+  const activeFilterCount = year !== 'all' ? 1 : 0
+
   return (
     <div className="space-y-5">
       <PageHeader title="My Payslips" description="View and download your payslips after each payroll run is finalized." />
 
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search period or payroll no.…"
+        activeCount={activeFilterCount}
+        onClear={() => {
+          setSearch('')
+          setYear('all')
+        }}
+        trailing={`${visible.length} of ${rows.length} payslips`}
+        filters={
+          <>
+            <FilterField label="Pay Year">
+              <Select value={year} onValueChange={setYear} options={[{ value: 'all', label: 'All years' }, ...years.map((y) => ({ value: y, label: y }))]} />
+            </FilterField>
+            <SortControl
+              value={sortBy}
+              onValueChange={setSortBy}
+              options={[
+                { value: 'payDate', label: 'Pay Date' },
+                { value: 'netPay', label: 'Net Pay' },
+              ]}
+              direction={sortDirection}
+              onDirectionChange={setSortDirection}
+            />
+          </>
+        }
+      />
+
+      {visible.length === 0 ? (
+        <EmptyState title="No payslips match these filters" description="Try another year or clear the search." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -65,7 +120,7 @@ export function EssPayslipsPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map(({ period, line, otHours }) => (
+          {visible.map(({ period, line, otHours }) => (
             <TableRow key={line.id} id={`row-${line.id}`} className={cn(line.id === highlightId && 'highlight-target')}>
               <TableCell className="font-medium">
                 {period.label}
@@ -100,6 +155,7 @@ export function EssPayslipsPage() {
           ))}
         </TableBody>
       </Table>
+      )}
 
       <Dialog open={!!preview} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogContent className="max-w-3xl">

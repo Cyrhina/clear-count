@@ -23,6 +23,7 @@ import {
   usePayrollPeriodOptions,
   usePayrollRegister,
 } from '@ops/features/reports/hooks/useReports'
+import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
@@ -846,6 +847,7 @@ export function PayslipReportView() {
 }
 
 export function OvertimeReportView() {
+  const canSeeCost = usePermission('reports.payroll.view')
   const { records, isLoading: recordsLoading } = useOvertimeRecords()
   const { employees, isLoading: employeesLoading } = useEmployees()
   const { branches } = useTenant()
@@ -944,7 +946,7 @@ export function OvertimeReportView() {
                   <TableHead>Regular OT Hours</TableHead>
                   <TableHead>Night Diff Hours</TableHead>
                   <TableHead>Rest Day / Holiday Hours</TableHead>
-                  <TableHead>Estimated Cost</TableHead>
+                  {canSeeCost && <TableHead>Estimated Cost</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -955,7 +957,7 @@ export function OvertimeReportView() {
                     <TableCell>{row.regular.toFixed(1)}</TableCell>
                     <TableCell>{row.nightDiff.toFixed(1)}</TableCell>
                     <TableCell>{row.restDay.toFixed(1)}</TableCell>
-                    <TableCell className="font-medium">{formatCurrency(Math.round(row.cost))}</TableCell>
+                    {canSeeCost && <TableCell className="font-medium">{formatCurrency(Math.round(row.cost))}</TableCell>}
                   </TableRow>
                 ))}
               </TableBody>

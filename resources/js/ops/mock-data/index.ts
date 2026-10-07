@@ -40,6 +40,24 @@ function buildEmployees(): Employee[] {
 }
 
 const employees = buildEmployees()
+
+/** HR Admin and Payroll Admin are employees of the company too — give their employee records their names, so My Profile shows them. */
+function linkStaffEmployees() {
+  const staff: { id: string; firstName: string; lastName: string; department: string; position: string }[] = [
+    { id: 'co_frontline_emp_0002', firstName: 'Patrick', lastName: 'Ong', department: 'HR', position: 'HR Manager' },
+    { id: 'co_frontline_emp_0003', firstName: 'Karen', lastName: 'Sison', department: 'Finance', position: 'Payroll Specialist' },
+  ]
+  for (const entry of staff) {
+    const employee = employees.find((e) => e.id === entry.id)
+    if (!employee) continue
+    employee.personal.firstName = entry.firstName
+    employee.personal.lastName = entry.lastName
+    if (employee.personal.personalEmail) employee.personal.personalEmail = `${entry.firstName.toLowerCase()}.${entry.lastName.toLowerCase()}@gmail.com`
+    employee.employment.department = entry.department
+    employee.employment.position = entry.position
+  }
+}
+linkStaffEmployees()
 // The attendance generator follows each company's default (Standard Day) shift, not the last template listed.
 const schedulesByCompany = new Map(schedules.filter((s) => s.id.endsWith('_sched_default')).map((s) => [s.companyId, s]))
 const attendanceRecords = generateAttendanceRecords(employees, schedulesByCompany)
@@ -58,7 +76,7 @@ function reconcileUsersWithEmployees() {
     const employee = employees.find((e) => e.id === user.employeeId)
     if (!employee) continue
     user.name = `${employee.personal.firstName} ${employee.personal.lastName}`
-    user.branchId = employee.branchId
+    if (user.role === 'manager' || user.role === 'employee') user.branchId = employee.branchId
   }
 }
 reconcileUsersWithEmployees()

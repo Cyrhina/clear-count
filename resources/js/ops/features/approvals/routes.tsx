@@ -194,7 +194,7 @@ export function CompensationApprovalsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Hourly & Output Approvals"
+        title="Work & Output Approvals"
         description="Review timecard hours and piece-rate output submitted for employees paid by the hour or by output before they reach payroll."
       />
 

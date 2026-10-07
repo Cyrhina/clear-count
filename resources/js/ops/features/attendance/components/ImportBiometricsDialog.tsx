@@ -240,7 +240,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     const allowed = device === 'zkteco' ? ['.csv', '.dat', '.txt', '.xlsx'] : ['.csv']
     try {
       if (!allowed.some((ext) => name.endsWith(ext))) {
-        setParseError(device === 'zkteco' ? 'Upload an attlog .dat, GLog .txt, .csv or .xlsx exported from the ZKTeco device.' : 'Other devices and systems must use the standard CSV template (.csv).')
+        setParseError(device === 'zkteco' ? 'Upload an attlog .dat, GLog .txt, .csv or .xlsx exported from the ZKTeco ZK3969.' : 'Other biometrics devices must follow the standard CSV template (.csv).')
         return
       }
       const buffer = await file.arrayBuffer()
@@ -320,9 +320,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
         <DialogDescription>
           {preview
             ? `Review what was read from ${preview.sourceName}. Valid records are applied; invalid lines are skipped and listed under Issues.`
-            : device === 'zkteco'
-              ? 'Upload the punch log exported from your ZKTeco terminal (USB attlog .dat, GLog .txt, CSV or Excel .xlsx).'
-              : 'Upload your records in the standard CSV template — download it below to see the exact format.'}
+            : 'Upload the punch log exported from your biometrics device.'}
         </DialogDescription>
 
         {preview && result ? (
@@ -703,8 +701,8 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {(
                 [
-                  { value: 'zkteco', icon: Cpu, title: 'ZKTeco device', hint: 'Read directly: .dat, .txt, .csv or Excel .xlsx' },
-                  { value: 'other', icon: FileSpreadsheet, title: 'Other device or system', hint: 'Use the standard CSV template' },
+                  { value: 'zkteco', icon: Cpu, title: 'ZKTeco ZK3969', hint: 'Raw files are read directly: .dat, .txt, .csv or Excel .xlsx' },
+                  { value: 'other', icon: FileSpreadsheet, title: 'Other biometrics device', hint: 'Follow the standard CSV template' },
                 ] as const
               ).map((o) => (
                 <button
@@ -731,7 +729,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                 <Info className="mt-0.5 size-4 shrink-0 text-primary" />
                 {device === 'zkteco' ? (
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">ZKTeco exports are read directly</p>
+                    <p className="text-sm font-medium text-foreground">Note: all raw files from a ZKTeco ZK3969 are read directly</p>
                     <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
                       <li>
                         <span className="font-medium text-foreground">USB attlog (.dat)</span> — User ID, Date-Time, Device ID, In/Out State, Verify Mode
@@ -760,8 +758,8 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                   </div>
                 ) : (
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">Standard CSV template</p>
-                    <p className="mt-1 text-xs text-muted-foreground">One row per employee per day. The header row must be exactly:</p>
+                    <p className="text-sm font-medium text-foreground">Note: other biometrics devices must follow the standard CSV template</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Export or copy your device's records into this format — one row per employee per day. The header row must be exactly:</p>
                     <code className="mt-1.5 block rounded bg-muted px-2 py-1 font-mono text-[11px]">{STANDARD_TEMPLATE_HEADERS.join(',')}</code>
                     <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
                       <li>Employee ID as in the employee list (e.g. FR-0006)</li>

@@ -19,6 +19,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { useToast } from '@ops/components/ui/Toast'
 import { CompensationHistoryTable } from '@ops/features/employees/components/CompensationHistoryTable'
+import { AttendanceSummaryTab } from '@ops/features/employees/components/AttendanceSummaryTab'
 import { EditBankInfoForm } from '@ops/features/employees/components/edit/EditBankInfoForm'
 import { EditBenefitsForm } from '@ops/features/employees/components/edit/EditBenefitsForm'
 import { EditCompensationForm } from '@ops/features/employees/components/edit/EditCompensationForm'
@@ -94,6 +95,8 @@ function EmployeeProfileContent() {
   const canEditGovernment = usePermission('employees.government.edit')
   const canEditBank = usePermission('employees.bank.edit')
   const canSeparate = usePermission('employees.separate')
+  const canViewPay = usePermission('employees.pay.view')
+  const canViewAttendance = usePermission('attendance.view')
 
   function stopEditing() {
     setEditingSection(null)
@@ -198,13 +201,14 @@ function EmployeeProfileContent() {
         <TabsList>
           <TabsTrigger value="personal">Personal Information</TabsTrigger>
           <TabsTrigger value="employment">Employment</TabsTrigger>
-          <TabsTrigger value="compensation">Compensation</TabsTrigger>
+          {canViewPay && <TabsTrigger value="compensation">Compensation</TabsTrigger>}
           <TabsTrigger value="payroll">Payroll Information</TabsTrigger>
-          <TabsTrigger value="benefits">Benefits</TabsTrigger>
-          <TabsTrigger value="government">Government Information</TabsTrigger>
-          <TabsTrigger value="bank">Bank/Payment</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          {canViewAttendance && <TabsTrigger value="attendance">Attendance</TabsTrigger>}
+          {canViewPay && <TabsTrigger value="benefits">Benefits</TabsTrigger>}
+          {canViewPay && <TabsTrigger value="government">Government Information</TabsTrigger>}
+          {canViewPay && <TabsTrigger value="bank">Bank/Payment</TabsTrigger>}
+          {canViewPay && <TabsTrigger value="documents">Documents</TabsTrigger>}
+          {canViewPay && <TabsTrigger value="history">History</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="personal">
@@ -334,12 +338,14 @@ function EmployeeProfileContent() {
               </div>
               <Field label="Compensation Type" value={compensationType?.name ?? PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />
               <Field label="Payroll Frequency" value={currentGroup ? FREQUENCY_LABEL[currentGroup.frequency] : '—'} />
-              <Field label="Pay Rate Type" value={PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />
-              <Field
-                label={rateFieldLabel(employee.compensation.payType)}
-                value={formatBaseRate(employee.compensation.payType, employee.compensation.basicPay, employee.compensation.outputUnit)}
-              />
-              {employee.compensation.payType === 'output_based' && (
+              {canViewPay && <Field label="Pay Rate Type" value={PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />}
+              {canViewPay && (
+                <Field
+                  label={rateFieldLabel(employee.compensation.payType)}
+                  value={formatBaseRate(employee.compensation.payType, employee.compensation.basicPay, employee.compensation.outputUnit)}
+                />
+              )}
+              {canViewPay && employee.compensation.payType === 'output_based' && (
                 <Field label="Output Unit" value={employee.compensation.outputUnit ?? undefined} />
               )}
               <Field label="Branch" value={branch?.name} />
@@ -351,6 +357,12 @@ function EmployeeProfileContent() {
             </p>
           </Card>
         </TabsContent>
+
+        {canViewAttendance && (
+          <TabsContent value="attendance">
+            <AttendanceSummaryTab employeeId={employee.id} />
+          </TabsContent>
+        )}
 
         <TabsContent value="benefits">
           <Card className="p-5">

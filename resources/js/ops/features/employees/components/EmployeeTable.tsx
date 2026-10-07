@@ -8,6 +8,7 @@ import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { SEPARATION_LABEL } from '@ops/lib/services/employeeService'
 import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { usePermission } from '@ops/hooks/usePermission'
 import { useTenant } from '@ops/hooks/useTenant'
 import { useMixedCompensationStore, summarizeMixedCompensationShort } from '@ops/features/employees/mixedCompensationStore'
 import { formatBaseRateShort } from '@ops/lib/payroll/payRate'
@@ -24,8 +25,9 @@ export function EmployeeTable({ employees, selection }: { employees: Employee[];
   const navigate = useNavigate()
   const { branches } = useTenant()
   const mixedStructures = useMixedCompensationStore((s) => s.structures)
+  const canViewPay = usePermission('employees.pay.view')
 
-  const columns: ColumnDef<Employee, unknown>[] = [
+  const allColumns: ColumnDef<Employee, unknown>[] = [
     {
       id: 'name',
       header: 'Employee',
@@ -82,6 +84,9 @@ export function EmployeeTable({ employees, selection }: { employees: Employee[];
       cell: () => <ChevronRight className="size-4 text-muted-foreground" />,
     },
   ]
+
+  // Pay rates are only shown to roles that may see pay details (managers see their team without them).
+  const columns = allColumns.filter((c) => canViewPay || c.id !== 'baseRate')
 
   const table = useReactTable({
     data: employees,

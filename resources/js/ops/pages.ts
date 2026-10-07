@@ -18,6 +18,7 @@ export const OPS_PAGES: Record<string, ComponentType> = {
   leave: page(() => import('@ops/features/leave/routes'), 'LeavePage'),
   'payroll.index': page(() => import('@ops/features/payroll/routes'), 'PayrollListPage'),
   'payroll.show': page(() => import('@ops/features/payroll/routes'), 'PayrollPeriodDetailPage'),
+  'my-profile': page(() => import('@ops/features/ess/routes'), 'EssProfilePage'),
   'payroll.inputs': page(() => import('@ops/features/payroll-inputs/routes'), 'PayrollInputsPage'),
   'bonuses.index': page(() => import('@ops/features/bonuses/routes'), 'BonusesPage'),
   'bonuses.payslip': page(() => import('@ops/features/bonuses/BonusPayslipPage'), 'BonusPayslipPage'),
