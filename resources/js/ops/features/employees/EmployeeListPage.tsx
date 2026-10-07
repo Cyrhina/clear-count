@@ -1,5 +1,6 @@
 import { Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
 import { FilterField, FiltersPopover, SortControl, type SortDirection } from '@ops/components/ui/FiltersPopover'
@@ -29,6 +30,7 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
   { value: 'department', label: 'Department' },
   { value: 'branch', label: 'Branch' },
+  { value: 'hired', label: 'Date hired' },
 ]
 
 export function EmployeeListPage() {
@@ -40,8 +42,10 @@ export function EmployeeListPage() {
   const [branchId, setBranchId] = useState('all')
   const [department, setDepartment] = useState('all')
   const [onLeaveIds, setOnLeaveIds] = useState<Set<string>>(new Set())
-  const [sortBy, setSortBy] = useState('name')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  // The dashboard's "Recent Employees" links here with ?sort=hired&dir=desc to show the newest hires first.
+  const [searchParams] = useSearchParams()
+  const [sortBy, setSortBy] = useState(() => (SORT_OPTIONS.some((o) => o.value === searchParams.get('sort')) ? (searchParams.get('sort') as string) : 'name'))
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => (searchParams.get('dir') === 'desc' ? 'desc' : 'asc'))
 
   useEffect(() => {
     getEmployeeIdsOnLeaveToday(user).then(setOnLeaveIds)
@@ -91,6 +95,7 @@ export function EmployeeListPage() {
     .sort((a, b) => {
       let result = 0
       if (sortBy === 'department') result = a.employment.department.localeCompare(b.employment.department)
+      else if (sortBy === 'hired') result = a.employment.dateHired.localeCompare(b.employment.dateHired)
       else if (sortBy === 'branch') result = (branchNameById.get(a.branchId) ?? '').localeCompare(branchNameById.get(b.branchId) ?? '')
       else result = `${a.personal.firstName} ${a.personal.lastName}`.localeCompare(`${b.personal.firstName} ${b.personal.lastName}`)
       return sortDirection === 'asc' ? result : -result

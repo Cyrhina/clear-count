@@ -181,7 +181,6 @@ export async function getAdminDashboardOverview(session: SessionUser): Promise<A
     { grossPay: 5720000, netPay: 4860000 },
   ]
   const payrollChart = PAYROLL_TREND.map((values, i) => ({ month: MONTHS[(today.getMonth() - 6 + i + 12) % 12], ...values }))
-  const daysAgo = (n: number) => fmtLong(addDays(today, -n))
 
   // Reminders come from the Compliance Deadlines configured under Company & Payroll Settings → Payroll
   // Calendar, plus the payroll cut-off of the cycle in progress (derived from the payroll cycle above).
@@ -277,13 +276,19 @@ export async function getAdminDashboardOverview(session: SessionUser): Promise<A
         state: stateOf(next.cutoff),
       },
     ],
-    recentEmployees: [
-      { id: 'e1', name: 'Maria Santos', department: 'Human Resources', position: 'HR Associate', hiredLabel: daysAgo(3), status: 'active' },
-      { id: 'e2', name: 'Juan Dela Cruz', department: 'Sales', position: 'Account Executive', hiredLabel: daysAgo(8), status: 'active' },
-      { id: 'e3', name: 'Ana Reyes', department: 'Finance', position: 'Payroll Analyst', hiredLabel: daysAgo(12), status: 'on_leave' },
-      { id: 'e4', name: 'Carlos Mendoza', department: 'Warehouse', position: 'Inventory Clerk', hiredLabel: daysAgo(17), status: 'active' },
-      { id: 'e5', name: 'Lea Garcia', department: 'Customer Support', position: 'Support Specialist', hiredLabel: daysAgo(23), status: 'active' },
-    ],
+    // The five most recently hired active employees — the same people the Employees page lists when sorted by newest hire.
+    recentEmployees: (await getEmployees(session))
+      .filter((e) => e.employment.status === 'active')
+      .sort((a, b) => b.employment.dateHired.localeCompare(a.employment.dateHired))
+      .slice(0, 5)
+      .map((e) => ({
+        id: e.id,
+        name: `${e.personal.firstName} ${e.personal.lastName}`,
+        department: e.employment.department,
+        position: e.employment.position,
+        hiredLabel: fmtLong(new Date(`${e.employment.dateHired}T00:00:00`)),
+        status: 'active' as const,
+      })),
     reminders,
   }
 }

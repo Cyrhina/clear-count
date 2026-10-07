@@ -1,87 +1,87 @@
 # Graph Report - laravel-fbs-ops  (2026-10-07)
 
 ## Corpus Check
-- 511 files · ~249,180 words
+- 521 files · ~259,093 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3441 nodes · 11992 edges · 193 communities (156 shown, 37 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 69 edges (avg confidence: 0.85)
+- 3526 nodes · 12491 edges · 199 communities (162 shown, 37 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 70 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e53ebc43`
+- Built from commit: `3e9f9e8b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Employee
-- Button.tsx
+- useToast
 - Sidebar.tsx
-- integrations/routes.tsx
-- ActivityLogPanel.tsx
+- formatDate
 - useSession
-- PayrollPeriodDetailPage.tsx
+- AddEmployeeDialog.tsx
+- payslipEmail.ts
 - mock-data/index.ts
-- Badge.tsx
-- shared.tsx
 - cn
+- shared.tsx
+- PayslipCard.tsx
 - cn
 - thirteenthMonthService.ts
 - PasswordValidationRules.php
 - dashboardService.ts
 - Illuminate\Http\Request
-- PayrollGroupAssignDialog.tsx
+- groupAssignment.ts
 - Company
 - User
 - BasicReports.tsx
-- EmployeeComputationDrawer.tsx
+- computationBreakdown.ts
 - utils.ts
-- formatCurrency
+- AdvancedReports.tsx
 - types/index.ts
 - domain.ts
 - sidebar.tsx
 - AdminDashboard.tsx
 - payrollSettingsService.ts
-- ResetPasswordPage.tsx
+- authService.ts
 - taxComplianceService.ts
 - payrollService.ts
-- PayrollGroupDialog.tsx
+- PayrollRulesSection.tsx
 - RosterTab.tsx
-- format.ts
+- EmployeeLoansView.tsx
 - getEmployees
-- overtime/routes.tsx
+- userService.ts
 - biometricsImport.ts
 - Illuminate\Database\Migrations\Migration
-- CompanyInfoForm.tsx
+- useDashboardData.ts
 - dependencies
 - app-header.tsx
 - react-router-dom.tsx
-- EssHomePage.tsx
-- companyService.ts
+- leaveService.ts
+- BulkEmployeeActions.tsx
 - dropdown-menu.tsx
 - integrationService.ts
 - payrollRuns.ts
 - use-appearance.tsx
-- branchService.ts
-- EssPayslipsPage.tsx
-- AddBonusDialog.tsx
-- Select.tsx
-- Input.tsx
+- useBenefitsDeductions.ts
+- EssHomePage.tsx
+- LoginPage.tsx
+- PayrollPeriodDetailPage.tsx
+- fullName
 - payFrequency.ts
 - employeeService.ts
-- AccountingReports.tsx
+- ActivityLogPanel.tsx
 - bootstrap/app.php
 - attendanceService.ts
-- WorkLogsSummaryCard.tsx
-- scheduleReview.ts
+- compensationApprovalService.ts
+- Schedule
 - compilerOptions
-- EssOvertimePage.tsx
-- TeamsTab.tsx
+- managerService.ts
+- usePermission
 - employeeImport.ts
-- reports/routes.tsx
+- CustomReportBuilder
 - StatutoryReports.tsx
-- brandTheme.ts
+- CompanyInfoForm.tsx
 - Illuminate\Database\Seeder
 - overtimeService.ts
 - xlsx.ts
@@ -89,55 +89,55 @@
 - branchDepartmentService.ts
 - components.json
 - ImportBiometricsDialog.tsx
-- useAttendance.ts
+- subscriptionService.ts
 - StoreEmployeeRequest
 - FortifyServiceProvider
 - loanService.ts
-- fullName
-- bonuses/routes.tsx
+- formatCurrency
+- leaveDays.ts
 - employees.ts
 - scripts
 - optionalDependencies
 - layout.tsx
-- payroll-inputs/routes.tsx
-- PayrollRecordReports.tsx
+- PayslipDetailPage.tsx
+- TeamReports.tsx
 - composer.json
-- BulkDialog
+- ResetPasswordPage.tsx
 - xlsxRead.ts
 - benefitsDeductions.ts
 - delete-user.tsx
-- BenefitPlanDialog.tsx
+- benefitsService.ts
 - payrollInputsService.ts
 - require-dev
 - SessionUser
 - devDependencies
 - package.json
 - app-logo-icon.tsx
-- leaveStatus.ts
+- attendance/routes.tsx
 - Reusable Component Boilerplate Report
-- OpsPage.tsx
-- mixedCompensationStore.ts
-- scheduleService.ts
-- require
-- FileAdjustmentDialog.tsx
+- BrandLogo.tsx
 - MixedCompensationDialog.tsx
-- OvertimePage
-- payRate.ts
+- themeStore.ts
+- require
+- WorkSchedulesSection.tsx
+- EmployeeProfileContent
+- statutoryConfig.ts
+- usePayslipEmails.ts
 - compensationApprovals.ts
 - overtime.ts
 - setup
-- payrollRatesStore.ts
+- DepartmentSelect.tsx
 - global.d.ts
 - 7. New CRUD module template
 - UserFactory
 - config
 - ci:check
 - TestCase
-- createEmployee
-- insights/routes.tsx
+- planLeaveRequest
+- LeaveTypeDialog.tsx
 - updateStatutoryConfig
 - 10. Deployment: Octane / FrankenPHP / Coolify
-- EmployeeCombobox.tsx
+- createPayrollPeriod
 - 11. Table prefix convention `app_`
 - psr-4
 - laravel
@@ -145,8 +145,8 @@
 - logging.php
 - placeholder-pattern.tsx
 - use-clipboard.ts
-- OvertimeApplicationDialog
-- LeaveTypeForm
+- PlainCards.tsx
+- AddBranchDialog
 - types.ts
 - 12. PHP extensions and environment parity
 - 13. Do not copy: known defects
@@ -192,18 +192,24 @@
 - @vitejs/plugin-react
 - zod
 - zustand
+- PayrollPeriodDetailPage
+- shiftAssignments.ts
+- ForgotPasswordPage
+- decideLeaveRequest
+- PayrollInputsPage
+- attendance.ts
 
 ## God Nodes (most connected - your core abstractions)
-1. `useSession()` - 293 edges
-2. `useToast()` - 181 edges
-3. `formatCurrency()` - 161 edges
-4. `cn()` - 150 edges
-5. `cn()` - 123 edges
-6. `Employee` - 123 edges
-7. `Button` - 121 edges
-8. `formatDate()` - 121 edges
-9. `Select` - 76 edges
-10. `Input` - 75 edges
+1. `useSession()` - 302 edges
+2. `useToast()` - 183 edges
+3. `formatCurrency()` - 165 edges
+4. `cn()` - 153 edges
+5. `formatDate()` - 127 edges
+6. `Employee` - 127 edges
+7. `cn()` - 123 edges
+8. `Button` - 123 edges
+9. `Select` - 80 edges
+10. `Input` - 76 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `userFor()` --calls--> `User`  [EXTRACTED]
@@ -220,163 +226,163 @@
 ## Import Cycles
 - None detected.
 
-## Communities (193 total, 37 thin omitted)
+## Communities (199 total, 37 thin omitted)
 
 ### Community 0 - "Employee"
-Cohesion: 0.04
-Nodes (106): EmployeeCombobox(), AddEmployeesToDeductionPlanDialog(), save(), today(), AddEmployeesToPlanDialog(), save(), today(), BenefitDialog() (+98 more)
-
-### Community 1 - "Button.tsx"
 Cohesion: 0.06
-Nodes (78): Button, ButtonProps, SIZE_CLASSES, VARIANT_CLASSES, Dialog, DialogClose, DialogContent, DialogDescription (+70 more)
+Nodes (66): Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, INSIGHT_FEATURES, InsightFeature, BenefitDialog() (+58 more)
+
+### Community 1 - "useToast"
+Cohesion: 0.04
+Nodes (110): Button, ButtonProps, SIZE_CLASSES, VARIANT_CLASSES, DialogTrigger, FormField(), FormFieldProps, Input (+102 more)
 
 ### Community 2 - "Sidebar.tsx"
-Cohesion: 0.06
-Nodes (57): AppShell(), readStoredCollapsed(), ROLE_LABELS, RoleSwitcherDropdown(), TierSwitcherDropdown(), MobileDemoBar(), ADMIN_NAV, EMPLOYEE_NAV (+49 more)
+Cohesion: 0.10
+Nodes (36): AppShell(), readStoredCollapsed(), ROLE_LABELS, RoleSwitcherDropdown(), TierSwitcherDropdown(), MobileDemoBar(), ADMIN_NAV, EMPLOYEE_NAV (+28 more)
 
-### Community 3 - "integrations/routes.tsx"
-Cohesion: 0.07
-Nodes (42): PageHeader(), PageHeaderProps, useCardTheme(), PlainCards(), Skeleton, Tabs, TabsContent, TabsList (+34 more)
+### Community 3 - "formatDate"
+Cohesion: 0.09
+Nodes (31): PageHeader(), PageHeaderProps, Card, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger (+23 more)
 
-### Community 4 - "ActivityLogPanel.tsx"
-Cohesion: 0.05
-Nodes (53): NavItem, ActivityLogPanel(), DATE_RANGES, DetailsPanel(), KIND_TONE, kindOf(), KindPill(), Module (+45 more)
+### Community 4 - "useSession"
+Cohesion: 0.09
+Nodes (31): EssHomePage(), EssLeavePage(), getEmployeeHierarchyLevel(), useLeaveRequests(), useLeaveTypes(), LeaveContent(), matchesFilters(), RolePermissionsDialog() (+23 more)
 
-### Community 5 - "useSession"
-Cohesion: 0.07
-Nodes (48): useToast(), AdjustmentRequestDialog(), onSubmit(), AssignEmployeesDialog(), AddHolidayDialog(), onSubmit(), ComplianceDeadlineDialog(), toFormValues() (+40 more)
+### Community 5 - "AddEmployeeDialog.tsx"
+Cohesion: 0.12
+Nodes (22): AddEmployeeDialog(), onSubmit(), resetAll(), EMPLOYMENT_TYPE_OPTIONS, FormValues, OUTPUT_UNIT_SELECT_OPTIONS, PAY_RATE_TYPE_OPTIONS_WITH_MIXED, schema (+14 more)
 
-### Community 6 - "PayrollPeriodDetailPage.tsx"
-Cohesion: 0.07
-Nodes (43): BONUS_TYPE_LABEL, TARGET_TYPE_LABEL, PayrollCalendarSection(), CompensationHistoryTable(), EmployeeComputationDrawer(), usePayrollLines(), BulkEmailCandidate, BulkEmailToolbar() (+35 more)
+### Community 6 - "payslipEmail.ts"
+Cohesion: 0.12
+Nodes (18): BulkEmailCandidate, PayslipEmailPreviewDialog(), PreviewMode, C, PayslipEmailMeta(), PayslipEmailTemplate(), SOCIAL_LINKS, buildPayslipEmail() (+10 more)
 
 ### Community 7 - "mock-data/index.ts"
 Cohesion: 0.06
-Nodes (38): generateBranchDepartments(), rank(), generateAttendanceAdjustments(), generateLeaveRequests(), generateSampleLeaveOverrides(), REASONS, attendanceRecords, EMPLOYEE_COUNT_BY_COMPANY (+30 more)
+Nodes (35): generateBranchDepartments(), rank(), generateAttendanceAdjustments(), generateLeaveRequests(), generateSampleLeaveOverrides(), REASONS, attendanceRecords, EMPLOYEE_COUNT_BY_COMPANY (+27 more)
 
-### Community 8 - "Badge.tsx"
-Cohesion: 0.12
-Nodes (34): Badge, BadgeProps, STATUS_TONE, TONE_CLASSES, Table, TableBody, TableCell, TableHead (+26 more)
+### Community 8 - "cn"
+Cohesion: 0.08
+Nodes (65): Avatar, AvatarProps, SIZE_CLASSES, Badge, BadgeProps, STATUS_TONE, StatusBadge(), TONE_CLASSES (+57 more)
 
 ### Community 9 - "shared.tsx"
 Cohesion: 0.07
-Nodes (43): RFC-4180, exportSelected(), PdfExportMenu(), ReportDef, ReportPrintFooter(), ReportViewMode, ReportViewShell(), onExcel() (+35 more)
+Nodes (44): RFC-4180, exportSelected(), ChartPane(), PdfExportMenu(), ReportCategory, ReportCategorySection(), ReportDef, ReportPrintFooter() (+36 more)
 
-### Community 10 - "cn"
-Cohesion: 0.07
-Nodes (37): BRAND_NAME, BrandLogo(), BrandSplash(), POWERED_BY_NAME, PoweredByBrand(), Card, CardBody, CardDescription (+29 more)
+### Community 10 - "PayslipCard.tsx"
+Cohesion: 0.18
+Nodes (11): allocationHint(), BENEFIT_CATEGORY_LABEL, BenefitsCard(), BreakdownCard(), BreakdownRow, DEDUCTION_KIND_LABEL, EMPLOYMENT_TYPE_LABEL, OVERTIME_LABELS (+3 more)
 
 ### Community 11 - "cn"
 Cohesion: 0.08
 Nodes (34): Alert(), AlertDescription(), AlertTitle(), alertVariants, Badge(), badgeVariants, Card(), CardContent() (+26 more)
 
 ### Community 12 - "thirteenthMonthService.ts"
-Cohesion: 0.08
-Nodes (43): BreakdownCard(), BreakdownRow, listDates(), ThirteenthMonthBreakdown(), useThirteenthMonthLines(), useThirteenthMonthRuns(), fullName(), selectionLabel() (+35 more)
+Cohesion: 0.09
+Nodes (42): usePayslipSelection, listDates(), ThirteenthMonthBreakdown(), useThirteenthMonthLines(), useThirteenthMonthRuns(), fullName(), selectionLabel(), ThirteenthMonthPage() (+34 more)
 
 ### Community 13 - "PasswordValidationRules.php"
-Cohesion: 0.08
-Nodes (23): CreateNewUser, ResetUserPassword, emailRules(), nameRules(), profileRules(), Controller, ProfileController, SecurityController (+15 more)
+Cohesion: 0.11
+Nodes (15): Controller, ProfileController, SecurityController, PasswordUpdateRequest, ProfileDeleteRequest, ProfileUpdateRequest, TwoFactorAuthenticationRequest, Illuminate\Auth\Middleware\RequirePassword (+7 more)
 
 ### Community 14 - "dashboardService.ts"
 Cohesion: 0.09
-Nodes (41): ComplianceDeadlinesSection(), remove(), countdown(), useDashboardData(), usePayrollDashboard(), DefaultDashboard(), clampedDate(), COMPLIANCE_CATEGORY_OPTIONS (+33 more)
+Nodes (33): ComplianceDeadlinesSection(), remove(), countdown(), useDashboardData(), DefaultDashboard(), clampedDate(), COMPLIANCE_CATEGORY_OPTIONS, COMPLIANCE_FREQUENCY_OPTIONS (+25 more)
 
 ### Community 15 - "Illuminate\Http\Request"
-Cohesion: 0.17
+Cohesion: 0.16
 Nodes (3): OpsController, Illuminate\Http\Request, Inertia\Response
 
-### Community 16 - "PayrollGroupAssignDialog.tsx"
-Cohesion: 0.08
-Nodes (37): CATEGORY_OPTIONS, compensationLabel(), PAY_TYPE_OPTIONS, PayrollGroupAssignDialog(), handleConfirm(), QuickChip, STATUS_OPTIONS, PayrollGroupDetailDialog() (+29 more)
+### Community 16 - "groupAssignment.ts"
+Cohesion: 0.24
+Nodes (8): PayrollGroupAssignDialog(), CATEGORY_KEYWORDS, CATEGORY_LABEL, categoryLabel(), isSuggestedForGroup(), mode(), referenceProfile(), EmployeeCategory
 
 ### Community 17 - "Company"
 Cohesion: 0.10
 Nodes (19): company(), ActivityLog, Branch, Company, Employee, ActivityLogFactory, BranchFactory, CompanyFactory (+11 more)
 
 ### Community 18 - "User"
-Cohesion: 0.06
-Nodes (23): User, Attribute, Illuminate\Auth\Events\Verified, Illuminate\Auth\Notifications\ResetPassword, Illuminate\Auth\Notifications\VerifyEmail, Illuminate\Cache\RateLimiting\Limit, Illuminate\Database\Eloquent\Attributes\Hidden, Illuminate\Database\Eloquent\Casts\Attribute (+15 more)
+Cohesion: 0.05
+Nodes (31): CreateNewUser, ResetUserPassword, emailRules(), nameRules(), profileRules(), User, Attribute, Illuminate\Auth\Events\Verified (+23 more)
 
 ### Community 19 - "BasicReports.tsx"
 Cohesion: 0.10
-Nodes (33): BonusPayslipPage(), usePayrollGroups(), EmployeeTable(), onFileSelected(), EmployeeListPage(), useEmployees(), LoansDeductionsPage(), useOvertimeRecords() (+25 more)
+Nodes (46): onFileSelected(), useEmployees(), useEmployeeBenefits(), LoansDeductionsPage(), AccountRow, DebitCreditReport(), onExport(), OvertimeCostAnalysisReport() (+38 more)
 
-### Community 20 - "EmployeeComputationDrawer.tsx"
+### Community 20 - "computationBreakdown.ts"
 Cohesion: 0.08
-Nodes (35): ALLOCATION_METHOD_LABEL, ApprovedWorkLogs(), FREQUENCY_LABEL, LineRow(), AllocationDetail, allocationFormula(), buildComputationBreakdown(), ComputationBreakdown (+27 more)
+Nodes (32): WithholdingTaxCard(), onSubmit(), AllocationDetail, allocationFormula(), buildComputationBreakdown(), ComputationBreakdown, ComputationSummary, DeductionItem (+24 more)
 
 ### Community 21 - "utils.ts"
 Cohesion: 0.15
 Nodes (15): InputError(), PasswordInput(), Props, TextLink(), Button(), buttonVariants, Checkbox(), Input() (+7 more)
 
-### Community 22 - "formatCurrency"
-Cohesion: 0.09
-Nodes (34): ConfigSummary(), ATTENDANCE_KEYS, AttendanceAbsenteeismReport(), CATEGORY_COLORS, CHART_LEGEND_STYLE, CHART_TOOLTIP_ITEM_STYLE, CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE (+26 more)
+### Community 22 - "AdvancedReports.tsx"
+Cohesion: 0.07
+Nodes (42): ATTENDANCE_KEYS, AttendanceAbsenteeismReport(), CATEGORY_COLORS, CHART_LEGEND_STYLE, CHART_TOOLTIP_ITEM_STYLE, CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE, CompensationAnalysisReport() (+34 more)
 
 ### Community 23 - "types/index.ts"
 Cohesion: 0.09
 Nodes (25): AppContent(), Props, AppShell(), Props, AppSidebarHeader(), Breadcrumbs(), Breadcrumb(), BreadcrumbEllipsis() (+17 more)
 
 ### Community 24 - "domain.ts"
-Cohesion: 0.08
-Nodes (34): FormValues, FormValues, CreateBonusInput, getBonuses(), DEPARTMENT_PATTERN, generateShiftAssignments(), pad2(), toKey() (+26 more)
+Cohesion: 0.07
+Nodes (36): BonusFormDialog(), onSubmit(), valuesFromBonus(), handleDecision(), handleSubmit(), FormValues, createBonus(), CreateBonusInput (+28 more)
 
 ### Community 25 - "sidebar.tsx"
 Cohesion: 0.10
 Nodes (31): AppSidebar(), footerNavItems, mainNavItems, NavFooter(), NavMain(), NavUser(), Sidebar(), SidebarContent() (+23 more)
 
 ### Community 26 - "AdminDashboard.tsx"
-Cohesion: 0.11
-Nodes (29): MetricCard(), AdminDashboard(), compactPeso(), QUICK_ACTIONS, RECENT_EMPLOYEE_STATUS_LABEL, timeOfDayGreeting(), dueStatus(), PayrollCalendarCard() (+21 more)
+Cohesion: 0.10
+Nodes (32): MetricCard(), MetricCardProps, MetricCardTone, TONE_CLASSES, AdminDashboard(), compactPeso(), QUICK_ACTIONS, RECENT_EMPLOYEE_STATUS_LABEL (+24 more)
 
 ### Community 27 - "payrollSettingsService.ts"
-Cohesion: 0.09
-Nodes (32): onSubmit(), toggle(), onSubmit(), toggleActive(), onSubmit(), toggleActive(), onSubmit(), useCompanySettings() (+24 more)
+Cohesion: 0.07
+Nodes (40): onSubmit(), CompensationTypesSection(), toggleActive(), onSubmit(), toggle(), onSubmit(), toggleActive(), onSubmit() (+32 more)
 
-### Community 28 - "ResetPasswordPage.tsx"
-Cohesion: 0.09
-Nodes (28): AuthLayout(), FEATURE_BADGES, IconField(), ForgotPasswordPage(), handleResend(), onSubmit(), send(), FormValues (+20 more)
+### Community 28 - "authService.ts"
+Cohesion: 0.26
+Nodes (11): DEMO_ACCOUNTS, delay(), findAccount(), PasswordRule, requestPasswordReset(), RESET_TOKEN_TTL_MINUTES, resetPassword(), ResetToken (+3 more)
 
 ### Community 29 - "taxComplianceService.ts"
 Cohesion: 0.12
-Nodes (32): DeMinimisRow, bonusAppliesToEmployee(), monthlyEquivalentFor(), APPROACHING_RATIO, DE_MINIMIS_CATEGORIES, DeMinimisCategory, deMinimisCategoryFor(), monthsBetween() (+24 more)
+Nodes (31): DeMinimisRow, monthlyEquivalentFor(), APPROACHING_RATIO, DE_MINIMIS_CATEGORIES, DeMinimisCategory, deMinimisCategoryFor(), monthsBetween(), monthsEmployedInYear() (+23 more)
 
 ### Community 30 - "payrollService.ts"
-Cohesion: 0.11
-Nodes (30): onSubmit(), BONUS_PAYOUT_MODE_LABEL, bonusAmountFor(), includedInRegularPayroll(), nextPayrollSequence(), parsePayrollNumber(), payrollYearOf(), attendanceOutcome() (+22 more)
+Cohesion: 0.09
+Nodes (42): BonusesPage(), handleHold(), handleRelease(), handleRun(), BONUS_PAYOUT_MODE_LABEL, bonusAmountFor(), bonusAppliesToEmployee(), bonusPayoutMode() (+34 more)
 
-### Community 31 - "PayrollGroupDialog.tsx"
-Cohesion: 0.11
-Nodes (29): DeductionDefaults, FormValues, FREQUENCY_DEFAULTS, FREQUENCY_OPTIONS, PayrollGroupDialog(), handleFrequencyChange(), schema, toFormValues() (+21 more)
+### Community 31 - "PayrollRulesSection.tsx"
+Cohesion: 0.05
+Nodes (51): OvertimeHolidayRatesSection(), handleAddCustomRate(), handleReset(), handleSave(), syncDrafts(), toPctDraft(), PayrollGroupDialog(), handleFrequencyChange() (+43 more)
 
 ### Community 32 - "RosterTab.tsx"
-Cohesion: 0.17
-Nodes (29): AssignPreset, AssignShiftDialog(), fullName(), initials(), MonthCalendar(), RosterTab(), handleCopyLastWeek(), openAssign() (+21 more)
+Cohesion: 0.10
+Nodes (54): EssSchedulePage(), VIEWS, WEEKDAYS, AssignPreset, AssignShiftDialog(), save(), DAY_NAMES, DAY_ORDER (+46 more)
 
-### Community 33 - "format.ts"
-Cohesion: 0.13
-Nodes (26): Avatar, AvatarProps, SIZE_CLASSES, StatusBadge(), AddLoanDialog(), toFormValues(), EmployeeLoansView(), changeStatus() (+18 more)
+### Community 33 - "EmployeeLoansView.tsx"
+Cohesion: 0.29
+Nodes (9): ScheduleLine(), STATUS_OPTIONS, LoanDetailsDialog(), isLive(), LoanTypeDetailsDialog(), nextDeduction, projectInstallments(), LoanRecord (+1 more)
 
 ### Community 34 - "getEmployees"
-Cohesion: 0.14
-Nodes (30): PeriodContext, SamplePayslip, useAttendanceSummary(), useEmployeeMasterlist(), useLeaveSummary(), usePayrollPeriodOptions(), usePayrollRegister(), useStatutoryContributionData() (+22 more)
+Cohesion: 0.11
+Nodes (33): PeriodContext, ATTENDANCE_SHAPE, buildSampleAttendance(), SAMPLE_PERIODS, SampleAttendanceRow, SampleAttendanceStatus, SamplePayslip, usePayrollLines() (+25 more)
 
-### Community 35 - "overtime/routes.tsx"
-Cohesion: 0.10
-Nodes (17): EmptyState(), EmptyStateProps, RowCheckbox(), SelectAllCheckbox(), EmployeeSelection, estimatedHourlyRate(), OvertimeDetailsDialog(), TYPE_LABEL (+9 more)
+### Community 35 - "userService.ts"
+Cohesion: 0.14
+Nodes (21): ChecklistStep, useOnboardingChecklist(), load(), useStatutoryConfig(), StatutoryPage(), onSubmit(), useActivityLog(), useUsers() (+13 more)
 
 ### Community 36 - "biometricsImport.ts"
-Cohesion: 0.11
-Nodes (30): ALIASES, BiometricsFormat, buildEmployeeMatcher(), buildSampleZkCsv(), detectDelimiter(), devicePinFor(), EmployeeMatcher, EMPTY_MAPPING (+22 more)
+Cohesion: 0.12
+Nodes (29): ALIASES, BiometricsFormat, buildEmployeeMatcher(), buildSampleZkCsv(), detectDelimiter(), devicePinFor(), EmployeeMatcher, EMPTY_MAPPING (+21 more)
 
 ### Community 37 - "Illuminate\Database\Migrations\Migration"
 Cohesion: 0.10
 Nodes (3): Illuminate\Database\Migrations\Migration, Illuminate\Database\Schema\Blueprint, Illuminate\Support\Facades\Schema
 
-### Community 38 - "CompanyInfoForm.tsx"
-Cohesion: 0.09
-Nodes (21): Switch, SwitchProps, COMPANY_TYPE_OPTIONS, EMPTY_ADDRESS, EMPTY_CONTACT, CompensationTypeDialog(), onSubmit(), toFormValues() (+13 more)
+### Community 38 - "useDashboardData.ts"
+Cohesion: 0.12
+Nodes (20): AXIS, CURSOR, ManagerDashboard(), STATUS_TONE, timeOfDayGreeting(), TODAY_COLORS, TOOLTIP_STYLE, LEVEL (+12 more)
 
 ### Community 39 - "dependencies"
 Cohesion: 0.07
@@ -387,24 +393,24 @@ Cohesion: 0.12
 Nodes (21): mainNavItems, Props, rightNavItems, Avatar(), AvatarFallback(), AvatarImage(), Sheet(), SheetContent() (+13 more)
 
 ### Community 41 - "react-router-dom.tsx"
-Cohesion: 0.11
-Nodes (23): NotificationsBell(), TONE_DOT, MetricCardProps, MetricCardTone, TONE_CLASSES, useNotifications(), NotificationsPage(), TONE_DOT (+15 more)
+Cohesion: 0.14
+Nodes (17): NotificationsBell(), TONE_DOT, useNotifications(), EXTERNAL, go(), isExternal(), LinkProps, Navigate() (+9 more)
 
-### Community 42 - "EssHomePage.tsx"
-Cohesion: 0.11
-Nodes (24): ApprovedLeave, ESS_ACCENTS, EssCardWatermark(), EssMetricCard(), AttendanceCalendar(), EssHomePage(), monthKeyOf(), STATUS_DOT (+16 more)
+### Community 42 - "leaveService.ts"
+Cohesion: 0.19
+Nodes (14): save(), LeaveTypeForm(), onSubmit(), toFormValues(), createLeaveType(), grantLeaveCredits(), LeavePlan, LeaveTypeInput (+6 more)
 
-### Community 43 - "companyService.ts"
-Cohesion: 0.10
-Nodes (23): AssignEmployeesDialog(), ScheduleDialog(), onSubmit(), toFormValues(), DAY_LABELS, formatDays(), SHIFT_LABEL, WorkSchedulesSection() (+15 more)
+### Community 43 - "BulkEmployeeActions.tsx"
+Cohesion: 0.08
+Nodes (34): AssignEmployeesDialog(), close(), handleAssign(), onSubmit(), ScheduleDialog(), onSubmit(), toFormValues(), BulkDialog() (+26 more)
 
 ### Community 44 - "dropdown-menu.tsx"
 Cohesion: 0.11
 Nodes (20): DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuGroup(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuRadioItem(), DropdownMenuSeparator() (+12 more)
 
 ### Community 45 - "integrationService.ts"
-Cohesion: 0.12
-Nodes (26): useApiKeys(), useWebhooks(), AddWebhookDialog(), onSubmit(), ApiKeysTab(), onCreate(), onRevoke(), DataExportTab() (+18 more)
+Cohesion: 0.09
+Nodes (38): useBranches(), useBranchSummaries(), ConsolidatedReportTab(), useApiKeys(), useWebhooks(), AddWebhookDialog(), onSubmit(), ApiKeysTab() (+30 more)
 
 ### Community 46 - "payrollRuns.ts"
 Cohesion: 0.15
@@ -414,113 +420,109 @@ Nodes (27): handleApprove(), handleFinalize(), approvePayroll(), finalizePayroll
 Cohesion: 0.14
 Nodes (20): AppearanceToggleTab(), Toaster(), TooltipProvider(), Appearance, applyTheme(), getStoredAppearance(), handleSystemThemeChange(), initializeTheme() (+12 more)
 
-### Community 48 - "branchService.ts"
-Cohesion: 0.11
-Nodes (23): useBranches(), useBranchSummaries(), ConsolidatedReportTab(), onSubmit(), remove(), toggle(), BranchSummary, CreateBranchInput (+15 more)
-
-### Community 49 - "EssPayslipsPage.tsx"
-Cohesion: 0.15
-Nodes (21): EssAttendancePage(), hoursWorkedFor(), EssLeavePage(), EssLoansPage(), TYPE_LABELS, EssPayslipDetailPage(), EssPayslipsPage(), statutoryTotal() (+13 more)
-
-### Community 50 - "AddBonusDialog.tsx"
-Cohesion: 0.10
-Nodes (22): Checkbox, RadioGroup, RadioGroupItem, DemoAccount, FormValues, schema, BONUS_TYPE_OPTIONS, BonusFormDialog() (+14 more)
-
-### Community 51 - "Select.tsx"
-Cohesion: 0.17
-Nodes (18): FiltersPopover(), FiltersPopoverProps, SortControl(), SortControlProps, SortDirection, SearchFilterBarProps, Select, SelectOption (+10 more)
-
-### Community 52 - "Input.tsx"
+### Community 48 - "useBenefitsDeductions.ts"
 Cohesion: 0.13
-Nodes (14): InputProps, TextareaProps, fullName(), AddBranchDialog(), DEFAULTS, FormValues, schema, BranchDepartmentsPanel() (+6 more)
+Nodes (21): AddLoanDialog(), toFormValues(), onSubmit(), allocationLabel(), LoanTypesView(), remove(), toggle(), useBenefitPlans() (+13 more)
+
+### Community 49 - "EssHomePage.tsx"
+Cohesion: 0.11
+Nodes (23): EssAttendancePage(), hoursWorkedFor(), AttendanceCalendar(), monthKeyOf(), STATUS_DOT, STATUS_LABEL, timeOfDayGreeting(), todayKey() (+15 more)
+
+### Community 50 - "LoginPage.tsx"
+Cohesion: 0.25
+Nodes (7): AuthLayout(), IconField(), FormValues, schema, DemoAccount, FormValues, schema
+
+### Community 51 - "PayrollPeriodDetailPage.tsx"
+Cohesion: 0.05
+Nodes (57): BulkActionBar(), Checkbox, RadioGroup, RadioGroupItem, EmployeePickerPanel(), fullName(), FilterField(), FiltersPopover() (+49 more)
+
+### Community 52 - "fullName"
+Cohesion: 0.27
+Nodes (9): fullName(), BranchDetailsDialog(), moveEmployee(), setManager(), EmployeeMultiPicker(), BranchCard(), moveEmployee(), reassignEmployeeBranch() (+1 more)
 
 ### Community 53 - "payFrequency.ts"
 Cohesion: 0.16
 Nodes (25): AllocationBadge(), EmployeeContributionsTable(), realAllocation(), allocateMonthly(), allocateOne(), AllocationConfig, AVERAGE_PERIODS_PER_MONTH, coveredCutoffs() (+17 more)
 
 ### Community 54 - "employeeService.ts"
-Cohesion: 0.13
-Nodes (24): onSubmit(), onSubmit(), onSubmit(), onSubmit(), onSubmit(), onSubmit(), onSubmit(), releaseSupervisorIfMoved() (+16 more)
+Cohesion: 0.11
+Nodes (29): onSubmit(), onSubmit(), onSubmit(), onSubmit(), onSubmit(), onSubmit(), onImport(), reset() (+21 more)
 
-### Community 55 - "AccountingReports.tsx"
-Cohesion: 0.19
-Nodes (23): AccountRow, DebitCreditReport(), onExport(), PayrollRegisterReport(), onExport(), PayrollSummaryReport(), onExport(), ReportScopePicker() (+15 more)
+### Community 55 - "ActivityLogPanel.tsx"
+Cohesion: 0.17
+Nodes (17): ActivityLogPanel(), DATE_RANGES, DetailsPanel(), KIND_TONE, kindOf(), KindPill(), Module, moduleOf() (+9 more)
 
 ### Community 56 - "bootstrap/app.php"
 Cohesion: 0.11
 Nodes (14): EnsureUserIsActive, HandleAppearance, HandleInertiaRequests, Closure, Illuminate\Foundation\Application, Illuminate\Foundation\Configuration\Exceptions, Illuminate\Foundation\Configuration\Middleware, Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets (+6 more)
 
 ### Community 57 - "attendanceService.ts"
+Cohesion: 0.12
+Nodes (29): onSubmit(), decide(), decideSelected(), FileAdjustmentDialog(), onSubmit(), useApprovedLeavesForDate(), useAttendanceAdjustments(), useDailyAttendance() (+21 more)
+
+### Community 58 - "compensationApprovalService.ts"
+Cohesion: 0.11
+Nodes (23): CompensationApprovalsPage(), decide(), formatQuantity(), unitNoun(), useCompensationApprovals(), withdraw(), hasAny(), PeriodScope (+15 more)
+
+### Community 59 - "Schedule"
 Cohesion: 0.15
-Nodes (19): BulkActionBar(), AdjustmentsList(), decide(), decideSelected(), LeaveRequestsList(), decide(), decideSelected(), useRowSelection() (+11 more)
-
-### Community 58 - "WorkLogsSummaryCard.tsx"
-Cohesion: 0.14
-Nodes (19): CompensationApprovalsPage(), decide(), formatQuantity(), unitNoun(), hasAny(), PeriodScope, plural(), useWorkLogSummary() (+11 more)
-
-### Community 59 - "scheduleReview.ts"
-Cohesion: 0.14
-Nodes (22): DailyImportRecord, buildScheduleReview(), DAY_NAMES, dayOfWeek(), Discrepancy, DiscrepancyCode, DiscrepancySeverity, isOvernight() (+14 more)
+Nodes (20): DailyImportRecord, buildScheduleReview(), DAY_NAMES, dayOfWeek(), Discrepancy, DiscrepancyCode, DiscrepancySeverity, isOvernight() (+12 more)
 
 ### Community 60 - "compilerOptions"
 Cohesion: 0.09
 Nodes (22): resources/js/**/*.d.ts, ./resources/js/ops/*, ./resources/js/ops/shim/react-router-dom.tsx, resources/js/**/*.ts, resources/js/**/*.tsx, compilerOptions, allowJs, esModuleInterop (+14 more)
 
-### Community 61 - "EssOvertimePage.tsx"
-Cohesion: 0.15
-Nodes (19): getOtRateById(), EssAccent, ApplicationDetailsDialog(), EssOvertimePage(), LEGACY_MULTIPLIER, LEGACY_TYPE_LABEL, OT_STATUS_TONE, otTypeLabel() (+11 more)
+### Community 61 - "managerService.ts"
+Cohesion: 0.26
+Nodes (14): buildSampleLoans(), buildSamplePayslips(), getAttendanceRecords(), getCompensationApprovals(), getPendingRequestsSummary(), getLeaveRequests(), getLeaveTypes(), addDaysKey() (+6 more)
 
-### Community 62 - "TeamsTab.tsx"
-Cohesion: 0.15
-Nodes (18): changeSupervisor(), DAY_LABELS, ShiftTemplatesTab(), fullName(), TeamsTab(), change(), todayKey(), DayState (+10 more)
+### Community 62 - "usePermission"
+Cohesion: 0.14
+Nodes (19): CompanyThemeApplier(), Topbar(), AdjustmentsList(), BulkEmployeeActions(), EmployeeTable(), ImportEmployeesDialog(), EmployeeListPage(), SORT_OPTIONS (+11 more)
 
 ### Community 63 - "employeeImport.ts"
-Cohesion: 0.12
-Nodes (21): ImportEmployeesDialog(), downloadSample(), onImport(), reset(), CIVIL_STATUSES, EMPLOYMENT_TYPES, IMPORT_COLUMNS, ImportColumn (+13 more)
-
-### Community 64 - "reports/routes.tsx"
-Cohesion: 0.10
-Nodes (15): HeadcountAnalysisReport(), CustomReportBuilder(), loadTemplates(), ReportCategory, ReportCategorySection(), ADVANCED_CATEGORIES, BASIC_CATEGORIES, renderAdvancedReport() (+7 more)
+Cohesion: 0.19
+Nodes (13): CIVIL_STATUSES, EMPLOYMENT_TYPES, IMPORT_COLUMNS, ImportColumn, ImportParseResult, ImportRow, normalize(), parseEmployeeImport() (+5 more)
 
 ### Community 65 - "StatutoryReports.tsx"
-Cohesion: 0.16
-Nodes (19): addTotals(), AGENCY_GROUPS, Bir1601CReport(), onExport(), Bir2316Report(), ConsolidatedRow, ConsolidatedStatutoryReport(), onExport() (+11 more)
+Cohesion: 0.09
+Nodes (27): EmployeeCombobox(), EmployeeComboboxBaseProps, EmployeeComboboxMultiProps, EmployeeComboboxOption, EmployeeComboboxProps, EmployeeComboboxSingleProps, addTotals(), AGENCY_GROUPS (+19 more)
 
-### Community 66 - "brandTheme.ts"
-Cohesion: 0.16
-Nodes (19): CompanyThemeApplier(), CompanyInfoForm(), detectColor(), handleLogoChange(), onSubmit(), updateCompany(), applyBrandTheme(), BRAND_SHADES (+11 more)
+### Community 66 - "CompanyInfoForm.tsx"
+Cohesion: 0.12
+Nodes (26): COMPANY_TYPE_OPTIONS, CompanyInfoForm(), detectColor(), handleLogoChange(), onSubmit(), EMPTY_ADDRESS, EMPTY_CONTACT, FormValues (+18 more)
 
 ### Community 67 - "Illuminate\Database\Seeder"
 Cohesion: 0.13
 Nodes (9): Capabilities, DatabaseSeeder, RoleSeeder, UserSeeder, Illuminate\Database\Seeder, Spatie\Permission\DefaultTeamResolver, Spatie\Permission\Models\Permission, Spatie\Permission\Models\Role (+1 more)
 
 ### Community 68 - "overtimeService.ts"
-Cohesion: 0.18
-Nodes (18): onSubmit(), useOvertimeSummary(), computeHours(), CreateOvertimeInput, createOvertimeRecord(), daysAgo(), estimateHourlyRate(), exportOvertimeSummaryCsv() (+10 more)
+Cohesion: 0.12
+Nodes (28): getOtRateById(), otTypeMultiplier(), onSubmit(), useOvertimeRecords(), useOvertimeSummary(), daysAgo(), downloadCsv(), OvertimePage() (+20 more)
 
 ### Community 69 - "xlsx.ts"
-Cohesion: 0.16
-Nodes (19): bodyXfs(), buildXlsx(), cellXml(), columnLetter(), crc32(), CRC_TABLE, DEFAULT_XLSX_PALETTE, displayLength() (+11 more)
+Cohesion: 0.15
+Nodes (20): bodyXfs(), buildXlsx(), cellXml(), columnLetter(), crc32(), CRC_TABLE, DEFAULT_XLSX_PALETTE, displayLength() (+12 more)
 
 ### Community 70 - "ImportBiometricsDialog"
-Cohesion: 0.16
-Nodes (17): buildSampleAttlog(), buildStandardTemplateCsv(), decodeBiometricsFile(), downloadText(), ImportBiometricsDialog(), applyMapping(), downloadIssues(), finish() (+9 more)
+Cohesion: 0.14
+Nodes (20): buildSampleAttlog(), buildStandardTemplateCsv(), decodeBiometricsFile(), downloadText(), ImportBiometricsDialog(), applyMapping(), downloadIssues(), finish() (+12 more)
 
 ### Community 71 - "branchDepartmentService.ts"
-Cohesion: 0.18
-Nodes (18): close(), onSubmit(), add(), copyFrom(), remove(), saveRename(), addBranchDepartment(), branchOf() (+10 more)
+Cohesion: 0.21
+Nodes (16): BranchDepartmentsPanel(), add(), changeSupervisor(), remove(), saveRename(), change(), addBranchDepartment(), branchOf() (+8 more)
 
 ### Community 72 - "components.json"
 Cohesion: 0.11
 Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 73 - "ImportBiometricsDialog.tsx"
-Cohesion: 0.15
-Nodes (15): BiometricsParseResult, ColumnMapping, FORMAT_MAPPING, MAPPING_FIELDS, STANDARD_TEMPLATE_HEADERS, ColumnMappingForm(), ACTION_META, DeviceType (+7 more)
+Cohesion: 0.14
+Nodes (16): BiometricsParseResult, ColumnMapping, FORMAT_LABEL, FORMAT_MAPPING, MAPPING_FIELDS, STANDARD_TEMPLATE_HEADERS, ColumnMappingForm(), ACTION_META (+8 more)
 
-### Community 74 - "useAttendance.ts"
-Cohesion: 0.18
-Nodes (13): useApprovedLeavesForDate(), useAttendanceAdjustments(), useDailyAttendance(), useDateStatusSets(), AttendancePage(), shiftDate(), todayKey(), getApprovedLeavesInRange() (+5 more)
+### Community 74 - "subscriptionService.ts"
+Cohesion: 0.24
+Nodes (10): GatedApiTabs(), useSubscriptionUsage(), ChangePlanDialog(), onConfirm(), SubscriptionPage(), estimateMonthlyBill(), formatPlanBasePrice(), getSubscriptionUsage() (+2 more)
 
 ### Community 75 - "StoreEmployeeRequest"
 Cohesion: 0.16
@@ -534,13 +536,13 @@ Nodes (6): AppServiceProvider, FortifyServiceProvider, Carbon\CarbonImmutable, I
 Cohesion: 0.15
 Nodes (15): save(), onSubmit(), createLoan(), CreateLoanInput, createLoansForType(), CreateLoansResult, LoanTypeEntry, updateLoan() (+7 more)
 
-### Community 78 - "fullName"
-Cohesion: 0.24
-Nodes (17): DeMinimisBenefitsReport(), onExport(), EmployeeCell(), fullName(), r2(), TaxableCompensationReport(), onExport(), TaxMonitoringReport() (+9 more)
+### Community 78 - "formatCurrency"
+Cohesion: 0.12
+Nodes (32): ConfigSummary(), BenefitsView(), change(), noteFor(), renderRecordCard(), today(), LineRow(), onExport() (+24 more)
 
-### Community 79 - "bonuses/routes.tsx"
-Cohesion: 0.16
-Nodes (14): FilterField(), AddBonusDialog(), BonusDetailsDialog(), handleDecision(), handleSubmit(), BONUS_TYPE_LABEL, BonusesPage(), SORT_OPTIONS (+6 more)
+### Community 79 - "leaveDays.ts"
+Cohesion: 0.26
+Nodes (11): LeaveTypesPanel(), HALF_DAY_LABEL, isHalfDay(), isWorkingDay(), leaveDayFraction(), leaveRequestDays(), nextDay(), PortionRequest (+3 more)
 
 ### Community 80 - "employees.ts"
 Cohesion: 0.17
@@ -558,21 +560,21 @@ Nodes (15): @laravel/multiplex, lightningcss-linux-x64-gnu, lightningcss-win32-x
 Cohesion: 0.21
 Nodes (11): AppHeader(), Heading(), Separator(), IsCurrentOrParentUrlFn, IsCurrentUrlFn, useCurrentUrl(), UseCurrentUrlReturn, WhenCurrentUrlFn (+3 more)
 
-### Community 84 - "payroll-inputs/routes.tsx"
-Cohesion: 0.22
-Nodes (10): SearchFilterBar(), usePayrollPeriods(), count(), hours(), InputsTab, PayrollInputsPage(), usePayrollInputs(), PayrollListPage() (+2 more)
+### Community 84 - "PayslipDetailPage.tsx"
+Cohesion: 0.13
+Nodes (20): BonusDetailsDialog(), usePayrollGroups(), useEmployee(), EmployeeLoansView(), changeStatus(), renderLoanCard(), useLoans(), CreatePeriodDialog() (+12 more)
 
-### Community 85 - "PayrollRecordReports.tsx"
-Cohesion: 0.21
-Nodes (13): useBonuses(), BonusReport(), onExport(), fullName(), label(), PayrollHistoryReport(), onExport(), ThirteenthMonthPayReport() (+5 more)
+### Community 85 - "TeamReports.tsx"
+Cohesion: 0.11
+Nodes (26): BonusPayslipPage(), useBonuses(), BonusReport(), onExport(), fullName(), label(), PayrollHistoryReport(), onExport() (+18 more)
 
 ### Community 86 - "composer.json"
 Cohesion: 0.14
 Nodes (13): autoload-dev, psr-4, description, keywords, license, minimum-stability, name, prefer-stable (+5 more)
 
-### Community 87 - "BulkDialog"
-Cohesion: 0.22
-Nodes (14): close(), handleAssign(), BranchCard(), moveEmployee(), BulkDialog(), save(), today(), assignEmployeesToBranch() (+6 more)
+### Community 87 - "ResetPasswordPage.tsx"
+Cohesion: 0.24
+Nodes (8): FormValues, INVALID_COPY, ResetPasswordPage(), schema, STRENGTH, maskEmail(), PASSWORD_RULES, passwordStrength()
 
 ### Community 88 - "xlsxRead.ts"
 Cohesion: 0.26
@@ -586,21 +588,21 @@ Nodes (13): daysFromToday(), DEDUCTION_PLAN_CATALOG, deductionPlanId(), generate
 Cohesion: 0.24
 Nodes (10): DeleteUser(), Dialog(), DialogClose(), DialogContent(), DialogDescription(), DialogFooter(), DialogHeader(), DialogOverlay() (+2 more)
 
-### Community 91 - "BenefitPlanDialog.tsx"
-Cohesion: 0.23
-Nodes (12): AMOUNT_TYPE_OPTIONS, BenefitPlanDialog(), onSubmit(), cap(), FormValues, NAME_PLACEHOLDER, schema, toFormValues() (+4 more)
+### Community 91 - "benefitsService.ts"
+Cohesion: 0.07
+Nodes (45): onSubmit(), BenefitPlanDialog(), onSubmit(), cap(), toFormValues(), liveRows(), PlanDetailsDialog(), toggleArchive() (+37 more)
 
 ### Community 92 - "payrollInputsService.ts"
-Cohesion: 0.23
-Nodes (12): daysBetween(), fullName(), getPayrollInputs(), InputsPeriod, inRange(), OtherInputRow, OutputInputRow, overlaps() (+4 more)
+Cohesion: 0.24
+Nodes (11): fullName(), getPayrollInputs(), InputsPeriod, inRange(), OtherInputRow, OutputInputRow, overlaps(), PayrollInputs (+3 more)
 
 ### Community 93 - "require-dev"
 Cohesion: 0.17
 Nodes (12): require-dev, fakerphp/faker, larastan/larastan, laravel/boost, laravel/pail, laravel/pao, laravel/pint, laravel/sail (+4 more)
 
 ### Community 94 - "SessionUser"
-Cohesion: 0.24
-Nodes (9): SessionState, DAYS_AGO, generateActivityLog(), Template, TEMPLATES, TIMES, users, ActivityLogEntry (+1 more)
+Cohesion: 0.12
+Nodes (18): BrandSplash(), ToastProvider(), SessionState, useSessionStore, DAYS_AGO, generateActivityLog(), Template, TEMPLATES (+10 more)
 
 ### Community 95 - "devDependencies"
 Cohesion: 0.18
@@ -614,61 +616,61 @@ Nodes (10): private, $schema, scripts, build, build:ssr, check, check:fix, dev (
 Cohesion: 0.27
 Nodes (5): AppLogo(), AppLogoIcon(), AuthSimpleLayout(), AuthLayout(), AuthLayoutProps
 
-### Community 98 - "leaveStatus.ts"
-Cohesion: 0.29
-Nodes (10): annotateImportWithLeaves(), approvedLeaveOn(), fromMinutes(), LeaveAwareStatus, LeaveResolution, PORTION_LABEL, resolveLeaveStatus(), shiftMidpoint() (+2 more)
+### Community 98 - "attendance/routes.tsx"
+Cohesion: 0.09
+Nodes (25): AttendanceFilterBar(), DailyAttendanceTable(), MiniCalendarPicker(), WEEKDAY_LABELS, getEmployeeGroup(), GROUP_OPTIONS, annotateImportWithLeaves(), ApprovedLeave (+17 more)
 
 ### Community 99 - "Reusable Component Boilerplate Report"
 Cohesion: 0.18
 Nodes (10): 14. Gaps and next steps, 15. Team onboarding checklist, 1. How to use this document, 2. Stack baseline, 3. Portability tiers, 8.1 React (recommended), 8.2 Server side (emails, PDFs), optional, 8. Markdown rendering boilerplate (+2 more)
 
-### Community 100 - "OpsPage.tsx"
-Cohesion: 0.24
-Nodes (7): ToastProvider(), AuthedPage(), OpsPage(), OpsProps, syncMockSession(), OPS_PAGES, OutletProvider
+### Community 100 - "BrandLogo.tsx"
+Cohesion: 0.27
+Nodes (6): BRAND_NAME, BrandLogo(), POWERED_BY_NAME, PoweredByBrand(), FEATURE_BADGES, BRAND
 
-### Community 101 - "mixedCompensationStore.ts"
-Cohesion: 0.24
-Nodes (9): BASE_UNIT_LONG, BASE_UNIT_SHORT, formatPesoShort(), MixedBaseType, MixedCompensationState, MixedComponentType, summarizeMixedCompensationShort(), useMixedCompensation() (+1 more)
+### Community 101 - "MixedCompensationDialog.tsx"
+Cohesion: 0.15
+Nodes (16): BASE_TYPE_OPTIONS, COMPONENT_TYPE_OPTIONS, MixedCompensationDialog(), RATE_FIELD_LABEL, RATE_PLACEHOLDER, BASE_UNIT_LONG, BASE_UNIT_SHORT, formatPesoShort() (+8 more)
 
-### Community 102 - "scheduleService.ts"
-Cohesion: 0.38
-Nodes (9): save(), addDays(), AssignShiftInput, assignShifts(), clearShifts(), copyWeek(), getRosterMap(), getShiftAssignments() (+1 more)
+### Community 102 - "themeStore.ts"
+Cohesion: 0.33
+Nodes (7): ThemeToggle(), useTheme(), applyThemeClass(), systemPrefersDark(), Theme, ThemeState, useThemeStore
 
 ### Community 103 - "require"
 Cohesion: 0.22
 Nodes (9): require, inertiajs/inertia-laravel, laravel/chisel, laravel/fortify, laravel/framework, laravel/tinker, laravel/wayfinder, php (+1 more)
 
-### Community 104 - "FileAdjustmentDialog.tsx"
-Cohesion: 0.28
-Nodes (8): FileAdjustmentDialog(), onSubmit(), FormValues, REASON_CATEGORY_OPTIONS, schema, createAttendanceAdjustment(), fileAttendanceAdjustment(), getAttendanceRecordForEmployeeDate()
+### Community 104 - "WorkSchedulesSection.tsx"
+Cohesion: 0.24
+Nodes (7): AssignEmployeesDialog(), DAY_LABELS, formatDays(), SHIFT_LABEL, WorkSchedulesSection(), setScheduleAssignedEmployees(), ShiftType
 
-### Community 105 - "MixedCompensationDialog.tsx"
-Cohesion: 0.25
-Nodes (7): BASE_TYPE_OPTIONS, COMPONENT_TYPE_OPTIONS, MixedCompensationDialog(), RATE_FIELD_LABEL, RATE_PLACEHOLDER, MixedCompensationStructure, summarizeMixedCompensation()
+### Community 105 - "EmployeeProfileContent"
+Cohesion: 0.29
+Nodes (9): PayrollGroupDetailDialog(), handleReassign(), handleRemove(), EmployeeProfileContent(), applyGroupChange(), applySeparation(), applyStatusChange(), updateEmployeeStatus() (+1 more)
 
-### Community 106 - "OvertimePage"
-Cohesion: 0.31
-Nodes (9): daysAgo(), downloadCsv(), OvertimePage(), handleBulkDecide(), handleDecide(), handleExport(), refetchAll(), decideOvertimeRecord() (+1 more)
+### Community 106 - "statutoryConfig.ts"
+Cohesion: 0.20
+Nodes (7): FormValues, FormValues, SSS_BRACKETS, statutoryConfigs, TAX_TABLES, SssBracket, TaxBracket
 
-### Community 107 - "payRate.ts"
-Cohesion: 0.25
-Nodes (8): EstimatedEquivalent, formatBaseRate(), HELPER_TEXT, outputUnitWord(), PAY_RATE_TYPE_LABEL, RATE_FIELD_LABEL, UNIT_SUFFIX, UNIT_SUFFIX_SHORT
+### Community 107 - "usePayslipEmails.ts"
+Cohesion: 0.42
+Nodes (7): PayslipEmailTarget, usePayslipEmails(), delay(), getPayslipEmails(), sendPayslipEmail(), SendPayslipEmailInput, PayslipEmailKind
 
 ### Community 108 - "compensationApprovals.ts"
 Cohesion: 0.36
 Nodes (8): generateCompensationApprovals(), OUTPUT_DESCRIPTIONS, recentSaturdays(), recentWorkdays(), REGULAR_HOURS_PATTERN, statusFor(), toDateKey(), ApprovalStatus
 
 ### Community 109 - "overtime.ts"
-Cohesion: 0.39
-Nodes (8): generateOvertimeRecords(), hoursFor(), multiplierFor(), REASONS, shiftFor(), statusFor(), toDateKey(), typeForSeed()
+Cohesion: 0.29
+Nodes (10): CreateOvertimeInput, generateOvertimeRecords(), hoursFor(), multiplierFor(), REASONS, shiftFor(), statusFor(), toDateKey() (+2 more)
 
 ### Community 110 - "setup"
 Cohesion: 0.25
 Nodes (8): post-root-package-install, setup, composer install, npm install, npm run build, @php artisan key:generate, @php artisan migrate --force, @php -r \"file_exists('.env') || copy('.env.example', '.env');\
 
-### Community 111 - "payrollRatesStore.ts"
-Cohesion: 0.29
-Nodes (7): DEFAULT_HOLIDAY_RATES, DEFAULT_OT_RATES, formatMultiplierPct(), HolidayRateType, otRateOptionLabel(), OtRateType, PayrollRatesState
+### Community 111 - "DepartmentSelect.tsx"
+Cohesion: 0.36
+Nodes (6): useBranchDepartments(), BranchesTab(), DepartmentSelect(), RosterData, getBranchDepartments(), BranchDepartment
 
 ### Community 112 - "global.d.ts"
 Cohesion: 0.32
@@ -694,21 +696,25 @@ Nodes (7): ci:check, dev, Composer\\Config::disableProcessTimeout, npm run check
 Cohesion: 0.29
 Nodes (3): Illuminate\Foundation\Testing\RefreshDatabase, Illuminate\Foundation\Testing\TestCase, TestCase
 
-### Community 118 - "createEmployee"
-Cohesion: 0.33
-Nodes (6): onSubmit(), resetAll(), DataImportTab(), onImport(), createEmployee(), importEmployeesCsv()
+### Community 118 - "planLeaveRequest"
+Cohesion: 0.32
+Nodes (7): RequestLeaveDialog(), onSubmit(), LeavePreview(), onSubmit(), planLeaveRequest(), portionOf(), submitLeaveRequest()
+
+### Community 119 - "LeaveTypeDialog.tsx"
+Cohesion: 0.50
+Nodes (5): GrantLeaveCreditsDialog(), LeaveTypeDialog(), HIERARCHY_LABEL, HIERARCHY_LEVELS, LeaveType
 
 ### Community 120 - "updateStatutoryConfig"
 Cohesion: 0.29
-Nodes (7): onSubmit(), onSubmit(), SssBracketCard(), onSubmit(), WithholdingTaxCard(), onSubmit(), updateStatutoryConfig()
+Nodes (7): PagibigCard(), onSubmit(), PhilhealthCard(), onSubmit(), SssBracketCard(), onSubmit(), updateStatutoryConfig()
 
 ### Community 121 - "10. Deployment: Octane / FrankenPHP / Coolify"
 Cohesion: 0.29
 Nodes (7): 10.1 Topology, 10.2 Dockerfile skeleton, 10.3 `scripts/deploy.sh` skeleton (web container start), 10.4 Environment keys (names only), 10.5 Octane-safety checklist, 10.6 Rolling-deploy rules, 10. Deployment: Octane / FrankenPHP / Coolify
 
-### Community 122 - "EmployeeCombobox.tsx"
-Cohesion: 0.47
-Nodes (5): EmployeeComboboxBaseProps, EmployeeComboboxMultiProps, EmployeeComboboxOption, EmployeeComboboxProps, EmployeeComboboxSingleProps
+### Community 122 - "createPayrollPeriod"
+Cohesion: 0.36
+Nodes (6): onSubmit(), nextPayrollSequence(), parsePayrollNumber(), payrollYearOf(), createPayrollPeriod(), getNextPayrollNumber()
 
 ### Community 123 - "11. Table prefix convention `app_`"
 Cohesion: 0.33
@@ -734,13 +740,13 @@ Nodes (4): Monolog\Handler\NullHandler, Monolog\Handler\StreamHandler, Monolog\H
 Cohesion: 0.40
 Nodes (3): CopiedValue, CopyFn, UseClipboardReturn
 
-### Community 130 - "OvertimeApplicationDialog"
-Cohesion: 0.60
-Nodes (5): OvertimeApplicationDialog(), handleSubmit(), onOpenChange(), reset(), computeTotalHours()
+### Community 130 - "PlainCards.tsx"
+Cohesion: 0.43
+Nodes (5): CardRoot, CardThemeContext, CardThemeValue, useCardTheme(), PlainCards()
 
-### Community 131 - "LeaveTypeForm"
-Cohesion: 0.60
-Nodes (5): LeaveTypeForm(), onSubmit(), toFormValues(), createLeaveType(), updateLeaveType()
+### Community 131 - "AddBranchDialog"
+Cohesion: 0.38
+Nodes (6): AddBranchDialog(), close(), onSubmit(), copyFrom(), copyBranchDepartments(), createBranch()
 
 ### Community 132 - "types.ts"
 Cohesion: 0.40
@@ -782,25 +788,49 @@ Nodes (4): 6.1 Route macro: `Route::crudModule($prefix, Controller::class, $name
 Cohesion: 0.50
 Nodes (4): 9.1 Tailwind v4 tokens (`resources/css/app.css`, no `tailwind.config`), 9.2 Styling rules, 9.3 Loading, toasts, confirms, a11y, 9. Conventions
 
+### Community 193 - "PayrollPeriodDetailPage"
+Cohesion: 0.60
+Nodes (6): compensationLabel(), PayrollPeriodDetailPage(), EmployeeCompensationReport(), onExport(), findEmployeePayrollGroup(), formatBaseRateShort()
+
+### Community 194 - "shiftAssignments.ts"
+Cohesion: 0.47
+Nodes (5): DEPARTMENT_PATTERN, generateShiftAssignments(), pad2(), toKey(), ShiftAssignment
+
+### Community 195 - "ForgotPasswordPage"
+Cohesion: 0.83
+Nodes (4): ForgotPasswordPage(), handleResend(), onSubmit(), send()
+
+### Community 196 - "decideLeaveRequest"
+Cohesion: 0.50
+Nodes (4): decide(), decideSelected(), decideLeaveRequest(), decideLeaveRequests()
+
+### Community 197 - "PayrollInputsPage"
+Cohesion: 0.50
+Nodes (4): count(), hours(), PayrollInputsPage(), usePayrollInputs()
+
+### Community 198 - "attendance.ts"
+Cohesion: 0.83
+Nodes (3): generateAttendanceRecords(), pickStatus(), toDateKey()
+
 ## Knowledge Gaps
-- **761 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+756 more)
+- **779 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+774 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useSession()` connect `useSession` to `Employee`, `Button.tsx`, `Sidebar.tsx`, `integrations/routes.tsx`, `LeaveTypeForm`, `ActivityLogPanel.tsx`, `PayrollPeriodDetailPage.tsx`, `Badge.tsx`, `shared.tsx`, `cn`, `thirteenthMonthService.ts`, `dashboardService.ts`, `PayrollGroupAssignDialog.tsx`, `BasicReports.tsx`, `domain.ts`, `AdminDashboard.tsx`, `payrollSettingsService.ts`, `PayrollGroupDialog.tsx`, `RosterTab.tsx`, `format.ts`, `getEmployees`, `overtime/routes.tsx`, `CompanyInfoForm.tsx`, `react-router-dom.tsx`, `EssHomePage.tsx`, `companyService.ts`, `integrationService.ts`, `branchService.ts`, `EssPayslipsPage.tsx`, `AddBonusDialog.tsx`, `Select.tsx`, `Input.tsx`, `AccountingReports.tsx`, `attendanceService.ts`, `WorkLogsSummaryCard.tsx`, `TeamsTab.tsx`, `employeeImport.ts`, `brandTheme.ts`, `overtimeService.ts`, `ImportBiometricsDialog`, `ImportBiometricsDialog.tsx`, `useAttendance.ts`, `fullName`, `bonuses/routes.tsx`, `payroll-inputs/routes.tsx`, `PayrollRecordReports.tsx`, `BulkDialog`, `BenefitPlanDialog.tsx`, `FileAdjustmentDialog.tsx`, `OvertimePage`, `createEmployee`, `updateStatutoryConfig`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
-- **Why does `useToast()` connect `useSession` to `Employee`, `Button.tsx`, `OvertimeApplicationDialog`, `integrations/routes.tsx`, `LeaveTypeForm`, `Sidebar.tsx`, `PayrollPeriodDetailPage.tsx`, `ActivityLogPanel.tsx`, `Badge.tsx`, `LoginPage`, `thirteenthMonthService.ts`, `dashboardService.ts`, `PayrollGroupAssignDialog.tsx`, `BasicReports.tsx`, `ResetPasswordPage.tsx`, `PayrollGroupDialog.tsx`, `RosterTab.tsx`, `format.ts`, `overtime/routes.tsx`, `CompanyInfoForm.tsx`, `companyService.ts`, `integrationService.ts`, `EssPayslipsPage.tsx`, `AddBonusDialog.tsx`, `Select.tsx`, `Input.tsx`, `attendanceService.ts`, `WorkLogsSummaryCard.tsx`, `EssOvertimePage.tsx`, `TeamsTab.tsx`, `employeeImport.ts`, `reports/routes.tsx`, `brandTheme.ts`, `ImportBiometricsDialog`, `ImportBiometricsDialog.tsx`, `bonuses/routes.tsx`, `BulkDialog`, `BenefitPlanDialog.tsx`, `FileAdjustmentDialog.tsx`, `OvertimePage`, `createEmployee`, `updateStatutoryConfig`?**
-  _High betweenness centrality (0.032) - this node is a cross-community bridge._
-- **Why does `formatCurrency()` connect `formatCurrency` to `Employee`, `Button.tsx`, `Sidebar.tsx`, `integrations/routes.tsx`, `useSession`, `PayrollPeriodDetailPage.tsx`, `Badge.tsx`, `cn`, `thirteenthMonthService.ts`, `dashboardService.ts`, `PayrollGroupAssignDialog.tsx`, `BasicReports.tsx`, `EmployeeComputationDrawer.tsx`, `AdminDashboard.tsx`, `format.ts`, `overtime/routes.tsx`, `CompanyInfoForm.tsx`, `EssHomePage.tsx`, `branchService.ts`, `EssPayslipsPage.tsx`, `AddBonusDialog.tsx`, `payFrequency.ts`, `AccountingReports.tsx`, `WorkLogsSummaryCard.tsx`, `EssOvertimePage.tsx`, `StatutoryReports.tsx`, `fullName`, `bonuses/routes.tsx`, `payroll-inputs/routes.tsx`, `PayrollRecordReports.tsx`, `mixedCompensationStore.ts`, `MixedCompensationDialog.tsx`, `OvertimePage`, `payRate.ts`, `updateStatutoryConfig`?**
-  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+- **Why does `useSession()` connect `useSession` to `Employee`, `useToast`, `Sidebar.tsx`, `AddBranchDialog`, `formatDate`, `AddEmployeeDialog.tsx`, `cn`, `shared.tsx`, `thirteenthMonthService.ts`, `dashboardService.ts`, `groupAssignment.ts`, `BasicReports.tsx`, `computationBreakdown.ts`, `domain.ts`, `AdminDashboard.tsx`, `payrollSettingsService.ts`, `PayrollRulesSection.tsx`, `RosterTab.tsx`, `EmployeeLoansView.tsx`, `getEmployees`, `userService.ts`, `useDashboardData.ts`, `react-router-dom.tsx`, `leaveService.ts`, `BulkEmployeeActions.tsx`, `integrationService.ts`, `useBenefitsDeductions.ts`, `EssHomePage.tsx`, `PayrollPeriodDetailPage.tsx`, `fullName`, `attendanceService.ts`, `compensationApprovalService.ts`, `managerService.ts`, `usePermission`, `PayrollPeriodDetailPage`, `CompanyInfoForm.tsx`, `StatutoryReports.tsx`, `overtimeService.ts`, `PayrollInputsPage`, `ImportBiometricsDialog`, `branchDepartmentService.ts`, `ImportBiometricsDialog.tsx`, `subscriptionService.ts`, `formatCurrency`, `PayslipDetailPage.tsx`, `TeamReports.tsx`, `benefitsService.ts`, `SessionUser`, `WorkSchedulesSection.tsx`, `EmployeeProfileContent`, `usePayslipEmails.ts`, `DepartmentSelect.tsx`, `planLeaveRequest`, `LeaveTypeDialog.tsx`, `updateStatutoryConfig`?**
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+- **Why does `useToast()` connect `useToast` to `Employee`, `AddBranchDialog`, `formatDate`, `AddEmployeeDialog.tsx`, `cn`, `LoginPage`, `thirteenthMonthService.ts`, `dashboardService.ts`, `groupAssignment.ts`, `BasicReports.tsx`, `computationBreakdown.ts`, `domain.ts`, `payrollSettingsService.ts`, `PayrollRulesSection.tsx`, `RosterTab.tsx`, `EmployeeLoansView.tsx`, `userService.ts`, `leaveService.ts`, `BulkEmployeeActions.tsx`, `integrationService.ts`, `useBenefitsDeductions.ts`, `EssHomePage.tsx`, `LoginPage.tsx`, `PayrollPeriodDetailPage.tsx`, `fullName`, `ActivityLogPanel.tsx`, `attendanceService.ts`, `compensationApprovalService.ts`, `usePermission`, `CustomReportBuilder`, `PayrollPeriodDetailPage`, `CompanyInfoForm.tsx`, `ForgotPasswordPage`, `overtimeService.ts`, `ImportBiometricsDialog`, `branchDepartmentService.ts`, `ImportBiometricsDialog.tsx`, `subscriptionService.ts`, `formatCurrency`, `PayslipDetailPage.tsx`, `benefitsService.ts`, `WorkSchedulesSection.tsx`, `EmployeeProfileContent`, `usePayslipEmails.ts`, `planLeaveRequest`, `LeaveTypeDialog.tsx`, `updateStatutoryConfig`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Why does `Employee` connect `Employee` to `useToast`, `formatDate`, `payslipEmail.ts`, `mock-data/index.ts`, `cn`, `PayslipCard.tsx`, `thirteenthMonthService.ts`, `groupAssignment.ts`, `BasicReports.tsx`, `computationBreakdown.ts`, `domain.ts`, `payrollSettingsService.ts`, `taxComplianceService.ts`, `payrollService.ts`, `RosterTab.tsx`, `EmployeeLoansView.tsx`, `getEmployees`, `biometricsImport.ts`, `BulkEmployeeActions.tsx`, `integrationService.ts`, `PayrollPeriodDetailPage.tsx`, `employeeService.ts`, `compensationApprovalService.ts`, `Schedule`, `managerService.ts`, `usePermission`, `employeeImport.ts`, `StatutoryReports.tsx`, `shiftAssignments.ts`, `overtimeService.ts`, `attendance.ts`, `ImportBiometricsDialog.tsx`, `loanService.ts`, `employees.ts`, `PayslipDetailPage.tsx`, `TeamReports.tsx`, `benefitsDeductions.ts`, `payrollInputsService.ts`, `SessionUser`, `attendance/routes.tsx`, `WorkSchedulesSection.tsx`, `compensationApprovals.ts`, `overtime.ts`, `DepartmentSelect.tsx`, `LeaveTypeDialog.tsx`?**
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
 - **What connects `$schema`, `style`, `rsc` to the rest of the system?**
-  _761 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _779 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Employee` be split into smaller, more focused modules?**
-  _Cohesion score 0.03958416633346661 - nodes in this community are weakly interconnected._
-- **Should `Button.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.06146926536731634 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.059574468085106386 - nodes in this community are weakly interconnected._
+- **Should `useToast` be split into smaller, more focused modules?**
+  _Cohesion score 0.0422995263759595 - nodes in this community are weakly interconnected._
 - **Should `Sidebar.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.05578947368421053 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0977891156462585 - nodes in this community are weakly interconnected._

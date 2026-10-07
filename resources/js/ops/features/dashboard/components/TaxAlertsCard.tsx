@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, ChevronRight, CircleAlert, ReceiptText } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useTaxAlerts } from '@ops/features/dashboard/hooks/useDashboardData'
@@ -17,6 +19,8 @@ const MAX_PER_LEVEL = 3
 
 export function TaxAlertsCard() {
   const { alerts, isLoading } = useTaxAlerts()
+  // On phones only the first three alerts show; "View more" reveals the rest.
+  const [expanded, setExpanded] = useState(false)
 
   const shown = alerts
     ? (['review', 'approaching', 'within'] as const).flatMap((level) => alerts.alerts.filter((a) => a.level === level).slice(0, MAX_PER_LEVEL))
@@ -44,13 +48,13 @@ export function TaxAlertsCard() {
           <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No tax alerts right now.</p>
         ) : (
           <>
-            {shown.map((alert) => {
+            {shown.map((alert, index) => {
               const level = LEVEL[alert.level]
               return (
                 <Link
                   key={alert.id}
                   to="/reports/tax-monitoring?tab=basic"
-                  className={cn('flex items-start gap-3 rounded-xl border p-3.5 transition-colors hover:bg-card', level.box)}
+                  className={cn('items-start gap-3 rounded-xl border p-3.5 transition-colors hover:bg-card', level.box, index >= 3 && !expanded ? 'hidden sm:flex' : 'flex')}
                 >
                   <span aria-hidden="true" className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', level.tile)}>
                     <level.icon className="size-[18px]" />
@@ -63,6 +67,11 @@ export function TaxAlertsCard() {
                 </Link>
               )
             })}
+            {shown.length > 3 && (
+              <Button type="button" variant="secondary" size="sm" className="w-full sm:hidden" onClick={() => setExpanded((v) => !v)}>
+                {expanded ? 'Show less' : `View more (${shown.length - 3})`}
+              </Button>
+            )}
             {hidden > 0 && (
               <Link to="/reports/tax-monitoring?tab=basic" className="block text-center text-xs font-medium text-primary hover:underline">
                 +{hidden} more to review in Tax Monitoring

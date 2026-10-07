@@ -217,7 +217,7 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
               <p className="mb-1.5 text-xs font-semibold tracking-tight text-foreground">
                 Mixed Compensation Breakdown<span className="ml-0.5 text-danger">*</span>
               </p>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2.5">
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
                   {mixedStructure ? (
                     <span className="font-medium text-foreground">{summarizeMixedCompensation(mixedStructure)}</span>
@@ -225,7 +225,7 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
                     'No breakdown configured yet.'
                   )}
                 </p>
-                <Button type="button" size="sm" variant="secondary" icon={<Settings2 className="size-3.5" />} onClick={() => setMixedDialogOpen(true)}>
+                <Button type="button" size="sm" variant="secondary" className="h-auto min-h-8 w-full whitespace-normal py-1.5 text-center sm:w-auto" icon={<Settings2 className="size-3.5 shrink-0" />} onClick={() => setMixedDialogOpen(true)}>
                   Configure Mixed Compensation Breakdown
                 </Button>
               </div>

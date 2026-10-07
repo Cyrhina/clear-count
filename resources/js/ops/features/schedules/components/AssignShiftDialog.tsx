@@ -6,7 +6,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { addDays, dayShort, fromDateKey, shiftRangeLabel } from '@ops/features/schedules/dateUtil'
+import { addDays, dayShort, fromDateKey, shiftRangeLabel, weekDays } from '@ops/features/schedules/dateUtil'
+import { cn } from '@ops/lib/utils/cn'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { assignShifts, clearShifts } from '@ops/lib/services/scheduleService'
@@ -85,7 +86,7 @@ export function AssignShiftDialog({
   }, [employees, search, branchId, department])
   const filtered = visible.length !== employees.length
 
-  const dates = useMemo(() => {
+  const pickedDates = useMemo(() => {
     const out: string[] = []
     if (!from || !to || to < from) return out
     for (let d = from; d <= to && out.length < 366; d = addDays(d, 1)) if (days.has(fromDateKey(d).getDay())) out.push(d)
@@ -98,11 +99,12 @@ export function AssignShiftDialog({
     { value: CLEAR, label: 'Clear (not yet scheduled)' },
   ]
   const invalidRange = !!from && !!to && to < from
-  const canSave = selected.size > 0 && dates.length > 0 && !saving
+  const canSave = selected.size > 0 && pickedDates.length > 0 && !saving
 
-  async function save() {
+  async function save(wholeWeek = false) {
     setSaving(true)
     const employeeIds = [...selected]
+    const dates = wholeWeek ? weekDays(from) : pickedDates
     const written = shift === CLEAR ? await clearShifts(user, { employeeIds, dates }) : await assignShifts(user, { employeeIds, dates, scheduleId: shift === REST ? null : shift })
     setSaving(false)
     notify({
@@ -123,7 +125,7 @@ export function AssignShiftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl">
         <DialogTitle>{preset.lockEmployees ? 'Edit shift' : 'Assign shift'}</DialogTitle>
         <DialogDescription>
           {preset.lockEmployees
@@ -212,18 +214,38 @@ export function AssignShiftDialog({
           )}
 
           <FormField label="Shift">
-            <Select value={shift} onValueChange={setShift} options={options} />
+            {/* Phones: big tap targets instead of a dropdown. */}
+            <div className="space-y-2 sm:hidden" role="radiogroup" aria-label="Shift">
+              {options.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={shift === o.value}
+                  onClick={() => setShift(o.value)}
+                  className={cn('flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-medium', shift === o.value ? 'border-primary bg-primary/5' : 'border-border')}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <Select className="hidden sm:flex" value={shift} onValueChange={setShift} options={options} />
           </FormField>
           <p className="text-xs text-muted-foreground">
-            {dates.length} day{dates.length === 1 ? '' : 's'} × {selected.size} employee{selected.size === 1 ? '' : 's'}
+            {pickedDates.length} day{pickedDates.length === 1 ? '' : 's'} × {selected.size} employee{selected.size === 1 ? '' : 's'}
           </p>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          {preset.lockEmployees && shift !== CLEAR && (
+            <Button type="button" variant="secondary" onClick={() => save(true)} disabled={saving} className="max-sm:flex-1">
+              Apply to whole week
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} className="max-sm:hidden">
             Cancel
           </Button>
-          <Button type="button" onClick={save} isLoading={saving} disabled={!canSave}>
+          <Button type="button" onClick={() => save()} className="max-sm:flex-1" isLoading={saving} disabled={!canSave}>
             {shift === CLEAR ? 'Clear roster' : 'Save'}
           </Button>
         </div>

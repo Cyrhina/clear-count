@@ -1,4 +1,5 @@
 import { ChevronsLeft, ChevronsRight, Lock, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { BRAND_NAME, BrandLogo } from '@ops/components/ui/BrandLogo'
 import { useSession } from '@ops/hooks/useSession'
@@ -83,9 +84,34 @@ function NavItemLink({ item, collapsed, onNavigate }: { item: NavGroup['items'][
   )
 }
 
+/** Inertia re-mounts the whole page on every visit, which would reset the menu to the top — so its scroll position outlives the component. */
+let savedNavScroll = 0
+
 function SidebarNav({ groups, collapsed, onNavigate }: { groups: NavGroup[]; collapsed: boolean; onNavigate?: () => void }) {
+  // The scrollbar is fainter while the menu is idle: flag the nav as "scrolling" for a moment after each scroll event.
+  const [scrolling, setScrolling] = useState(false)
+  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const navRef = useRef<HTMLElement>(null)
+  useEffect(() => () => clearTimeout(idleTimer.current), [])
+  // Put the menu back where the user left it, instantly (the nav is scroll-smooth, which would otherwise animate down from the top).
+  useLayoutEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    nav.style.scrollBehavior = 'auto'
+    nav.scrollTop = savedNavScroll
+    nav.style.scrollBehavior = ''
+  }, [])
+  function handleScroll() {
+    // Restoring the saved position fires a scroll event too; it isn't the user scrolling, so don't light the scrollbar up for it.
+    if (!navRef.current || navRef.current.scrollTop === savedNavScroll) return
+    savedNavScroll = navRef.current.scrollTop
+    setScrolling(true)
+    clearTimeout(idleTimer.current)
+    idleTimer.current = setTimeout(() => setScrolling(false), 800)
+  }
+
   return (
-    <nav className="flex flex-1 scroll-smooth flex-col gap-4 overflow-y-auto">
+    <nav ref={navRef} onScroll={handleScroll} data-scrolling={scrolling} className="sidebar-scroll flex flex-1 scroll-smooth flex-col gap-4 overflow-y-auto">
       {groups.map((group, idx) => (
         <div key={group.label ?? idx} className="flex flex-col gap-1">
           {group.label && !collapsed && (

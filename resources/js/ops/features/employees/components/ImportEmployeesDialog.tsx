@@ -97,13 +97,15 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
         <DialogTitle>Import Employees</DialogTitle>
         <DialogDescription>Add many employees at once from a CSV file. Start from the sample file so the columns and formats match.</DialogDescription>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 p-4">
-          <FileSpreadsheet className="size-8 shrink-0 text-primary" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">Sample file</p>
-            <p className="text-xs text-muted-foreground">Five example employees — one for each pay type — with every column filled in. Replace them with your own.</p>
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <FileSpreadsheet className="size-8 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Sample file</p>
+              <p className="text-xs text-muted-foreground">Five example employees — one for each pay type — with every column filled in. Replace them with your own.</p>
+            </div>
           </div>
-          <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={downloadSample}>
+          <Button size="sm" variant="secondary" className="w-full sm:w-auto" icon={<Download className="size-3.5" />} onClick={downloadSample}>
             Download Sample CSV
           </Button>
         </div>

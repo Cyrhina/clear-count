@@ -1,6 +1,8 @@
 import { BellRing, CalendarDays, CheckCircle2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@ops/components/ui/Badge'
+import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import type { AdminDashboardOverview } from '@ops/lib/services/dashboardService'
 import { cn } from '@ops/lib/utils/cn'
@@ -23,16 +25,23 @@ export function ViewAllLink({ to }: { to: string }) {
 
 /** Upcoming payroll and statutory deadlines — shared by the Company Admin and HR Admin dashboards. */
 export function RemindersCard({ reminders, className }: { reminders: AdminDashboardOverview['reminders']; className?: string }) {
+  // On phones only the three closest to their due date show; "View more" reveals the rest.
+  const [expanded, setExpanded] = useState(false)
+  const sorted = [...reminders].sort((a, b) => a.daysLeft - b.daysLeft)
   return (
     <Card data-tint="peach" watermark={BellRing} className={cn('relative overflow-hidden', className)}>
       <Card.Header className="relative">
         <Card.Title>Reminders</Card.Title>
       </Card.Header>
       <Card.Body className="relative space-y-3 pt-2">
-        {reminders.map((reminder) => {
+        {sorted.map((reminder, index) => {
           const status = dueStatus(reminder.daysLeft, reminder.remindDaysBefore)
           return (
-            <Link key={reminder.id} to={reminder.to} className="flex items-start gap-2.5 rounded-lg bg-card/70 p-3 transition-colors hover:bg-card">
+            <Link
+              key={reminder.id}
+              to={reminder.to}
+              className={cn('items-start gap-2.5 rounded-lg bg-card/70 p-3 transition-colors hover:bg-card', index >= 3 && !expanded ? 'hidden sm:flex' : 'flex')}
+            >
               <BellRing className="mt-0.5 size-4 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -48,6 +57,11 @@ export function RemindersCard({ reminders, className }: { reminders: AdminDashbo
             </Link>
           )
         })}
+        {sorted.length > 3 && (
+          <Button type="button" variant="secondary" size="sm" className="relative w-full sm:hidden" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Show less' : `View more (${sorted.length - 3})`}
+          </Button>
+        )}
       </Card.Body>
     </Card>
   )

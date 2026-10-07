@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Coffee, Copy, Plane, Plus, Search, UserCheck, UserX } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 import { Button } from '@ops/components/ui/Button'
+import { Card } from '@ops/components/ui/Card'
 import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
@@ -54,6 +55,7 @@ export function RosterTab() {
   const [branchId, setBranchId] = useState('all')
   const [department, setDepartment] = useState('all')
   const [search, setSearch] = useState('')
+  const [mobileDay, setMobileDay] = useState(todayKey())
   const [dialog, setDialog] = useState<{ open: boolean; preset: AssignPreset }>({ open: false, preset: { employeeIds: [], from: todayKey(), to: todayKey() } })
 
   const range = todayMode ? { from: todayKey(), to: todayKey() } : viewRange(anchor, view)
@@ -103,6 +105,8 @@ export function RosterTab() {
   }
 
   const days = view === 'week' ? weekDays(anchor) : []
+  // Phones show one day at a time: the picked day if it is in this week, else today, else Monday.
+  const activeDay = days.includes(mobileDay) ? mobileDay : days.includes(today) ? today : days[0]
   const colorIndex = new Map(roster.templates.map((t, i) => [t.id, i]))
 
   function openAssign(preset: AssignPreset) {
@@ -176,7 +180,7 @@ export function RosterTab() {
               <Button type="button" variant="ghost" size="sm" aria-label="Previous" onClick={() => setAnchor(shiftAnchor(anchor, view, -1))}>
                 <ChevronLeft className="size-4" />
               </Button>
-              <span className="min-w-40 px-2 text-center text-sm font-medium tabular-nums">{rangeLabel(anchor, view)}</span>
+              <span className="min-w-32 px-1 text-center sm:min-w-40 sm:px-2 text-sm font-medium tabular-nums">{rangeLabel(anchor, view)}</span>
               <Button type="button" variant="ghost" size="sm" aria-label="Next" onClick={() => setAnchor(shiftAnchor(anchor, view, 1))}>
                 <ChevronRight className="size-4" />
               </Button>
@@ -224,16 +228,16 @@ export function RosterTab() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <Select
-          className="w-48"
+          className="sm:w-48"
           value={branchId}
           onValueChange={setBranchId}
           aria-label="Branch"
           options={[{ value: 'all', label: 'All branches' }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
         />
-        <Select className="w-48" value={department} onValueChange={setDepartment} aria-label="Department" options={[{ value: 'all', label: 'All departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
-        <div className="relative min-w-52 flex-1 sm:max-w-xs">
+        <Select className="sm:w-48" value={department} onValueChange={setDepartment} aria-label="Department" options={[{ value: 'all', label: 'All departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
+        <div className="relative col-span-2 min-w-52 flex-1 sm:col-span-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
@@ -243,17 +247,31 @@ export function RosterTab() {
             className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-        <p className="ml-auto text-sm text-muted-foreground">{filtered.length} employees</p>
+        <p className="col-span-2 text-xs text-muted-foreground sm:ml-auto sm:text-sm">{filtered.length} employees</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Phones: one slim strip instead of four tall cards. */}
+      <div className="grid grid-cols-4 gap-1.5 sm:hidden">
+        {[
+          { label: 'Working', value: counts.working, className: '' },
+          { label: 'Rest', value: counts.rest, className: '' },
+          { label: 'Unsched.', value: counts.unscheduled, className: 'text-warning' },
+          { label: 'Leave', value: counts.leave, className: 'text-danger' },
+        ].map((s) => (
+          <div key={s.label} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card px-2.5 py-2">
+            <span className={cn('text-lg font-semibold leading-none tabular-nums', s.className)}>{s.value}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="hidden gap-4 sm:grid sm:grid-cols-2 md:grid-cols-4">
         <MetricCard label="Working today" value={String(counts.working)} icon={UserCheck} tone="success" />
         <MetricCard label="On rest day today" value={String(counts.rest)} icon={Coffee} tone="default" />
         <MetricCard label="Not yet scheduled" value={String(counts.unscheduled)} icon={UserX} tone="warning" />
         <MetricCard label="On leave today" value={String(counts.leave)} icon={Plane} tone="primary" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+      <div className="hidden flex-wrap items-center gap-2 text-xs sm:flex">
         {roster.templates.map((t, i) => (
           <span key={t.id} className={cn('rounded-md border px-2 py-1 font-medium', SHIFT_COLOR_CLASSES[colorFor(t, i)].cell)}>
             {t.name} {shiftRangeLabel(t)}
@@ -291,11 +309,56 @@ export function RosterTab() {
           }}
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full border-collapse text-sm" style={{ minWidth: 900 }}>
+        <>
+        {/* Phones: one day at a time, each employee a card showing that day's shift. */}
+        <div className="space-y-3 sm:hidden">
+          <div className="grid grid-cols-7 gap-1.5">
+            {days.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setMobileDay(d)}
+                aria-pressed={d === activeDay}
+                aria-label={`${dayShort(d)}, ${dayMonth(d)}`}
+                className={cn(
+                  'flex flex-col items-center rounded-xl border py-1.5 transition-colors',
+                  d === activeDay ? 'border-foreground bg-foreground text-background' : 'border-border bg-card',
+                  d === today && d !== activeDay && 'text-primary',
+                )}
+              >
+                <span className={cn('text-[10px] font-semibold uppercase', d === activeDay ? 'text-background/70' : 'text-muted-foreground')}>{dayShort(d)}</span>
+                <span className="text-[15px] font-semibold tabular-nums">{fromDateKey(d).getDate()}</span>
+              </button>
+            ))}
+          </div>
+          {groups.map((group) => (
+            <section key={group.name}>
+              <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.name} · {group.members.length}
+                </span>
+                <span className="truncate text-[11px] text-muted-foreground">{supervisorLabel(group.name)}</span>
+              </div>
+              <div className="space-y-2">
+                {group.members.map((e) => (
+                  <Card key={e.id} watermark={null} className="flex items-center gap-3 p-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">{initials(e)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{fullName(e)}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{branchName(e.branchId)}</p>
+                    </div>
+                    <div className="w-24 shrink-0">{renderCell(e, activeDay, roster.stateFor(e.id, activeDay))}</div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto rounded-xl border border-border bg-card sm:block">
+          <table className="w-full min-w-[900px] border-collapse text-sm md:min-w-0">
             <thead>
               <tr className="bg-muted/30">
-                <th className="sticky left-0 z-10 w-56 min-w-56 bg-muted/30 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Employee</th>
+                <th className="sticky left-0 z-10 w-44 min-w-44 bg-muted/30 px-3 py-2 text-left text-xs font-medium text-muted-foreground lg:w-56 lg:min-w-56">Employee</th>
                 {days.map((d) => (
                   <th key={d} className={cn('px-1 py-2 text-center text-xs font-medium', d === today ? 'bg-primary/10 text-primary' : 'text-muted-foreground')}>
                     <div>{dayShort(d)}</div>
@@ -340,6 +403,7 @@ export function RosterTab() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <AssignShiftDialog open={dialog.open} onOpenChange={(open) => setDialog((d) => ({ ...d, open }))} employees={active} templates={roster.templates} preset={dialog.preset} onSaved={refetchAll} />
@@ -468,7 +532,27 @@ function TodayList({
         <span className="font-medium">{onDuty.length} on duty today</span>
         <span className="text-muted-foreground"> · {others} resting, on leave or not yet scheduled</span>
       </p>
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      {/* Phones and tablets: cards (two columns on tablet). */}
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:hidden">
+        {onDuty.map(({ employee: e, schedule }) => (
+          <Card key={e.id} watermark={null} className="space-y-2 p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{fullName(e)}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {e.employment.department} · {branchName(e.branchId)}
+                </p>
+              </div>
+              <span className={cn('shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium', SHIFT_COLOR_CLASSES[colorFor(schedule, colorIndex.get(schedule.id) ?? 0)].cell)}>{shiftRangeLabel(schedule)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {schedule.name} · {shiftHours(schedule)}h · Sup: {supervisorOf(e)}
+            </p>
+          </Card>
+        ))}
+        {onDuty.length === 0 && <p className="rounded-xl border border-border px-4 py-10 text-center text-sm text-muted-foreground sm:col-span-2">Nobody is rostered to work today.</p>}
+      </div>
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-card lg:block">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="bg-muted/30 text-left text-xs font-medium text-muted-foreground">

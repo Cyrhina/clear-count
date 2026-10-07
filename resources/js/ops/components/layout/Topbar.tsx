@@ -61,13 +61,17 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav?: () => void }) {
             )}
           >
             <Avatar name={user.name} size="sm" />
-            <div className="hidden text-left sm:block">
+            <div className="hidden text-left lg:block">
               <p className="text-xs font-semibold leading-tight">{user.name}</p>
               <p className="text-[11px] leading-tight text-muted-foreground">{ROLE_LABELS[user.role]}</p>
             </div>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
-            <DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-44 rounded-xl border border-border bg-card p-1 shadow-soft-lg">
+            <DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-48 rounded-xl border border-border bg-card p-1 shadow-soft-lg">
+              <div className="border-b border-border px-2.5 pb-2 pt-1.5 lg:hidden">
+                <p className="text-xs font-semibold leading-tight">{user.name}</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">{ROLE_LABELS[user.role]}</p>
+              </div>
               {canViewProfile && (
                 <DropdownMenu.Item asChild>
                   <Link to="/my-profile" className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-muted">

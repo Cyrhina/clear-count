@@ -97,6 +97,24 @@ function EmployeeProfileContent() {
   const canSeparate = usePermission('employees.separate')
   const canViewPay = usePermission('employees.pay.view')
   const canViewAttendance = usePermission('attendance.view')
+  const [tab, setTab] = useState('personal')
+  // Same sections as the tab row, in the same order — shown as a dropdown on phones.
+  const tabOptions = [
+    { value: 'personal', label: 'Personal Information' },
+    { value: 'employment', label: 'Employment' },
+    ...(canViewPay ? [{ value: 'compensation', label: 'Compensation' }] : []),
+    { value: 'payroll', label: 'Payroll Information' },
+    ...(canViewAttendance ? [{ value: 'attendance', label: 'Attendance' }] : []),
+    ...(canViewPay
+      ? [
+          { value: 'benefits', label: 'Benefits' },
+          { value: 'government', label: 'Government Information' },
+          { value: 'bank', label: 'Bank/Payment' },
+          { value: 'documents', label: 'Documents' },
+          { value: 'history', label: 'History' },
+        ]
+      : []),
+  ]
 
   function stopEditing() {
     setEditingSection(null)
@@ -197,8 +215,10 @@ function EmployeeProfileContent() {
         </div>
       </Card>
 
-      <Tabs defaultValue="personal">
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        {/* Phones and tablets: a dropdown instead of a wrapped row of tabs. */}
+        <Select className="lg:hidden" value={tab} onValueChange={setTab} aria-label="Employee information section" options={tabOptions} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="personal">Personal Information</TabsTrigger>
           <TabsTrigger value="employment">Employment</TabsTrigger>
           {canViewPay && <TabsTrigger value="compensation">Compensation</TabsTrigger>}

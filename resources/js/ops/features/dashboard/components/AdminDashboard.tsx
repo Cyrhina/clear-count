@@ -39,6 +39,9 @@ const RECENT_EMPLOYEE_STATUS_LABEL: Record<string, string> = {
   inactive: 'inactive',
 }
 
+/** The Employees page, newest hires first. */
+const NEW_EMPLOYEES_LINK = '/employees?sort=hired&dir=desc'
+
 const QUICK_ACTIONS = [
   { label: 'Add Employee', icon: UserPlus, to: '/employees' },
   { label: 'Process Payroll', icon: Wallet, to: '/payroll' },
@@ -209,9 +212,29 @@ export function AdminDashboard() {
         <Card data-tint="sage" watermark={Users} className="relative overflow-hidden lg:col-span-1">
           <Card.Header className="relative items-center">
             <Card.Title>Recent Employees</Card.Title>
-            <ViewAllLink to="/employees" />
+            <ViewAllLink to={NEW_EMPLOYEES_LINK} />
           </Card.Header>
           <Card.Body className="relative pt-2">
+            {/* Phones: three newest hires as cards, then View more. */}
+            <div className="space-y-2.5 sm:hidden">
+              {recentEmployees.slice(0, 3).map((employee) => (
+                <div key={employee.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/80 p-3 shadow-sm">
+                  <Avatar name={employee.name} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{employee.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{employee.position}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {employee.department} · hired {employee.hiredLabel}
+                    </p>
+                  </div>
+                  <StatusBadge status={RECENT_EMPLOYEE_STATUS_LABEL[employee.status] ?? employee.status} />
+                </div>
+              ))}
+              <Button asChild variant="secondary" size="sm" className="w-full">
+                <Link to={NEW_EMPLOYEES_LINK}>View more</Link>
+              </Button>
+            </div>
+            <div className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -242,6 +265,7 @@ export function AdminDashboard() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </Card.Body>
         </Card>
 
