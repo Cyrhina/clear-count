@@ -36,9 +36,10 @@ const TARGET_TYPE_LABEL: Record<BonusIncentive['targetType'], string> = {
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-medium">{value}</p>
+    // Phones: label left, value right, one line per field. From sm: stacked label over value in a two-column grid.
+    <div className="flex items-center justify-between gap-4 py-2.5 sm:block sm:py-0">
+      <p className="shrink-0 text-xs text-muted-foreground">{label}</p>
+      <div className="text-right text-sm font-medium sm:mt-0.5 sm:text-left">{value}</div>
     </div>
   )
 }
@@ -115,13 +116,13 @@ export function BonusDetailsDialog({
       <DialogContent className={separatePayslips.length > 0 ? 'max-w-3xl' : 'max-w-xl'}>
         {bonus && (
           <>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
               {bonus.name}
               <StatusBadge status={bonus.status} />
             </DialogTitle>
             <DialogDescription>Non-regular earning configuration and approval status.</DialogDescription>
 
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+            <div className="mt-4 divide-y divide-border text-sm sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 sm:divide-y-0">
               <Field label="Bonus Type" value={BONUS_TYPE_LABEL[bonus.bonusType]} />
               <Field label="Target Recipient" value={TARGET_TYPE_LABEL[bonus.targetType]} />
               <Field
@@ -146,7 +147,7 @@ export function BonusDetailsDialog({
                 <Field label={bonus.status === 'rejected' ? 'Rejected By' : 'Approved By'} value={`${bonus.decidedBy} · ${bonus.decidedAt ? formatDate(bonus.decidedAt) : ''}`} />
               )}
               {bonus.notes && (
-                <div className="col-span-2">
+                <div className="py-2.5 sm:col-span-2 sm:py-0">
                   <p className="text-xs text-muted-foreground">Notes / Justification</p>
                   <p className="mt-0.5 text-sm">{bonus.notes}</p>
                 </div>
@@ -223,7 +224,7 @@ export function BonusDetailsDialog({
               </div>
             )}
 
-            <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+            <div className="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end [&>button]:w-full sm:[&>button]:w-auto">
               <Button variant="secondary" onClick={onClose}>
                 Close
               </Button>

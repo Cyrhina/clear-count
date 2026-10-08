@@ -3,6 +3,7 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import type { ExcelExport, ReportMetaItem } from '@ops/features/reports/reportExport'
 import { useSession } from '@ops/hooks/useSession'
@@ -129,14 +130,38 @@ export function HoursWorkedReport() {
       ) : (
         <div className="space-y-4">
           {bar}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <StatTile label="Employees" value={String(rows.length)} />
             <StatTile label="Total Hours" value={round(sum(rows.map((r) => r.total))).toLocaleString('en-PH')} />
-            <StatTile label="Overtime & ND Hours" value={round(sum(rows.map((r) => r.overtime + r.nightDiff))).toLocaleString('en-PH')} />
+            <StatTile className="col-span-2 sm:col-span-1" label="Overtime & ND Hours" value={round(sum(rows.map((r) => r.overtime + r.nightDiff))).toLocaleString('en-PH')} />
           </div>
           {rows.length === 0 ? (
             <EmptyState title="No hours recorded for these filters" />
           ) : (
+            <>
+            <ReportCardList count={rows.length} noun={rows.length === 1 ? 'employee' : 'employees'} note="Sorted by name">
+              {rows.map((r) => (
+                <ReportRecordCard
+                  key={r.employee.id}
+                  avatar={fullName(r.employee)}
+                  title={fullName(r.employee)}
+                  subtitle={`${r.employee.employment.position} · ${r.employee.employment.department}`}
+                  meta={r.employee.employeeNumber}
+                  details={
+                    <>
+                      <CardStat label="Submitted Hrs">{r.submitted}</CardStat>
+                      <CardStat label="OT Hrs">{r.overtime}</CardStat>
+                      <CardStat label="ND Hrs">{r.nightDiff}</CardStat>
+                    </>
+                  }
+                >
+                  <CardStat label="Total Hrs">{r.total}</CardStat>
+                  <CardStat label="Days Present">{r.days}</CardStat>
+                  <CardStat label="Regular Hrs">{r.regular}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -168,6 +193,8 @@ export function HoursWorkedReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -217,14 +244,38 @@ export function OutputSummaryReport() {
       ) : (
         <div className="space-y-4">
           {bar}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <StatTile label="Employees With Output" value={String(rows.length)} />
             <StatTile label="Approved Units" value={sum(rows.map((r) => r.approved)).toLocaleString('en-PH')} />
-            <StatTile label="Pending Units" value={sum(rows.map((r) => r.pending)).toLocaleString('en-PH')} />
+            <StatTile className="col-span-2 sm:col-span-1" label="Pending Units" value={sum(rows.map((r) => r.pending)).toLocaleString('en-PH')} />
           </div>
           {rows.length === 0 ? (
             <EmptyState title="No output submitted for these filters" />
           ) : (
+            <>
+            <ReportCardList count={rows.length} noun={rows.length === 1 ? 'employee' : 'employees'} note="Sorted by name">
+              {rows.map((r) => (
+                <ReportRecordCard
+                  key={r.employee.id}
+                  avatar={fullName(r.employee)}
+                  title={fullName(r.employee)}
+                  subtitle={`${r.employee.employment.position} · ${r.employee.employment.department}`}
+                  meta={r.employee.employeeNumber}
+                  details={
+                    <>
+                      <CardStat label="Unit">{r.unit}</CardStat>
+                      <CardStat label="Pending">{r.pending}</CardStat>
+                      <CardStat label="Rejected">{r.rejected}</CardStat>
+                    </>
+                  }
+                >
+                  <CardStat label="Approved Value">{formatCurrency(r.value)}</CardStat>
+                  <CardStat label="Submitted">{r.submitted}</CardStat>
+                  <CardStat label="Approved">{r.approved}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -256,6 +307,8 @@ export function OutputSummaryReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}

@@ -85,6 +85,8 @@ export function ReportCategorySection({ category, tab }: { category: ReportCateg
   )
 }
 
+const DEFAULT_EXCEL_LABEL = 'Export to Excel'
+
 /** Wraps a selected report's view: title/description, an Export to Excel (.xlsx) + PDF action pair, print-hidden chrome, and a print-only document header. */
 export function ReportViewShell({
   title,
@@ -92,7 +94,7 @@ export function ReportViewShell({
   meta = [],
   orientation: defaultOrientation = 'portrait',
   onExportExcel,
-  exportLabel = 'Export to Excel',
+  exportLabel = DEFAULT_EXCEL_LABEL,
   filters,
   children,
 }: {
@@ -158,16 +160,24 @@ export function ReportViewShell({
   }
 
   return (
-    <Card className="report-print p-5">
+    <Card className="report-print p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <p className="font-display text-base font-semibold tracking-tight">{title}</p>
           {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </div>
-        <div className="flex items-center gap-2">
+        {/* Phones: Excel and PDF share a full-width two-column row. */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
           {onExportExcel && (
-            <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={onExcel} disabled={exporting}>
-              {exportLabel}
+            <Button size="sm" variant="secondary" className="w-full sm:w-auto" icon={<Download className="size-3.5" />} onClick={onExcel} disabled={exporting}>
+              {exportLabel === DEFAULT_EXCEL_LABEL ? (
+                <>
+                  <span className="sm:hidden">Excel</span>
+                  <span className="hidden sm:inline">{exportLabel}</span>
+                </>
+              ) : (
+                exportLabel
+              )}
             </Button>
           )}
           <PdfExportMenu orientation={orientation} onOrientationChange={setOrientation} onPrint={onPrint} />
@@ -198,8 +208,9 @@ function PdfExportMenu({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <Button size="sm" variant="secondary" icon={<FileText className="size-3.5" />}>
-          Export to PDF
+        <Button size="sm" variant="secondary" className="w-full sm:w-auto" icon={<FileText className="size-3.5" />}>
+          <span className="sm:hidden">PDF</span>
+          <span className="hidden sm:inline">Export to PDF</span>
           <ChevronDown className="size-3.5 opacity-60" />
         </Button>
       </DropdownMenu.Trigger>
@@ -305,7 +316,8 @@ function ReportPrintFooter({ generatedAt, generatedBy }: { generatedAt: Date; ge
 export function ReportFilterBar({ children, onClear }: { children: ReactNode; onClear?: () => void }) {
   return (
     <div className="flex flex-wrap items-end gap-3 print:hidden">
-      <div className="flex flex-1 flex-wrap items-end gap-3">{children}</div>
+      {/* Phones: a two-column grid (wide fields span both); from sm the fields flow in a wrapping row. */}
+      <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-end">{children}</div>
       {onClear && (
         <Button size="sm" variant="ghost" icon={<X className="size-3.5" />} onClick={onClear}>
           Clear Filters
@@ -317,8 +329,9 @@ export function ReportFilterBar({ children, onClear }: { children: ReactNode; on
 
 export function FilterLabel({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className={className}>
-      <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+    // On phones every field fills its grid cell; the wide ones (w-64 and up, e.g. the employee picker) take the full row.
+    <div className={cn('max-sm:w-full', /\bw-(6[4-9]|[7-9]\d)\b/.test(className ?? '') && 'max-sm:col-span-2', className)}>
+      {label && <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>}
       {children}
     </div>
   )

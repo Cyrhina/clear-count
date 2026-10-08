@@ -83,7 +83,7 @@ export function EmployeeContributionsTable({ config }: { config: StatutoryConfig
   )
 
   return (
-    <Card className="space-y-4 p-5">
+    <Card className="space-y-4 p-4 sm:p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-display text-base font-semibold tracking-tight">Employee Contributions</p>
@@ -101,6 +101,98 @@ export function EmployeeContributionsTable({ config }: { config: StatutoryConfig
       {isLoading ? (
         <Skeleton className="h-64" />
       ) : (
+        <>
+          {/* Phones and tablets: one card per employee — one column on phones, two on tablets. */}
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:hidden">
+            {visible.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground sm:col-span-2">No employees match your search.</p>}
+            {visible.map((r) => (
+              <Card key={r.employee.id} watermark={null} className="flex flex-col p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-tight">
+                      {r.employee.personal.firstName} {r.employee.personal.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.employee.employeeNumber} · {r.employee.employment.department}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs font-medium">{FREQUENCY_LABEL[r.frequency]}</p>
+                    <p className="max-w-32 truncate text-[11px] text-muted-foreground">{r.groupName ?? 'No payroll group'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-baseline justify-between border-t border-border pt-3 text-sm">
+                  <span className="text-xs text-muted-foreground">Monthly basis</span>
+                  <Money value={r.m.monthlyBasis} />
+                </div>
+
+                <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 rounded-lg bg-muted/40 px-3 py-2.5 text-xs">
+                  <span />
+                  <span className="text-right text-muted-foreground">Employee</span>
+                  <span className="text-right text-muted-foreground">Employer</span>
+
+                  <span>
+                    SSS<span className="block text-[11px] text-muted-foreground">MSC {formatCurrency(r.m.sssMsc)}</span>
+                  </span>
+                  <Money value={r.m.sssEmployee} />
+                  <Money value={r.m.sssEmployer} />
+
+                  <span>PhilHealth</span>
+                  <Money value={r.m.philhealthEmployee} />
+                  <Money value={r.m.philhealthEmployer} />
+
+                  <span>Pag-IBIG</span>
+                  <Money value={r.m.pagibigEmployee} />
+                  <Money value={r.m.pagibigEmployer} />
+
+                  <span className="border-t border-border pt-2">Withholding tax</span>
+                  <span className="border-t border-border pt-2 text-right">
+                    <Money value={r.m.withholdingTax} />
+                  </span>
+                  <span className="border-t border-border pt-2 text-right text-muted-foreground">—</span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-primary/10 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Deducted per cutoff</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatCurrency(r.employeeTotal)} ÷ {r.frequency === 'biweekly' ? '2 or 3' : r.frequency === 'daily' ? `${r.periodsPerMonth} working days` : r.periodsPerMonth}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-base font-semibold tabular-nums text-primary">
+                    {formatCurrency(r.perCutoff)}
+                    {r.frequency === 'biweekly' && ` / ${formatCurrency(Math.round((r.employeeTotal / 3) * 100) / 100)}`}
+                  </p>
+                </div>
+              </Card>
+            ))}
+
+            {visible.length > 0 && (
+              <Card watermark={null} className="space-y-1.5 bg-muted/50 p-4 text-sm sm:col-span-2">
+                <p className="font-semibold">Total ({visible.length} employees, monthly)</p>
+                <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 text-xs">
+                  <span />
+                  <span className="text-right text-muted-foreground">Employee</span>
+                  <span className="text-right text-muted-foreground">Employer</span>
+                  <span>SSS</span>
+                  <Money value={totals.sssEe} />
+                  <Money value={totals.sssEr} />
+                  <span>PhilHealth</span>
+                  <Money value={totals.phEe} />
+                  <Money value={totals.phEr} />
+                  <span>Pag-IBIG</span>
+                  <Money value={totals.hdmfEe} />
+                  <Money value={totals.hdmfEr} />
+                  <span>Withholding tax</span>
+                  <Money value={totals.tax} />
+                  <span />
+                </div>
+              </Card>
+            )}
+          </div>
+
+          <div className="hidden lg:block">
         <Table className="whitespace-nowrap">
           <TableHeader>
             <TableRow>
@@ -209,6 +301,8 @@ export function EmployeeContributionsTable({ config }: { config: StatutoryConfig
             </tr>
           </tfoot>
         </Table>
+          </div>
+        </>
       )}
     </Card>
   )

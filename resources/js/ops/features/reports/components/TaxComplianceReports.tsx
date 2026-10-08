@@ -1,12 +1,14 @@
 import { Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Badge } from '@ops/components/ui/Badge'
+import { Card } from '@ops/components/ui/Card'
 import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { CardSelectionContext, CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import { useAllPayrollLines, useTaxComplianceData } from '@ops/features/reports/hooks/useReports'
 import { monthLabel } from '@ops/features/reports/payrollAggregates'
@@ -50,6 +52,23 @@ function SelectionNote({ count, onClear }: { count: number; onClear: () => void 
     </p>
   )
 }
+
+/** Gives the `ReportRecordCard` inside it the export-selection checkbox (shown in its header; ticking it never expands the card). */
+function SelectableCard({ checked, onChange, label, children }: { checked: boolean; onChange: (checked: boolean) => void; label: string; children: ReactNode }) {
+  return <CardSelectionContext.Provider value={{ checked, onChange, label }}>{children}</CardSelectionContext.Provider>
+}
+
+/** The totals row of a table, as the last card of the card list. */
+function TotalCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Card watermark={null} className="space-y-2.5 bg-muted/50 p-4 text-sm sm:col-span-2">
+      <p className="font-semibold">{title}</p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">{children}</div>
+    </Card>
+  )
+}
+
+const money = (n: number) => <span className="whitespace-nowrap">{formatCurrency(n)}</span>
 
 function MoneyCell({ value, className }: { value: number; className?: string }) {
   return <TableCell className={cn('whitespace-nowrap text-right tabular-nums', className)}>{formatCurrency(value)}</TableCell>
@@ -159,7 +178,7 @@ export function TaxMonitoringReport() {
       ) : (
         <div className="space-y-4">
           {filters}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Employees Monitored" value={String(rows.length)} />
             <StatTile label="Review Required" value={String(count('review'))} />
             <StatTile label="Approaching Threshold" value={String(count('approaching'))} />
@@ -169,6 +188,27 @@ export function TaxMonitoringReport() {
           {visible.length === 0 ? (
             <EmptyState title="No employees match these filters" />
           ) : (
+            <>
+            <ReportCardList selectAll={{ state: selection.headerState, onChange: selection.toggleAll }} count={visible.length} noun={visible.length === 1 ? 'employee' : 'employees'}>
+              {visible.map((r) => (
+                <SelectableCard key={r.employee.id} checked={selection.selected.has(r.employee.id)} onChange={(c) => selection.toggle(r.employee.id, c)} label={fullName(r.employee)}>
+                  <ReportRecordCard
+                    avatar={fullName(r.employee)}
+                    title={fullName(r.employee)}
+                    badge={<TaxStatusBadge status={r.status} />}
+                    subtitle={r.employee.employment.department}
+                    meta={r.employee.employeeNumber}
+                  >
+                    <CardStat label="13th Month & Other Benefits">{money(r.bucket.total)}</CardStat>
+                    <CardStat label="% of Ceiling">{Math.round((r.bucket.total / r.bucket.ceiling) * 100)}%</CardStat>
+                    <CardStat label="Flagged" className="col-span-2">
+                      <span className="text-xs font-normal text-muted-foreground">{flagged(r).join(', ') || '—'}</span>
+                    </CardStat>
+                  </ReportRecordCard>
+                </SelectableCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -199,6 +239,8 @@ export function TaxMonitoringReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -236,7 +278,7 @@ export function TaxableCompensationReport() {
       ) : (
         <div className="space-y-4">
           {filters}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Gross Compensation" value={formatCurrency(totals.gross)} />
             <StatTile label="Non-taxable (Contributions + De Minimis)" value={formatCurrency(totals.statutory + totals.deMinimis)} />
             <StatTile label="Taxable Compensation" value={formatCurrency(totals.taxable)} />
@@ -246,6 +288,32 @@ export function TaxableCompensationReport() {
           {rows.length === 0 ? (
             <EmptyState title="No employees match these filters" />
           ) : (
+            <>
+            <ReportCardList selectAll={{ state: selection.headerState, onChange: selection.toggleAll }} count={rows.length} noun={rows.length === 1 ? 'employee' : 'employees'}>
+              {rows.map((r) => (
+                <SelectableCard key={r.employee.id} checked={selection.selected.has(r.employee.id)} onChange={(c) => selection.toggle(r.employee.id, c)} label={fullName(r.employee)}>
+                  <ReportRecordCard avatar={fullName(r.employee)} title={fullName(r.employee)} subtitle={r.employee.employment.department} meta={r.employee.employeeNumber}>
+                    <CardStat label="Gross Compensation">{money(r.grossYtd)}</CardStat>
+                    <CardStat label="SSS / PhilHealth / Pag-IBIG">{money(r.statutoryYtd)}</CardStat>
+                    <CardStat label="De Minimis">{money(r.deMinimisPaidYtd)}</CardStat>
+                    <CardStat label="Tax Withheld">{money(r.withholdingYtd)}</CardStat>
+                    <CardStat label="Taxable Compensation" className="col-span-2">
+                      {money(r.taxableCompensationYtd)}
+                    </CardStat>
+                  </ReportRecordCard>
+                </SelectableCard>
+              ))}
+              <TotalCard title={`Total (${rows.length} ${rows.length === 1 ? 'employee' : 'employees'})`}>
+                <CardStat label="Gross Compensation">{money(totals.gross)}</CardStat>
+                <CardStat label="SSS / PhilHealth / Pag-IBIG">{money(totals.statutory)}</CardStat>
+                <CardStat label="De Minimis">{money(totals.deMinimis)}</CardStat>
+                <CardStat label="Tax Withheld">{money(totals.tax)}</CardStat>
+                <CardStat label="Taxable Compensation" className="col-span-2">
+                  {money(totals.taxable)}
+                </CardStat>
+              </TotalCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -287,6 +355,8 @@ export function TaxableCompensationReport() {
                 </TableRow>
               </tfoot>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -326,7 +396,7 @@ export function ThirteenthMonthBenefitsReport() {
       ) : (
         <div className="space-y-4">
           {filters}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="13th Month Pay" value={formatCurrency(totals.thirteenth)} />
             <StatTile label="Other Benefits" value={formatCurrency(totals.other + totals.excess)} />
             <StatTile label="Taxable Excess" value={formatCurrency(totals.taxable)} />
@@ -336,6 +406,46 @@ export function ThirteenthMonthBenefitsReport() {
           {visible.length === 0 ? (
             <EmptyState title="No employees match these filters" />
           ) : (
+            <>
+            <ReportCardList selectAll={{ state: selection.headerState, onChange: selection.toggleAll }} count={visible.length} noun={visible.length === 1 ? 'employee' : 'employees'}>
+              {visible.map((r) => (
+                <SelectableCard key={r.employee.id} checked={selection.selected.has(r.employee.id)} onChange={(c) => selection.toggle(r.employee.id, c)} label={fullName(r.employee)}>
+                  <ReportRecordCard
+                    avatar={fullName(r.employee)}
+                    title={fullName(r.employee)}
+                    badge={<TaxStatusBadge status={r.bucket.status} />}
+                    subtitle={r.employee.employment.department}
+                    meta={r.employee.employeeNumber}
+                    details={
+                      <>
+                        <CardStat label="Other Benefits">{money(r.bucket.otherBenefits)}</CardStat>
+                        <CardStat label="De Minimis Excess">{money(r.bucket.deMinimisExcess)}</CardStat>
+                      </>
+                    }
+                  >
+                    <CardStat label="13th Month Pay">
+                      {money(r.bucket.thirteenthMonth)}
+                      {r.bucket.isProjected && <span className="ml-1.5 text-[10px] font-normal uppercase text-muted-foreground">proj.</span>}
+                    </CardStat>
+                    <CardStat label="Total">{money(r.bucket.total)}</CardStat>
+                    <CardStat label="Remaining">{money(r.bucket.remaining)}</CardStat>
+                    <CardStat label="Taxable Excess" className={r.bucket.taxableExcess > 0 ? 'text-danger' : undefined}>
+                      {money(r.bucket.taxableExcess)}
+                    </CardStat>
+                  </ReportRecordCard>
+                </SelectableCard>
+              ))}
+              <TotalCard title={`Total (${visible.length} ${visible.length === 1 ? 'employee' : 'employees'})`}>
+                <CardStat label="13th Month Pay">{money(totals.thirteenth)}</CardStat>
+                <CardStat label="Other Benefits">{money(totals.other)}</CardStat>
+                <CardStat label="De Minimis Excess">{money(totals.excess)}</CardStat>
+                <CardStat label="Total">{money(totals.total)}</CardStat>
+                <CardStat label="Taxable Excess" className="col-span-2">
+                  {money(totals.taxable)}
+                </CardStat>
+              </TotalCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -388,6 +498,8 @@ export function ThirteenthMonthBenefitsReport() {
                 </TableRow>
               </tfoot>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -443,7 +555,7 @@ export function DeMinimisBenefitsReport() {
               <Select value={benefit} onValueChange={setBenefit} options={[{ value: 'all', label: 'All Benefits' }, ...DE_MINIMIS_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))]} />
             </FilterLabel>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Benefit Records" value={String(items.length)} />
             <StatTile label="Review Required" value={String(count('review'))} />
             <StatTile label="Approaching Threshold" value={String(count('approaching'))} />
@@ -453,6 +565,37 @@ export function DeMinimisBenefitsReport() {
           {items.length === 0 ? (
             <EmptyState title="No de minimis benefits match these filters" />
           ) : (
+            <>
+            <ReportCardList selectAll={{ state: selection.headerState, onChange: selection.toggleAll }} count={items.length} noun={items.length === 1 ? 'benefit record' : 'benefit records'}>
+              {items.map(({ row, item }) => (
+                <SelectableCard
+                  key={`${row.employee.id}-${item.key}`}
+                  checked={selection.selected.has(`${row.employee.id}-${item.key}`)}
+                  onChange={(c) => selection.toggle(`${row.employee.id}-${item.key}`, c)}
+                  label={`${fullName(row.employee)} ${item.label}`}
+                >
+                  <ReportRecordCard
+                    avatar={fullName(row.employee)}
+                    title={fullName(row.employee)}
+                    badge={<TaxStatusBadge status={item.status} />}
+                    subtitle={item.label}
+                    meta={`${row.employee.employeeNumber} · ${row.employee.employment.department}`}
+                    details={<CardStat label="Remaining">{money(item.remaining)}</CardStat>}
+                  >
+                    <CardStat label="Ceiling">
+                      {money(item.ceiling)}
+                      <span className="block text-[10px] font-normal text-muted-foreground">{item.ceilingNote}</span>
+                    </CardStat>
+                    <CardStat label="Paid to Date">{money(item.paidYtd)}</CardStat>
+                    <CardStat label="Projected (Year)">{money(item.projected)}</CardStat>
+                    <CardStat label="Excess" className={item.excess > 0 ? 'text-danger' : undefined}>
+                      {money(item.excess)}
+                    </CardStat>
+                  </ReportRecordCard>
+                </SelectableCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -492,6 +635,8 @@ export function DeMinimisBenefitsReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -564,7 +709,7 @@ export function WithholdingTaxSummaryReport() {
               <Select value={view} onValueChange={(v) => setView(v as 'month' | 'employee')} options={VIEW_OPTIONS} />
             </FilterLabel>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 max-sm:[&>*:last-child]:col-span-2">
             <StatTile label="Employees Paid" value={String(view === 'month' ? new Set(lines.filter((l) => l.period.payDate.startsWith(String(year))).map((l) => l.employee.id)).size : paid.length)} />
             <StatTile label="Gross Compensation" value={formatCurrency(view === 'month' ? monthTotals.gross : empTotals.gross)} />
             <StatTile label="Total Tax Withheld" value={formatCurrency(view === 'month' ? monthTotals.tax : empTotals.tax)} />
@@ -572,6 +717,22 @@ export function WithholdingTaxSummaryReport() {
           {empty ? (
             <EmptyState title="No payroll runs paid in this year" />
           ) : view === 'month' ? (
+            <>
+            <ReportCardList count={months.length} noun={months.length === 1 ? 'month' : 'months'}>
+              {months.map((m) => (
+                <ReportRecordCard key={m.month} title={monthLabel(m.month)} subtitle={`${m.employees} ${m.employees === 1 ? 'employee' : 'employees'} paid`}>
+                  <CardStat label="Gross Compensation">{money(m.gross)}</CardStat>
+                  <CardStat label="Tax Withheld">{money(m.tax)}</CardStat>
+                  <CardStat label="Rate (% of Gross)">{rate(m.tax, m.gross)}</CardStat>
+                </ReportRecordCard>
+              ))}
+              <TotalCard title="Year to date">
+                <CardStat label="Gross Compensation">{money(monthTotals.gross)}</CardStat>
+                <CardStat label="Tax Withheld">{money(monthTotals.tax)}</CardStat>
+                <CardStat label="Rate (% of Gross)">{rate(monthTotals.tax, monthTotals.gross)}</CardStat>
+              </TotalCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -603,9 +764,35 @@ export function WithholdingTaxSummaryReport() {
                 </TableRow>
               </tfoot>
             </Table>
+            </ReportTableView>
+            </>
           ) : (
             <>
             {selection.selected.size > 0 && <SelectionNote count={selection.selected.size} onClear={selection.clear} />}
+            <ReportCardList selectAll={{ state: selection.headerState, onChange: selection.toggleAll }} count={paid.length} noun={paid.length === 1 ? 'employee' : 'employees'}>
+              {paid.map((r) => (
+                <SelectableCard key={r.employee.id} checked={selection.selected.has(r.employee.id)} onChange={(c) => selection.toggle(r.employee.id, c)} label={fullName(r.employee)}>
+                  <ReportRecordCard
+                    avatar={fullName(r.employee)}
+                    title={fullName(r.employee)}
+                    subtitle={`${r.employee.employeeNumber} · ${r.employee.employment.department}`}
+                    meta={`TIN ${r.employee.government.tinNo ?? '—'}`}
+                  >
+                    <CardStat label="Gross Compensation">{money(r.grossYtd)}</CardStat>
+                    <CardStat label="Taxable Compensation">{money(r.taxableCompensationYtd)}</CardStat>
+                    <CardStat label="Tax Withheld">{money(r.withholdingYtd)}</CardStat>
+                    <CardStat label="Rate (% of Taxable)">{rate(r.withholdingYtd, r.taxableCompensationYtd)}</CardStat>
+                  </ReportRecordCard>
+                </SelectableCard>
+              ))}
+              <TotalCard title={`Total (${paid.length} ${paid.length === 1 ? 'employee' : 'employees'})`}>
+                <CardStat label="Gross Compensation">{money(empTotals.gross)}</CardStat>
+                <CardStat label="Taxable Compensation">{money(empTotals.taxable)}</CardStat>
+                <CardStat label="Tax Withheld">{money(empTotals.tax)}</CardStat>
+                <CardStat label="Rate (% of Taxable)">{rate(empTotals.tax, empTotals.taxable)}</CardStat>
+              </TotalCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -647,6 +834,7 @@ export function WithholdingTaxSummaryReport() {
                 </TableRow>
               </tfoot>
             </Table>
+            </ReportTableView>
             </>
           )}
         </div>

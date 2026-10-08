@@ -8,6 +8,7 @@ import { Card } from '@ops/components/ui/Card'
 import { EmployeePickerPanel } from '@ops/components/ui/EmployeePickerPanel'
 import { EmployeeCombobox } from '@ops/components/ui/EmployeeCombobox'
 import { EmptyState } from '@ops/components/ui/EmptyState'
+import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
@@ -35,7 +36,7 @@ import {
   type ThirteenthMonthPreview,
 } from '@ops/lib/services/thirteenthMonthService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { Employee, PayrollGroup, ThirteenthMonthSelection, ThirteenthMonthSelectionMode } from '@ops/types/domain'
+import type { Employee, PayrollGroup, ThirteenthMonthLine, ThirteenthMonthRun, ThirteenthMonthSelection, ThirteenthMonthSelectionMode } from '@ops/types/domain'
 
 const YEAR_OPTIONS = [2024, 2025, 2026, 2027].map((y) => ({ value: String(y), label: String(y) }))
 const DEFAULT_YEAR = 2026
@@ -177,6 +178,49 @@ export function ThirteenthMonthPage() {
     refetchRuns()
   }
 
+  // Row actions shared by the card and table views: icon-only on phones, with text labels from `sm`.
+  const renderActions = (line: ThirteenthMonthLine, employee: Employee, run: ThirteenthMonthRun) => {
+    const email = emailFor(line.employeeId)
+    return (
+      <>
+        <ComputationDrawer
+          employee={employee}
+          line={line}
+          run={run}
+          trigger={
+            <Button size="sm" variant="ghost" icon={<Calculator className="size-3.5" />} aria-label="Computation" title="Computation">
+              <span className="hidden sm:inline">Computation</span>
+            </Button>
+          }
+        />
+        <Button asChild size="sm" variant="ghost">
+          <Link to={`/thirteenth-month-pay/${run.id}/payslips/${employee.id}`} aria-label="Payslip" title="Payslip">
+            <FileText className="size-3.5" />
+            <span className="hidden sm:inline">Payslip</span>
+          </Link>
+        </Button>
+        {email && (
+          <PayslipEmailActions
+            compact
+            email={email}
+            status={emails.statusFor(employee.id)}
+            record={emails.records[employee.id]}
+            canSend={canEmail}
+            disabledReason={emailDisabledReason}
+            onSend={() => sendEmails([employee.id])}
+            renderPayslip={() => <ThirteenthMonthPayslipDocument company={company} run={run} line={line} employee={employee} />}
+          />
+        )}
+      </>
+    )
+  }
+
+  const generateButton = canManage && (
+    <Button className="w-full sm:w-auto" icon={<PlayCircle className="size-4" />} isLoading={busy} disabled={!selectionComplete || !preview?.included.length} onClick={handleGenerate}>
+      Generate 13th Month Pay
+    </Button>
+  )
+
   return (
     <div className="space-y-5">
       <PageHeader title="13th Month Pay" description="Philippine-compliant 13th Month Pay batch generation, preview, and approval." />
@@ -190,102 +234,102 @@ export function ThirteenthMonthPage() {
         </p>
       </div>
 
-      <Card className="space-y-4 p-5">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="w-32">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Year</p>
-            <Select
-              value={String(year)}
-              onValueChange={(v) => {
-                const y = Number(v)
-                setYear(y)
-                setGenerationDate(`${y}-12-15`)
-                setPayoutPeriodLabel(`December ${y}`)
-                setSelectedRunId(undefined)
-              }}
-              options={YEAR_OPTIONS}
-            />
-          </div>
-          <div className="w-44">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Cutoff / Generation Date</p>
-            <Input type="date" value={generationDate} onChange={(e) => setGenerationDate(e.target.value)} />
-          </div>
-          <div className="w-52">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Payout Label</p>
-            <Input value={payoutPeriodLabel} onChange={(e) => setPayoutPeriodLabel(e.target.value)} placeholder="December 2026" />
-          </div>
-        </div>
+      {/* Phones/tablets: titled sections in a grid. Desktop (lg): the original compact inline rows. */}
+      <Card className="p-4 sm:p-5 lg:space-y-4">
+        <div className="space-y-5 lg:space-y-4">
+          <section className="space-y-3 lg:space-y-0">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:hidden">Batch settings</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end lg:[&_label]:font-medium lg:[&_label]:text-muted-foreground">
+              <FormField label="Year" className="lg:w-32">
+                <Select
+                  value={String(year)}
+                  onValueChange={(v) => {
+                    const y = Number(v)
+                    setYear(y)
+                    setGenerationDate(`${y}-12-15`)
+                    setPayoutPeriodLabel(`December ${y}`)
+                    setSelectedRunId(undefined)
+                  }}
+                  options={YEAR_OPTIONS}
+                />
+              </FormField>
+              <FormField label="Cutoff / Generation Date" className="lg:w-44">
+                <Input type="date" value={generationDate} onChange={(e) => setGenerationDate(e.target.value)} />
+              </FormField>
+              <FormField label="Payout Label" className="sm:col-span-2 lg:w-52">
+                <Input value={payoutPeriodLabel} onChange={(e) => setPayoutPeriodLabel(e.target.value)} placeholder="December 2026" />
+              </FormField>
+            </div>
+          </section>
 
-        <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
-          <div className="w-72">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Generate For</p>
-            <Select
-              value={mode}
-              onValueChange={(v) => {
-                setMode(v as ThirteenthMonthSelectionMode)
-                setEmployeeIds([])
-              }}
-              options={MODE_OPTIONS}
-            />
-          </div>
-          {mode === 'employees' && (
-            <div className="w-full max-w-xl">
-              <EmployeePickerPanel employees={activeEligible} value={employeeIds} onChange={setEmployeeIds} maxHeightClass="max-h-56" />
+          <section className="space-y-3 border-t border-border pt-5 lg:space-y-0 lg:pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:hidden">Recipients</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end lg:[&_label]:font-medium lg:[&_label]:text-muted-foreground">
+              <FormField label="Generate For" className="lg:w-72">
+                <Select
+                  value={mode}
+                  onValueChange={(v) => {
+                    setMode(v as ThirteenthMonthSelectionMode)
+                    setEmployeeIds([])
+                  }}
+                  options={MODE_OPTIONS}
+                />
+              </FormField>
+              {mode === 'payroll_group' && (
+                <FormField label="Payroll Group" className="lg:w-64">
+                  <Select value={payrollGroupId} onValueChange={setPayrollGroupId} options={groupOptions} placeholder="Select payroll group" />
+                </FormField>
+              )}
+              {mode === 'department' && (
+                <FormField label="Department" className="lg:w-56">
+                  <Select value={department} onValueChange={setDepartment} options={departmentOptions} placeholder="Select department" />
+                </FormField>
+              )}
+              {mode === 'employees' && (
+                <div className="sm:col-span-2 lg:w-full lg:max-w-xl">
+                  <EmployeePickerPanel employees={activeEligible} value={employeeIds} onChange={setEmployeeIds} maxHeightClass="max-h-56" />
+                </div>
+              )}
+              {mode === 'separated' && (
+                <FormField label="Separated employees" hint="Leave empty to include all." className="sm:col-span-2 lg:w-full lg:max-w-md">
+                  <EmployeeCombobox
+                    multiple
+                    employees={separatedEligible.map((e) => ({
+                      id: e.id,
+                      name: e.employment.dateSeparated ? `${fullName(e)} (separated ${formatDate(e.employment.dateSeparated)})` : fullName(e),
+                      employeeNumber: e.employeeNumber,
+                      department: e.employment.department,
+                    }))}
+                    value={employeeIds}
+                    onChange={setEmployeeIds}
+                    placeholder={`All separated employees (${separatedEligible.length})`}
+                  />
+                </FormField>
+              )}
+              {/* Desktop: the button sits at the end of this row. */}
+              {generateButton && <div className="hidden lg:block">{generateButton}</div>}
             </div>
-          )}
-          {mode === 'separated' && (
-            <div className="w-full max-w-md">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Separated employees (leave empty to include all)</p>
-              <EmployeeCombobox
-                multiple
-                employees={separatedEligible.map((e) => ({
-                  id: e.id,
-                  name: e.employment.dateSeparated ? `${fullName(e)} (separated ${formatDate(e.employment.dateSeparated)})` : fullName(e),
-                  employeeNumber: e.employeeNumber,
-                  department: e.employment.department,
-                }))}
-                value={employeeIds}
-                onChange={setEmployeeIds}
-                placeholder={`All separated employees (${separatedEligible.length})`}
-              />
-            </div>
-          )}
-          {mode === 'payroll_group' && (
-            <div className="w-64">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Payroll Group</p>
-              <Select value={payrollGroupId} onValueChange={setPayrollGroupId} options={groupOptions} placeholder="Select payroll group" />
-            </div>
-          )}
-          {mode === 'department' && (
-            <div className="w-56">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Department</p>
-              <Select value={department} onValueChange={setDepartment} options={departmentOptions} placeholder="Select department" />
-            </div>
-          )}
-          {canManage && (
-            <Button icon={<PlayCircle className="size-4" />} isLoading={busy} disabled={!selectionComplete || !preview?.included.length} onClick={handleGenerate}>
-              Generate 13th Month Pay
-            </Button>
-          )}
-        </div>
+          </section>
 
-        {preview && (
-          <p className="text-xs text-muted-foreground">
-            Covers {formatDate(preview.coverage.start)} – {formatDate(preview.coverage.end)} ·{' '}
-            {selectionComplete ? (
-              <>
-                <span className="font-medium text-foreground">{preview.included.length}</span>{' '}
-                {mode === 'separated' ? 'separated employee(s) will be included, pro-rated to their last day' : 'active employee(s) will be included'}
-                {mode !== 'separated' && separatedEligible.length > 0 && (
-                  <> · {separatedEligible.length} resigned/separated employee(s) are generated separately</>
-                )}
-                {preview.skippedAlreadyPaid.length > 0 && <> · {preview.skippedAlreadyPaid.length} already paid in a finalized batch this year (skipped)</>}
-              </>
-            ) : (
-              'Complete the selection to see who will be included.'
-            )}
-          </p>
-        )}
+          {preview && (
+            <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground lg:rounded-none lg:bg-transparent lg:p-0">
+              Covers {formatDate(preview.coverage.start)} – {formatDate(preview.coverage.end)} ·{' '}
+              {selectionComplete ? (
+                <>
+                  <span className="font-medium text-foreground">{preview.included.length}</span>{' '}
+                  {mode === 'separated' ? 'separated employee(s) will be included, pro-rated to their last day' : 'active employee(s) will be included'}
+                  {mode !== 'separated' && separatedEligible.length > 0 && <> · {separatedEligible.length} resigned/separated employee(s) are generated separately</>}
+                  {preview.skippedAlreadyPaid.length > 0 && <> · {preview.skippedAlreadyPaid.length} already paid in a finalized batch this year (skipped)</>}
+                </>
+              ) : (
+                'Complete the selection to see who will be included.'
+              )}
+            </p>
+          )}
+
+          {/* Phones/tablets: full-width on phones, right-aligned from sm. Not sticky. */}
+          {generateButton && <div className="sm:flex sm:justify-end lg:hidden">{generateButton}</div>}
+        </div>
       </Card>
 
       {employeesLoading || runsLoading ? (
@@ -299,26 +343,31 @@ export function ThirteenthMonthPage() {
         <Skeleton className="h-72" />
       ) : (
         <div className="space-y-3">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total payout leads on phones (full width); the rest sit two-up. From sm all four share one row. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            <Card className="col-span-2 order-first p-4 sm:order-last sm:col-span-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Payout</p>
+              <p className="mt-1 font-display text-2xl font-semibold tabular-nums sm:text-xl">{formatCurrency(totals.payout)}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">13th Month Pay for this batch</p>
+            </Card>
             <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Employees in Batch</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Employees</p>
               <p className="mt-1 font-display text-xl font-semibold">{lines.length}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">In this batch</p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Resigned / Separated</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Separated</p>
               <p className="mt-1 font-display text-xl font-semibold">{totals.separated}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Resigned / separated</p>
             </Card>
-            <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Undertime & Absence Deductions</p>
-              <p className="mt-1 font-display text-xl font-semibold">{formatCurrency(totals.deductions)}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total 13th Month Payout</p>
-              <p className="mt-1 font-display text-xl font-semibold">{formatCurrency(totals.payout)}</p>
+            <Card className="col-span-2 p-4 sm:col-span-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Deductions</p>
+              <p className="mt-1 font-display text-xl font-semibold tabular-nums">{formatCurrency(totals.deductions)}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Undertime & absences</p>
             </Card>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {runsForYear.length > 1 && (
                 <div className="w-full max-w-sm">
@@ -338,7 +387,7 @@ export function ThirteenthMonthPage() {
               <StatusBadge status={activeRun.status === 'draft' ? 'Ready' : 'Finalized'} />
             </div>
             {canManage && activeRun.status === 'draft' && (
-              <Button size="sm" variant="destructive" icon={<Lock className="size-3.5" />} onClick={handleFinalize}>
+              <Button size="sm" variant="destructive" className="w-full sm:w-auto" icon={<Lock className="size-3.5" />} onClick={handleFinalize}>
                 Finalize & Issue Payslips
               </Button>
             )}
@@ -357,94 +406,122 @@ export function ThirteenthMonthPage() {
             onSent={payslipSelection.clear}
           />
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <SelectAllCheckbox state={payslipSelection.headerState} onChange={payslipSelection.toggleAll} />
-                </TableHead>
-                <TableHead>Employee</TableHead>
-                <TableHead>Active Period</TableHead>
-                <TableHead className="text-right">Basic Earned</TableHead>
-                <TableHead className="text-right">Undertime / Absences</TableHead>
-                <TableHead className="text-right">13th Month Pay</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Email Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((line) => {
-                const employee = employeeById.get(line.employeeId)
-                if (!employee) return null
-                const deductions = (line.undertimeDeduction ?? 0) + (line.absenceDeduction ?? 0)
-                const email = emailFor(line.employeeId)
-                return (
-                  <TableRow key={line.id}>
-                    <TableCell>
+          {/* Phones and tablets: one card per employee — one column on phones, two on tablets. */}
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:hidden">
+            <label className="flex w-fit items-center gap-2 px-1 text-xs text-muted-foreground sm:col-span-2">
+              <SelectAllCheckbox state={payslipSelection.headerState} onChange={payslipSelection.toggleAll} />
+              Select all
+            </label>
+            {lines.map((line) => {
+              const employee = employeeById.get(line.employeeId)
+              if (!employee) return null
+              const deductions = (line.undertimeDeduction ?? 0) + (line.absenceDeduction ?? 0)
+              return (
+                <Card key={line.id} watermark={null} className="flex flex-col p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="pt-0.5">
                       <RowCheckbox checked={payslipSelection.selected.has(line.employeeId)} onChange={(c) => payslipSelection.toggle(line.employeeId, c)} label={fullName(employee)} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-medium">{fullName(employee)}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <p className="text-sm font-semibold leading-tight">{fullName(employee)}</p>
                         {line.separated && <Badge tone="warning">Separated</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {employee.employeeNumber} · {employee.employment.department}
                       </p>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {line.activeFrom && line.activeTo ? `${formatDate(line.activeFrom)} – ${formatDate(line.activeTo)}` : `Jan – Dec ${activeRun.year}`}
-                      <p className="text-xs">{line.monthsCredited} / 12 months</p>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(line.grossBasicEarned ?? line.annualBasicEarned)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {deductions > 0 ? <span className="text-danger">−{formatCurrency(deductions)}</span> : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(line.thirteenthMonthPay)}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={activeRun.status === 'draft' ? 'Ready' : 'Finalized'} />
-                    </TableCell>
-                    <TableCell>
-                      <EmailStatusBadge status={emails.statusFor(line.employeeId)} record={emails.records[line.employeeId]} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <ComputationDrawer
-                          employee={employee}
-                          line={line}
-                          run={activeRun}
-                          trigger={
-                            <Button size="sm" variant="ghost" icon={<Calculator className="size-3.5" />}>
-                              Computation
-                            </Button>
-                          }
-                        />
-                        <Button asChild size="sm" variant="ghost">
-                          <Link to={`/thirteenth-month-pay/${activeRun.id}/payslips/${employee.id}`}>
-                            <FileText className="size-3.5" />
-                            Payslip
-                          </Link>
-                        </Button>
-                        {email && (
-                          <PayslipEmailActions
-                            compact
-                            email={email}
-                            status={emails.statusFor(employee.id)}
-                            record={emails.records[employee.id]}
-                            canSend={canEmail}
-                            disabledReason={emailDisabledReason}
-                            onSend={() => sendEmails([employee.id])}
-                            renderPayslip={() => <ThirteenthMonthPayslipDocument company={company} run={activeRun} line={line} employee={employee} />}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                    <StatusBadge status={activeRun.status === 'draft' ? 'Ready' : 'Finalized'} />
+                  </div>
+
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {line.activeFrom && line.activeTo ? `${formatDate(line.activeFrom)} – ${formatDate(line.activeTo)}` : `Jan – Dec ${activeRun.year}`} · {line.monthsCredited} / 12 months
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border pt-3">
+                    <div>
+                      <p className="text-[11px] text-muted-foreground">Basic Earned</p>
+                      <p className="text-sm tabular-nums">{formatCurrency(line.grossBasicEarned ?? line.annualBasicEarned)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-muted-foreground">Undertime / Absences</p>
+                      <p className="text-sm tabular-nums">{deductions > 0 ? <span className="text-danger">−{formatCurrency(deductions)}</span> : <span className="text-muted-foreground">—</span>}</p>
+                    </div>
+                    <div className="col-span-2 flex items-baseline justify-between rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="text-xs font-medium text-muted-foreground">13th Month Pay</p>
+                      <p className="font-display text-base font-semibold tabular-nums">{formatCurrency(line.thirteenthMonthPay)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                    <EmailStatusBadge status={emails.statusFor(line.employeeId)} record={emails.records[line.employeeId]} />
+                    <div className="flex items-center gap-1">{renderActions(line, employee, activeRun)}</div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <SelectAllCheckbox state={payslipSelection.headerState} onChange={payslipSelection.toggleAll} />
+                  </TableHead>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Active Period</TableHead>
+                  <TableHead className="text-right">Basic Earned</TableHead>
+                  <TableHead className="text-right">Undertime / Absences</TableHead>
+                  <TableHead className="text-right">13th Month Pay</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Email Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lines.map((line) => {
+                  const employee = employeeById.get(line.employeeId)
+                  if (!employee) return null
+                  const deductions = (line.undertimeDeduction ?? 0) + (line.absenceDeduction ?? 0)
+                  return (
+                    <TableRow key={line.id}>
+                      <TableCell>
+                        <RowCheckbox checked={payslipSelection.selected.has(line.employeeId)} onChange={(c) => payslipSelection.toggle(line.employeeId, c)} label={fullName(employee)} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium">{fullName(employee)}</span>
+                          {line.separated && <Badge tone="warning">Separated</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {employee.employeeNumber} · {employee.employment.department}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {line.activeFrom && line.activeTo ? `${formatDate(line.activeFrom)} – ${formatDate(line.activeTo)}` : `Jan – Dec ${activeRun.year}`}
+                        <p className="text-xs">{line.monthsCredited} / 12 months</p>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(line.grossBasicEarned ?? line.annualBasicEarned)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {deductions > 0 ? <span className="text-danger">−{formatCurrency(deductions)}</span> : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{formatCurrency(line.thirteenthMonthPay)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={activeRun.status === 'draft' ? 'Ready' : 'Finalized'} />
+                      </TableCell>
+                      <TableCell>
+                        <EmailStatusBadge status={emails.statusFor(line.employeeId)} record={emails.records[line.employeeId]} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">{renderActions(line, employee, activeRun)}</div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

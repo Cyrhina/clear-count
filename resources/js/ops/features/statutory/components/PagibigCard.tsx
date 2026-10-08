@@ -57,7 +57,7 @@ export function PagibigCard({
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <Card.Title className="mb-4">Pag-IBIG Contribution</Card.Title>
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-3">
         <FormField label="Maximum Employee Share (PHP / month)" hint="2% of pay up to the ₱10,000 fund salary (1% at ₱1,500 or less), capped here">

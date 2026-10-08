@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@ops/components/ui/Button'
@@ -92,6 +92,15 @@ function valuesFromBonus(bonus: BonusIncentive): Partial<FormValues> {
   }
 }
 
+function FormSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3 border-t border-border pt-5 first:border-t-0 first:pt-0">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
+  )
+}
+
 /** Create or edit a bonus/incentive. Editing is offered while a bonus is still Draft or Pending Approval. */
 export function BonusFormDialog({
   bonus,
@@ -165,123 +174,131 @@ export function BonusFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogTitle>{isEdit ? 'Edit Bonus / Incentive' : 'New Bonus / Incentive'}</DialogTitle>
+        <DialogTitle className="pr-8">{isEdit ? 'Edit Bonus / Incentive' : 'New Bonus / Incentive'}</DialogTitle>
         <DialogDescription>Configure a non-regular earning before it's routed for approval and payroll integration.</DialogDescription>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-5 grid grid-cols-2 gap-4">
-          <FormField label="Bonus Name" required error={errors.name?.message} className="col-span-2">
-            <Input {...register('name')} placeholder="Christmas Bonus" />
-          </FormField>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-6">
+          <FormSection title="Bonus details">
+            <FormField label="Bonus Name" required error={errors.name?.message} className="sm:col-span-2">
+              <Input {...register('name')} placeholder="Christmas Bonus" />
+            </FormField>
+            <FormField label="Bonus Type" required>
+              <Controller control={control} name="bonusType" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={BONUS_TYPE_OPTIONS} />} />
+            </FormField>
+            <FormField label={watch('bonusType') === 'percentage' ? 'Rate (%)' : 'Amount (₱)'} required error={errors.amount?.message}>
+              <Input type="number" step="0.01" inputMode="decimal" {...register('amount', { valueAsNumber: true })} />
+            </FormField>
+          </FormSection>
 
-          <FormField label="Bonus Type" required>
-            <Controller control={control} name="bonusType" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={BONUS_TYPE_OPTIONS} />} />
-          </FormField>
+          <FormSection title="Recipients">
+            <FormField label="Target Recipient" required className="sm:col-span-2">
+              <Controller control={control} name="targetType" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TARGET_TYPE_OPTIONS} />} />
+            </FormField>
 
-          <FormField label={watch('bonusType') === 'percentage' ? 'Rate (%)' : 'Amount (₱)'} required error={errors.amount?.message}>
-            <Input type="number" step="0.01" {...register('amount', { valueAsNumber: true })} />
-          </FormField>
+            {targetType === 'department' && (
+              <FormField label="Department" required error={errors.targetDepartment?.message} className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="targetDepartment"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange} placeholder="Select department" options={departments.map((d) => ({ value: d, label: d }))} />
+                  )}
+                />
+              </FormField>
+            )}
 
-          <FormField label="Target Recipient" required className="col-span-2">
-            <Controller control={control} name="targetType" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TARGET_TYPE_OPTIONS} />} />
-          </FormField>
+            {targetType === 'employee' && (
+              <FormField label="Employee" required error={errors.targetEmployeeId?.message} className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="targetEmployeeId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select employee"
+                      options={employees.map((e) => ({ value: e.id, label: `${e.personal.firstName} ${e.personal.lastName}` }))}
+                    />
+                  )}
+                />
+              </FormField>
+            )}
 
-          {targetType === 'department' && (
-            <FormField label="Department" required error={errors.targetDepartment?.message} className="col-span-2">
+            {targetType === 'employees' && (
+              <div className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="targetEmployeeIds"
+                  render={({ field }) => (
+                    <EmployeePickerPanel employees={employees.filter((e) => e.employment.status === 'active')} value={field.value ?? []} onChange={field.onChange} maxHeightClass="max-h-44" />
+                  )}
+                />
+              </div>
+            )}
+          </FormSection>
+
+          <FormSection title="Payroll settings">
+            <FormField label="Effective Payroll Period" required error={errors.periodLabel?.message}>
+              <Input {...register('periodLabel')} placeholder="December 2026" />
+            </FormField>
+            <FormField label="Frequency" required>
+              <Controller control={control} name="frequency" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={FREQUENCY_OPTIONS} />} />
+            </FormField>
+            <FormField label="Taxability Classification" required className="sm:col-span-2">
+              <Controller control={control} name="taxable" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TAXABLE_OPTIONS} />} />
+            </FormField>
+            {watch('taxable') === 'non_taxable' && (
+              <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs leading-snug text-warning sm:col-span-2">
+                Under BIR rules, non-taxable bonuses/13th-month-type pay beyond ₱90,000 combined per year become taxable on the excess. Verify against company policy.
+              </p>
+            )}
+            <FormField label="Payslip Generation" required className="sm:col-span-2">
               <Controller
                 control={control}
-                name="targetDepartment"
+                name="payoutMode"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange} placeholder="Select department" options={departments.map((d) => ({ value: d, label: d }))} />
+                  <RadioGroup value={field.value} onValueChange={field.onChange} className="grid gap-2 sm:grid-cols-2" aria-label="Payslip Generation">
+                    {PAYOUT_MODE_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className={cn(
+                          'flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-colors',
+                          field.value === option.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50',
+                        )}
+                      >
+                        <RadioGroupItem value={option.value} className="mt-0.5 shrink-0" />
+                        <span>
+                          <span className="block text-sm font-medium">{BONUS_PAYOUT_MODE_LABEL[option.value]}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{option.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </RadioGroup>
                 )}
               />
             </FormField>
-          )}
+          </FormSection>
 
-          {targetType === 'employee' && (
-            <FormField label="Employee" required error={errors.targetEmployeeId?.message} className="col-span-2">
-              <Controller
-                control={control}
-                name="targetEmployeeId"
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select employee"
-                    options={employees.map((e) => ({ value: e.id, label: `${e.personal.firstName} ${e.personal.lastName}` }))}
-                  />
-                )}
-              />
+          <FormSection title="Notes">
+            <FormField label="Notes / Justification" className="sm:col-span-2">
+              <Textarea {...register('notes')} placeholder="Reason for this bonus/incentive…" />
             </FormField>
-          )}
+          </FormSection>
 
-          {targetType === 'employees' && (
-            <div className="col-span-2">
-              <Controller
-                control={control}
-                name="targetEmployeeIds"
-                render={({ field }) => <EmployeePickerPanel employees={employees.filter((e) => e.employment.status === 'active')} value={field.value ?? []} onChange={field.onChange} maxHeightClass="max-h-44" />}
-              />
+          {/* Sticky so Save/Cancel stay reachable while a long form scrolls inside the dialog. */}
+          <div className="sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col gap-3 border-t border-border bg-card px-4 py-3 sm:-bottom-6 sm:-mx-6 sm:-mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Controller control={control} name="saveAsDraft" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
+              Save as Draft
+            </label>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="w-full sm:w-auto" isLoading={isSubmitting}>
+                {isEdit ? 'Save Changes' : watch('saveAsDraft') ? 'Save as Draft' : 'Submit for Approval'}
+              </Button>
             </div>
-          )}
-
-          <FormField label="Effective Payroll Period" required error={errors.periodLabel?.message}>
-            <Input {...register('periodLabel')} placeholder="December 2026" />
-          </FormField>
-          <FormField label="Frequency" required>
-            <Controller control={control} name="frequency" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={FREQUENCY_OPTIONS} />} />
-          </FormField>
-
-          <FormField label="Taxability Classification" required className="col-span-2">
-            <Controller control={control} name="taxable" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TAXABLE_OPTIONS} />} />
-          </FormField>
-          {watch('taxable') === 'non_taxable' && (
-            <p className="col-span-2 -mt-2 text-xs text-warning">
-              Note: under BIR rules, non-taxable bonuses/13th-month-type pay beyond ₱90,000 combined per year become taxable on the excess. Verify against company policy.
-            </p>
-          )}
-
-          <FormField label="Payslip Generation" required className="col-span-2">
-            <Controller
-              control={control}
-              name="payoutMode"
-              render={({ field }) => (
-                <RadioGroup value={field.value} onValueChange={field.onChange} className="grid gap-2 sm:grid-cols-2" aria-label="Payslip Generation">
-                  {PAYOUT_MODE_OPTIONS.map((option) => (
-                    <label
-                      key={option.value}
-                      className={cn(
-                        'flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-colors',
-                        field.value === option.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50',
-                      )}
-                    >
-                      <RadioGroupItem value={option.value} className="mt-0.5 shrink-0" />
-                      <span>
-                        <span className="block text-sm font-medium">{BONUS_PAYOUT_MODE_LABEL[option.value]}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{option.description}</span>
-                      </span>
-                    </label>
-                  ))}
-                </RadioGroup>
-              )}
-            />
-          </FormField>
-
-          <FormField label="Notes / Justification" className="col-span-2">
-            <Textarea {...register('notes')} placeholder="Reason for this bonus/incentive…" />
-          </FormField>
-
-          <label className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Controller control={control} name="saveAsDraft" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
-            Save as Draft (skip submitting for approval for now)
-          </label>
-
-          <div className="col-span-2 mt-2 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={isSubmitting}>
-              {isEdit ? 'Save Changes' : watch('saveAsDraft') ? 'Save as Draft' : 'Submit for Approval'}
-            </Button>
           </div>
         </form>
       </DialogContent>

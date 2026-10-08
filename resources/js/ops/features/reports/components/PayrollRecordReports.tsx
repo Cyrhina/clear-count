@@ -6,6 +6,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useBonuses } from '@ops/features/bonuses/hooks/useBonuses'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import { useAllPayrollLines } from '@ops/features/reports/hooks/useReports'
 import type { ExcelExport, ReportMetaItem } from '@ops/features/reports/reportExport'
@@ -94,7 +95,7 @@ export function PayrollHistoryReport() {
             </FilterLabel>
           </ReportFilterBar>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Payroll Runs" value={String(visible.length)} />
             <StatTile label="Total Gross Pay" value={formatCurrency(sum(visible.map((r) => r.gross)))} />
             <StatTile label="Total Deductions" value={formatCurrency(sum(visible.map((r) => r.deductions)))} />
@@ -104,6 +105,24 @@ export function PayrollHistoryReport() {
           {visible.length === 0 ? (
             <EmptyState title="No payroll runs match these filters" />
           ) : (
+            <>
+            <ReportCardList count={visible.length} noun={visible.length === 1 ? 'payroll run' : 'payroll runs'} note="Newest first">
+              {visible.map((r) => (
+                <ReportRecordCard
+                  key={r.period.id}
+                  title={r.period.payrollNumber}
+                  badge={<StatusBadge status={r.period.status} />}
+                  subtitle={r.period.label}
+                  meta={`Pay date ${formatDate(r.period.payDate)}`}
+                >
+                  <CardStat label="Employees">{r.employees}</CardStat>
+                  <CardStat label="Gross Pay">{formatCurrency(r.gross)}</CardStat>
+                  <CardStat label="Deductions">{formatCurrency(r.deductions)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(r.net)}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -134,6 +153,8 @@ export function PayrollHistoryReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -213,7 +234,7 @@ export function BonusReport() {
             </FilterLabel>
           </ReportFilterBar>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
             <StatTile label="Bonuses Listed" value={String(visible.length)} />
             <StatTile label="Approved" value={String(approved.length)} />
             <StatTile label="Approved Fixed Amounts" value={formatCurrency(sum(approved.filter((b) => b.bonusType !== 'percentage').map((b) => b.amount)))} />
@@ -222,6 +243,38 @@ export function BonusReport() {
           {visible.length === 0 ? (
             <EmptyState title="No bonuses match these filters" />
           ) : (
+            <>
+            <ReportCardList count={visible.length} noun={visible.length === 1 ? 'bonus' : 'bonuses'}>
+              {visible.map((b) => (
+                <ReportRecordCard
+                  key={b.id}
+                  title={b.name}
+                  badge={<StatusBadge status={b.status} />}
+                  subtitle={targetOf(b)}
+                  meta={`${b.periodLabel} · ${label(b.frequency)}`}
+                  details={
+                    <>
+                      <CardStat label="Type" className="capitalize">
+                        {label(b.bonusType)}
+                      </CardStat>
+                      <CardStat label="Tax">{b.taxable ? 'Taxable' : 'Non-taxable'}</CardStat>
+                      <CardStat label="Frequency" className="capitalize">
+                        {label(b.frequency)}
+                      </CardStat>
+                      <CardStat label="Payroll Period">{b.periodLabel}</CardStat>
+                      <CardStat label="Target" className="col-span-2">
+                        {targetOf(b)}
+                      </CardStat>
+                    </>
+                  }
+                >
+                  <CardStat label="Amount" className="col-span-2">
+                    {amountOf(b)}
+                  </CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -252,6 +305,8 @@ export function BonusReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -326,7 +381,7 @@ export function ThirteenthMonthPayReport() {
             </FilterLabel>
           </ReportFilterBar>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
             <StatTile label="Employees Covered" value={String(new Set(visible.map((r) => r.employee.id)).size)} />
             <StatTile label="Total Basic Earned" value={formatCurrency(sum(visible.map((r) => r.line.annualBasicEarned)))} />
             <StatTile label="Total 13th Month Pay" value={formatCurrency(sum(visible.map((r) => r.line.thirteenthMonthPay)))} />
@@ -335,6 +390,26 @@ export function ThirteenthMonthPayReport() {
           {visible.length === 0 ? (
             <EmptyState title="No records for this year" />
           ) : (
+            <>
+            <ReportCardList count={visible.length} noun={visible.length === 1 ? 'record' : 'records'}>
+              {visible.map(({ run, line, employee }) => (
+                <ReportRecordCard
+                  key={line.id}
+                  avatar={fullName(employee)}
+                  title={fullName(employee)}
+                  badge={<StatusBadge status={run.status} />}
+                  subtitle={employee.employment.department}
+                  meta={`${employee.employeeNumber} · ${run.year} batch`}
+                >
+                  <CardStat label="Months Credited">{line.monthsCredited}</CardStat>
+                  <CardStat label="Basic Earned">{formatCurrency(line.annualBasicEarned)}</CardStat>
+                  <CardStat label="13th Month Pay" className="col-span-2">
+                    {formatCurrency(line.thirteenthMonthPay)}
+                  </CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -366,6 +441,8 @@ export function ThirteenthMonthPayReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}

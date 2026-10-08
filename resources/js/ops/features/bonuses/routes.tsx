@@ -15,6 +15,7 @@ import { useBonuses } from '@ops/features/bonuses/hooks/useBonuses'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { usePermission } from '@ops/hooks/usePermission'
 import { bonusPayoutMode, resolveBonusRecipients } from '@ops/lib/payroll/bonusMatching'
+import { MONTH_NAMES } from '@ops/lib/payroll/complianceDeadlines'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { BonusIncentive } from '@ops/types/domain'
 
@@ -41,6 +42,15 @@ const SORT_OPTIONS = [
   { value: 'amount', label: 'Amount' },
 ]
 
+/** The month/year a bonus belongs to: parsed from its payroll period label ("December 2026"), else the day it was created. */
+function bonusMonthYear(bonus: BonusIncentive): { year: string; month: string } {
+  const label = bonus.periodLabel.toLowerCase()
+  const monthIndex = MONTH_NAMES.findIndex((name) => label.includes(name.toLowerCase()))
+  const year = /\b(19|20)\d{2}\b/.exec(label)?.[0]
+  if (monthIndex >= 0 && year) return { year, month: String(monthIndex + 1).padStart(2, '0') }
+  return { year: bonus.createdAt.slice(0, 4), month: bonus.createdAt.slice(5, 7) }
+}
+
 export function BonusesPage() {
   const { bonuses, isLoading, refetch } = useBonuses()
   const { employees } = useEmployees()
@@ -54,20 +64,33 @@ export function BonusesPage() {
   const [status, setStatus] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [year, setYear] = useState('all')
+  const [month, setMonth] = useState('all')
 
-  const activeFilterCount = [type !== 'all', status !== 'all'].filter(Boolean).length
+  const yearOptions = useMemo(
+    () => [{ value: 'all', label: 'All Years' }, ...[...new Set(bonuses.map((b) => bonusMonthYear(b).year))].sort().reverse().map((y) => ({ value: y, label: y }))],
+    [bonuses],
+  )
+  const monthOptions = [{ value: 'all', label: 'All Months' }, ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1).padStart(2, '0'), label: name }))]
+
+  const activeFilterCount = [type !== 'all', status !== 'all', year !== 'all', month !== 'all'].filter(Boolean).length
   const hasActiveFilters = search.trim() !== '' || activeFilterCount > 0
 
   function clearFilters() {
     setSearch('')
     setType('all')
     setStatus('all')
+    setYear('all')
+    setMonth('all')
   }
 
   const filteredBonuses = bonuses
     .filter((bonus) => {
       if (type !== 'all' && bonus.bonusType !== type) return false
       if (status !== 'all' && bonus.status !== status) return false
+      const period = bonusMonthYear(bonus)
+      if (year !== 'all' && period.year !== year) return false
+      if (month !== 'all' && period.month !== month) return false
       const query = search.trim().toLowerCase()
       if (query && !`${bonus.name} ${bonus.periodLabel}`.toLowerCase().includes(query)) return false
       return true
@@ -103,6 +126,12 @@ export function BonusesPage() {
             )
           }
         >
+          <FilterField label="Year">
+            <Select value={year} onValueChange={setYear} options={yearOptions} />
+          </FilterField>
+          <FilterField label="Month">
+            <Select value={month} onValueChange={setMonth} options={monthOptions} />
+          </FilterField>
           <FilterField label="Bonus Type">
             <Select value={type} onValueChange={setType} options={TYPE_OPTIONS} />
           </FilterField>

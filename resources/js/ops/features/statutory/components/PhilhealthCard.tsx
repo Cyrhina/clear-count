@@ -55,7 +55,7 @@ export function PhilhealthCard({
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <Card.Title className="mb-4">PhilHealth Contribution</Card.Title>
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-3">
         <FormField label="Total Contribution Rate" hint="As a fraction of basic pay, e.g. 0.05 = 5%">

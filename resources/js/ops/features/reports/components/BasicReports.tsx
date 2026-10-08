@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
+import { Card } from '@ops/components/ui/Card'
 import { EmployeeCombobox } from '@ops/components/ui/EmployeeCombobox'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Select } from '@ops/components/ui/Select'
@@ -12,6 +13,7 @@ import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrol
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { useOvertimeRecords } from '@ops/features/overtime/hooks/useOvertime'
 import { useLoans } from '@ops/features/loans-deductions/hooks/useLoans'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportScopePicker, ReportViewShell, StatTile, useScopedPayrollLines } from '@ops/features/reports/components/shared'
 import { useEmployeeBenefits } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { BENEFIT_CATEGORY_META } from '@ops/features/loans-deductions/loanUtils'
@@ -56,6 +58,16 @@ function filterCsvRows(rows: string[][], column: string, allowed: Set<string>): 
   const [header = [], ...body] = rows
   const index = header.indexOf(column)
   return index < 0 ? rows : [header, ...body.filter((r) => allowed.has(r[index]))]
+}
+
+/** Closing card of a card list, standing in for the table's totals row. */
+function TotalCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Card watermark={null} className="bg-muted/50 p-3.5 sm:col-span-2">
+      <p className="text-sm font-semibold">{title}</p>
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border pt-3 sm:grid-cols-4">{children}</div>
+    </Card>
+  )
 }
 
 function comboboxOptions(employees: Employee[]) {
@@ -124,8 +136,14 @@ export function EmployeeMasterListReport() {
       ) : (
         <div className="space-y-4">
           <ReportFilterBar onClear={hasActiveFilters ? clearFilters : undefined}>
-            <FilterLabel label="Employee" className="w-64">
-              <EmployeeCombobox multiple employees={comboboxOptions(employees)} value={employeeIds} onChange={setEmployeeIds} />
+            <FilterLabel label="" className="w-64">
+              <EmployeeCombobox
+                multiple
+                employees={comboboxOptions(employees)}
+                value={employeeIds}
+                onChange={setEmployeeIds}
+                placeholder="Search by name or employee #"
+              />
             </FilterLabel>
             <FilterLabel label="Department" className="w-44">
               <Select value={department} onValueChange={setDepartment} options={departmentOptions} />
@@ -138,6 +156,32 @@ export function EmployeeMasterListReport() {
           {filteredEmployees.length === 0 ? (
             <EmptyState title="No matching employee records found" description="Try adjusting or clearing the filters above." />
           ) : (
+            <>
+            <ReportCardList count={filteredEmployees.length} noun={filteredEmployees.length === 1 ? 'employee' : 'employees'} note="Sorted by last name">
+              {filteredEmployees.map((e) => (
+                <ReportRecordCard
+                  key={e.id}
+                  avatar={fullName(e.personal)}
+                  title={fullName(e.personal)}
+                  badge={<StatusBadge status={e.employment.status} />}
+                  subtitle={`${e.employment.position} · ${e.employment.department}`}
+                  meta={`${e.employeeNumber} · Hired ${formatDate(e.employment.dateHired)}`}
+                  details={
+                    <>
+                      <CardStat label="Employee #">{e.employeeNumber}</CardStat>
+                      <CardStat label="Date Hired">{formatDate(e.employment.dateHired)}</CardStat>
+                      <CardStat label="Department">{e.employment.department}</CardStat>
+                      <CardStat label="Position">{e.employment.position}</CardStat>
+                      <CardStat label="Branch">{branches.find((b) => b.id === e.branchId)?.name ?? '—'}</CardStat>
+                      <CardStat label="Status" className="capitalize">
+                        {e.employment.status}
+                      </CardStat>
+                    </>
+                  }
+                />
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -162,6 +206,8 @@ export function EmployeeMasterListReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -202,6 +248,26 @@ export function EmployeeCompensationReport() {
       ) : employees.length === 0 ? (
         <EmptyState title="No employees yet" />
       ) : (
+        <>
+        <ReportCardList count={employees.length} noun={employees.length === 1 ? 'employee' : 'employees'}>
+          {employees.map((e) => {
+            const group = findEmployeePayrollGroup(groups, e.id)
+            const allowances = e.compensation.allowances.reduce((s, a) => s + a.amount, 0)
+            return (
+              <ReportRecordCard
+                key={e.id}
+                avatar={fullName(e.personal)}
+                title={fullName(e.personal)}
+                subtitle={e.employment.position}
+                meta={`${PAY_RATE_TYPE_LABEL[e.compensation.payType]} · ${group ? FREQUENCY_LABEL[group.frequency] : '—'}`}
+              >
+                <CardStat label="Base Rate">{formatBaseRateShort(e.compensation.payType, e.compensation.basicPay, e.compensation.outputUnit)}</CardStat>
+                <CardStat label="Allowances">{formatCurrency(allowances)}</CardStat>
+              </ReportRecordCard>
+            )
+          })}
+        </ReportCardList>
+        <ReportTableView>
         <Table>
           <TableHeader>
             <TableRow>
@@ -230,6 +296,8 @@ export function EmployeeCompensationReport() {
             })}
           </TableBody>
         </Table>
+        </ReportTableView>
+        </>
       )}
     </ReportViewShell>
   )
@@ -339,12 +407,36 @@ export function PayrollRegisterReport() {
             <EmptyState title="No payroll lines" description={scope.basis === 'run' ? "This period hasn't been run yet." : 'No payroll runs fall in this report period.'} />
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <StatTile label="Gross Pay" value={formatCurrency(report.totals.grossPay)} />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                <StatTile className="max-sm:col-span-2" label="Gross Pay" value={formatCurrency(report.totals.grossPay)} />
                 <StatTile label="Total Deductions" value={formatCurrency(report.totals.totalDeductions)} />
                 <StatTile label="Net Pay" value={formatCurrency(report.totals.netPay)} />
               </div>
 
+              <ReportCardList count={report.rows.length} noun={report.rows.length === 1 ? 'employee' : 'employees'}>
+                {report.rows.map((row) => (
+                  <ReportRecordCard
+                    key={row.employee.id}
+                    avatar={fullName(row.employee.personal)}
+                    title={fullName(row.employee.personal)}
+                    subtitle={row.employee.employment.department}
+                    meta={row.employee.employeeNumber}
+                    details={
+                      <>
+                        <CardStat label="SSS">{formatCurrency(row.sssEmployeeShare)}</CardStat>
+                        <CardStat label="PhilHealth">{formatCurrency(row.philhealthEmployeeShare)}</CardStat>
+                        <CardStat label="Pag-IBIG">{formatCurrency(row.pagibigEmployeeShare)}</CardStat>
+                        <CardStat label="Tax">{formatCurrency(row.withholdingTax)}</CardStat>
+                      </>
+                    }
+                  >
+                    <CardStat label="Gross Pay">{formatCurrency(row.grossPay)}</CardStat>
+                    <CardStat label="Total Deductions">{formatCurrency(row.totalDeductions)}</CardStat>
+                    <CardStat label="Net Pay">{formatCurrency(row.netPay)}</CardStat>
+                  </ReportRecordCard>
+                ))}
+              </ReportCardList>
+              <ReportTableView>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -373,6 +465,7 @@ export function PayrollRegisterReport() {
                   ))}
                 </TableBody>
               </Table>
+              </ReportTableView>
             </>
           )}
         </div>
@@ -450,12 +543,23 @@ export function PayrollSummaryReport() {
             <ReportScopePicker scope={scope} onChange={setScope} periods={allRows.map((r) => r.period)} />
           </ReportFilterBar>
           {byPeriod.length === 0 && <EmptyState title="No payroll runs in this report period" description="Try another month, year or date range." />}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatTile label={scope.basis === 'run' ? 'Gross Pay (All Periods)' : `Gross Pay (${scopeLabel(scope)})`} value={formatCurrency(grandTotal.gross)} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+            <StatTile className="max-sm:col-span-2" label={scope.basis === 'run' ? 'Gross Pay (All Periods)' : `Gross Pay (${scopeLabel(scope)})`} value={formatCurrency(grandTotal.gross)} />
             <StatTile label="Total Deductions" value={formatCurrency(grandTotal.deductions)} />
             <StatTile label="Net Pay" value={formatCurrency(grandTotal.net)} />
           </div>
           {monthlyRollup && byMonth.length > 0 && (
+            <>
+            <ReportCardList count={byMonth.length} noun={byMonth.length === 1 ? 'month' : 'months'}>
+              {byMonth.map((m) => (
+                <ReportRecordCard key={m.key} title={monthLabel(m.key)} meta={`${m.runs} ${m.runs === 1 ? 'run' : 'runs'} · ${m.employees} employees`}>
+                  <CardStat label="Gross Pay">{formatCurrency(m.gross)}</CardStat>
+                  <CardStat label="Deductions">{formatCurrency(m.deductions)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(m.net)}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -480,8 +584,27 @@ export function PayrollSummaryReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
           {!monthlyRollup && byPeriod.length > 0 && (
+          <>
+          <ReportCardList count={byPeriod.length} noun={byPeriod.length === 1 ? 'payroll run' : 'payroll runs'}>
+            {byPeriod.map((p) => (
+              <ReportRecordCard
+                key={p.period.id}
+                title={p.period.label}
+                badge={<StatusBadge status={p.period.status} />}
+                subtitle={groupName(p.period.payrollGroupId)}
+                meta={`Pay date ${formatDate(p.period.payDate)} · ${p.employees} employees`}
+              >
+                <CardStat label="Gross Pay">{formatCurrency(p.gross)}</CardStat>
+                <CardStat label="Deductions">{formatCurrency(p.deductions)}</CardStat>
+                <CardStat label="Net Pay">{formatCurrency(p.net)}</CardStat>
+              </ReportRecordCard>
+            ))}
+          </ReportCardList>
+          <ReportTableView>
           <Table>
             <TableHeader>
               <TableRow>
@@ -512,12 +635,35 @@ export function PayrollSummaryReport() {
               ))}
             </TableBody>
           </Table>
+          </ReportTableView>
+          </>
           )}
 
           <div className="pt-2">
             <p className="text-sm font-semibold">Payout by Department</p>
             <p className="text-xs text-muted-foreground">{scope.basis === 'run' ? 'All payroll periods combined' : scopeLabel(scope)}, with deductions by type.</p>
           </div>
+          <ReportCardList count={byDepartment.length} noun={byDepartment.length === 1 ? 'department' : 'departments'}>
+            {byDepartment.map(([dept, t]) => (
+              <ReportRecordCard
+                key={dept}
+                title={dept}
+                meta={`${t.employees} employees · ${grandTotal.net > 0 ? `${((t.net / grandTotal.net) * 100).toFixed(1)}%` : '—'} of net`}
+                details={
+                  <>
+                    <CardStat label="Statutory">{formatCurrency(t.statutory)}</CardStat>
+                    <CardStat label="Tax">{formatCurrency(t.tax)}</CardStat>
+                    <CardStat label="Loans">{formatCurrency(t.loans)}</CardStat>
+                    <CardStat label="Share of Net">{grandTotal.net > 0 ? `${((t.net / grandTotal.net) * 100).toFixed(1)}%` : '—'}</CardStat>
+                  </>
+                }
+              >
+                <CardStat label="Gross Pay">{formatCurrency(t.gross)}</CardStat>
+                <CardStat label="Net Pay">{formatCurrency(t.net)}</CardStat>
+              </ReportRecordCard>
+            ))}
+          </ReportCardList>
+          <ReportTableView>
           <Table>
             <TableHeader>
               <TableRow>
@@ -546,6 +692,7 @@ export function PayrollSummaryReport() {
               ))}
             </TableBody>
           </Table>
+          </ReportTableView>
         </div>
       )}
     </ReportViewShell>
@@ -600,28 +747,41 @@ export function PayrollSummaryPerEmployeeReport() {
           {employeeRows.length === 0 ? (
             <EmptyState title="No payroll history for this employee" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Pay Date</TableHead>
-                  <TableHead>Gross Pay</TableHead>
-                  <TableHead>Total Deductions</TableHead>
-                  <TableHead>Net Pay</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <ReportCardList count={employeeRows.length} noun={employeeRows.length === 1 ? 'payroll run' : 'payroll runs'}>
                 {employeeRows.map((r) => (
-                  <TableRow key={r.period.id}>
-                    <TableCell className="font-medium">{r.period.label}</TableCell>
-                    <TableCell>{formatDate(r.period.payDate)}</TableCell>
-                    <TableCell>{formatCurrency(r.line.grossPay)}</TableCell>
-                    <TableCell>{formatCurrency(r.line.totalDeductions)}</TableCell>
-                    <TableCell className="font-medium">{formatCurrency(r.line.netPay)}</TableCell>
-                  </TableRow>
+                  <ReportRecordCard key={r.period.id} title={r.period.label} meta={`Paid ${formatDate(r.period.payDate)}`}>
+                    <CardStat label="Gross Pay">{formatCurrency(r.line.grossPay)}</CardStat>
+                    <CardStat label="Total Deductions">{formatCurrency(r.line.totalDeductions)}</CardStat>
+                    <CardStat label="Net Pay">{formatCurrency(r.line.netPay)}</CardStat>
+                  </ReportRecordCard>
                 ))}
-              </TableBody>
-            </Table>
+              </ReportCardList>
+              <ReportTableView>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Pay Date</TableHead>
+                      <TableHead>Gross Pay</TableHead>
+                      <TableHead>Total Deductions</TableHead>
+                      <TableHead>Net Pay</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employeeRows.map((r) => (
+                      <TableRow key={r.period.id}>
+                        <TableCell className="font-medium">{r.period.label}</TableCell>
+                        <TableCell>{formatDate(r.period.payDate)}</TableCell>
+                        <TableCell>{formatCurrency(r.line.grossPay)}</TableCell>
+                        <TableCell>{formatCurrency(r.line.totalDeductions)}</TableCell>
+                        <TableCell className="font-medium">{formatCurrency(r.line.netPay)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -636,6 +796,7 @@ export function PayslipReportView() {
 
   // Filters live in the URL so opening a payslip and coming back lands on the same filtered report.
   const location = useLocation()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const setParam = (updates: Record<string, string | undefined>) =>
     setParams(
@@ -777,7 +938,7 @@ export function PayslipReportView() {
               <p className="mb-2 text-sm font-semibold">
                 {fullName(selectedEmployee.personal)} · overview <span className="font-normal text-muted-foreground">({scopeLabel(scope)}, {payslips.length} payslip{payslips.length === 1 ? '' : 's'})</span>
               </p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
                 <StatTile label="Total Gross Pay" value={formatCurrency(totals.gross)} />
                 <StatTile label="Total Net Pay" value={formatCurrency(totals.net)} />
                 <StatTile label="Statutory Contributions" value={formatCurrency(totals.statutory)} />
@@ -791,6 +952,33 @@ export function PayslipReportView() {
           {payslips.length === 0 ? (
             <EmptyState title="No payslips found" description="Try another report period or clear the filters above." />
           ) : (
+            <>
+            <ReportCardList count={payslips.length} noun={payslips.length === 1 ? 'payslip' : 'payslips'}>
+              {payslips.map((p) => (
+                <ReportRecordCard
+                  key={p.line.id}
+                  avatar={fullName(p.employee.personal)}
+                  title={fullName(p.employee.personal)}
+                  subtitle={p.period.label}
+                  meta={`${p.employee.employeeNumber} · Paid ${formatDate(p.period.payDate)}`}
+                  onClick={() => navigate(`/payslips/${p.line.id}`, { state: { from: `${location.pathname}${location.search}`, fromLabel: 'Payslip Report' } })}
+                >
+                  <CardStat label="Gross Pay">{formatCurrency(p.line.grossPay)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(p.line.netPay)}</CardStat>
+                  <CardStat label="Statutory">{formatCurrency(p.statutory)}</CardStat>
+                  <CardStat label="Tax">{formatCurrency(p.tax)}</CardStat>
+                  <CardStat label="Loans & Other">{formatCurrency(p.otherDeductions)}</CardStat>
+                </ReportRecordCard>
+              ))}
+              <TotalCard title={`Total (${payslips.length} payslips)`}>
+                <CardStat label="Gross Pay">{formatCurrency(totals.gross)}</CardStat>
+                <CardStat label="Net Pay">{formatCurrency(totals.net)}</CardStat>
+                <CardStat label="Statutory">{formatCurrency(totals.statutory)}</CardStat>
+                <CardStat label="Tax">{formatCurrency(totals.tax)}</CardStat>
+                <CardStat label="Loans & Other">{formatCurrency(totals.other)}</CardStat>
+              </TotalCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -839,6 +1027,8 @@ export function PayslipReportView() {
                 </TableRow>
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -938,6 +1128,24 @@ export function OvertimeReportView() {
           {filteredRows.length === 0 ? (
             <EmptyState title="No matching employee records found" description="Try adjusting or clearing the filters above." />
           ) : (
+            <>
+            <ReportCardList count={filteredRows.length} noun={filteredRows.length === 1 ? 'employee' : 'employees'}>
+              {filteredRows.map((row) => (
+                <ReportRecordCard
+                  key={row.employee.id}
+                  avatar={fullName(row.employee.personal)}
+                  title={fullName(row.employee.personal)}
+                  subtitle={row.employee.employment.department}
+                  meta={row.employee.employeeNumber}
+                >
+                  <CardStat label="Regular OT Hours">{row.regular.toFixed(1)}</CardStat>
+                  <CardStat label="Night Diff Hours">{row.nightDiff.toFixed(1)}</CardStat>
+                  <CardStat label="Rest Day / Holiday Hours">{row.restDay.toFixed(1)}</CardStat>
+                  {canSeeCost && <CardStat label="Estimated Cost">{formatCurrency(Math.round(row.cost))}</CardStat>}
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -962,6 +1170,8 @@ export function OvertimeReportView() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -1124,7 +1334,7 @@ export function BenefitsReportView() {
             <ReportScopePicker scope={scope} onChange={setScope} periods={payrollRows.map((r) => r.period)} />
           </ReportFilterBar>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Employees Covered" value={String(totals.enrolled)} />
             <StatTile label="Company Cost / Month" value={formatCurrency(totals.monthlyCost)} />
             <StatTile label={`Company-paid (${scopeLabel(scope)})`} value={formatCurrency(totals.companyPaid)} />
@@ -1136,32 +1346,79 @@ export function BenefitsReportView() {
           ) : (
             <>
               {byCategory.length > 0 && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Employees</TableHead>
-                      <TableHead className="text-right">Active Records</TableHead>
-                      <TableHead className="text-right">Cost / Month</TableHead>
-                      <TableHead className="text-right">Company-paid in Period</TableHead>
-                      <TableHead className="text-right">Employee Share in Period</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <ReportCardList count={byCategory.length} noun={byCategory.length === 1 ? 'category' : 'categories'}>
                     {byCategory.map((c) => (
-                      <TableRow key={c.key}>
-                        <TableCell className="font-medium">{BENEFIT_CATEGORY_META[c.key].title}</TableCell>
-                        <TableCell className="text-right tabular-nums">{c.employees}</TableCell>
-                        <TableCell className="text-right tabular-nums">{c.records}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatCurrency(c.monthlyCost)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatCurrency(c.companyPaid)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatCurrency(c.employeeShare)}</TableCell>
-                      </TableRow>
+                      <ReportRecordCard key={c.key} title={BENEFIT_CATEGORY_META[c.key].title}>
+                        <CardStat label="Employees">{c.employees}</CardStat>
+                        <CardStat label="Active Records">{c.records}</CardStat>
+                        <CardStat label="Cost / Month">{formatCurrency(c.monthlyCost)}</CardStat>
+                        <CardStat label="Company-paid in Period">{formatCurrency(c.companyPaid)}</CardStat>
+                        <CardStat label="Employee Share in Period">{formatCurrency(c.employeeShare)}</CardStat>
+                      </ReportRecordCard>
                     ))}
-                  </TableBody>
-                </Table>
+                  </ReportCardList>
+                  <ReportTableView>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Employees</TableHead>
+                          <TableHead className="text-right">Active Records</TableHead>
+                          <TableHead className="text-right">Cost / Month</TableHead>
+                          <TableHead className="text-right">Company-paid in Period</TableHead>
+                          <TableHead className="text-right">Employee Share in Period</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {byCategory.map((c) => (
+                          <TableRow key={c.key}>
+                            <TableCell className="font-medium">{BENEFIT_CATEGORY_META[c.key].title}</TableCell>
+                            <TableCell className="text-right tabular-nums">{c.employees}</TableCell>
+                            <TableCell className="text-right tabular-nums">{c.records}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatCurrency(c.monthlyCost)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatCurrency(c.companyPaid)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatCurrency(c.employeeShare)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ReportTableView>
+                </>
               )}
 
+              <ReportCardList count={rows.length} noun={rows.length === 1 ? 'benefit' : 'benefits'}>
+                {rows.map((r) => (
+                  <ReportRecordCard
+                    key={r.benefit.id}
+                    avatar={fullName(r.employee.personal)}
+                    title={fullName(r.employee.personal)}
+                    badge={<StatusBadge status={r.benefit.status} />}
+                    subtitle={r.benefit.name}
+                    meta={[BENEFIT_CATEGORY_META[r.benefit.category].title, r.benefit.provider, r.benefit.coverage].filter(Boolean).join(' · ')}
+                    details={
+                      <>
+                        <CardStat label="Department">{r.employee.employment.department}</CardStat>
+                        <CardStat label="Category">{BENEFIT_CATEGORY_META[r.benefit.category].title}</CardStat>
+                        {r.benefit.provider && <CardStat label="Provider">{r.benefit.provider}</CardStat>}
+                        {r.benefit.coverage && <CardStat label="Coverage">{r.benefit.coverage}</CardStat>}
+                      </>
+                    }
+                  >
+                    <CardStat label="Monthly Value">{formatCurrency(r.benefit.monthlyValue)}</CardStat>
+                    <CardStat label="Employee Share / Mo">{r.benefit.employeeShare > 0 ? formatCurrency(r.benefit.employeeShare) : '—'}</CardStat>
+                    <CardStat label="Company-paid in Period">{formatCurrency(r.paid.companyPaid)}</CardStat>
+                    <CardStat label="Employee Share in Period">{r.paid.employeeShare > 0 ? formatCurrency(r.paid.employeeShare) : '—'}</CardStat>
+                  </ReportRecordCard>
+                ))}
+                <TotalCard title={`Total (${rows.length} records)`}>
+                  <CardStat label="Monthly Value">{formatCurrency(rows.reduce((s, r) => s + r.benefit.monthlyValue, 0))}</CardStat>
+                  <CardStat label="Employee Share / Mo">{formatCurrency(rows.reduce((s, r) => s + r.benefit.employeeShare, 0))}</CardStat>
+                  <CardStat label="Company-paid in Period">{formatCurrency(totals.companyPaid)}</CardStat>
+                  <CardStat label="Employee Share in Period">{formatCurrency(totals.employeeShare)}</CardStat>
+                </TotalCard>
+              </ReportCardList>
+              <ReportTableView>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1208,6 +1465,7 @@ export function BenefitsReportView() {
                   </TableRow>
                 </TableBody>
               </Table>
+              </ReportTableView>
             </>
           )}
         </div>
@@ -1256,31 +1514,52 @@ export function LoansDeductionsReportView() {
             {activeLoans.length === 0 ? (
               <EmptyState title="No active loans" />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Principal</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Monthly Deduction</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <ReportCardList count={activeLoans.length} noun={activeLoans.length === 1 ? 'active loan' : 'active loans'}>
                   {activeLoans.map((l) => {
                     const employee = employeeById.get(l.employeeId)
                     return (
-                      <TableRow key={l.id}>
-                        <TableCell className="font-medium">{employee ? fullName(employee.personal) : '—'}</TableCell>
-                        <TableCell>{l.label}</TableCell>
-                        <TableCell>{formatCurrency(l.principal)}</TableCell>
-                        <TableCell>{formatCurrency(l.balance)}</TableCell>
-                        <TableCell>{formatCurrency(l.monthlyDeduction)}</TableCell>
-                      </TableRow>
+                      <ReportRecordCard
+                        key={l.id}
+                        avatar={employee ? fullName(employee.personal) : undefined}
+                        title={employee ? fullName(employee.personal) : '—'}
+                        subtitle={l.label}
+                      >
+                        <CardStat label="Principal">{formatCurrency(l.principal)}</CardStat>
+                        <CardStat label="Balance">{formatCurrency(l.balance)}</CardStat>
+                        <CardStat label="Monthly Deduction">{formatCurrency(l.monthlyDeduction)}</CardStat>
+                      </ReportRecordCard>
                     )
                   })}
-                </TableBody>
-              </Table>
+                </ReportCardList>
+                <ReportTableView>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Principal</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead>Monthly Deduction</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activeLoans.map((l) => {
+                        const employee = employeeById.get(l.employeeId)
+                        return (
+                          <TableRow key={l.id}>
+                            <TableCell className="font-medium">{employee ? fullName(employee.personal) : '—'}</TableCell>
+                            <TableCell>{l.label}</TableCell>
+                            <TableCell>{formatCurrency(l.principal)}</TableCell>
+                            <TableCell>{formatCurrency(l.balance)}</TableCell>
+                            <TableCell>{formatCurrency(l.monthlyDeduction)}</TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </ReportTableView>
+              </>
             )}
           </div>
 
@@ -1289,28 +1568,44 @@ export function LoansDeductionsReportView() {
             {deductionConfigs.length === 0 ? (
               <EmptyState title="No deduction configs set up" />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Recurrence</TableHead>
-                    <TableHead>Allocation</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <ReportCardList count={deductionConfigs.length} noun={deductionConfigs.length === 1 ? 'deduction' : 'deductions'}>
                   {deductionConfigs.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell className="font-medium">{d.name}</TableCell>
-                      <TableCell className="capitalize">{d.category}</TableCell>
-                      <TableCell className="capitalize">{d.recurrence.replace('_', ' ')}</TableCell>
-                      <TableCell className="capitalize">{d.allocationMethod?.replace('_', ' ') ?? '—'}</TableCell>
-                      <TableCell>{d.isActive ? 'Active' : 'Inactive'}</TableCell>
-                    </TableRow>
+                    <ReportRecordCard key={d.id} title={d.name} subtitle={<span className="capitalize">{d.category}</span>} badge={<StatusBadge status={d.isActive ? 'active' : 'inactive'} />}>
+                      <CardStat label="Recurrence" className="capitalize">
+                        {d.recurrence.replace('_', ' ')}
+                      </CardStat>
+                      <CardStat label="Allocation" className="capitalize">
+                        {d.allocationMethod?.replace('_', ' ') ?? '—'}
+                      </CardStat>
+                    </ReportRecordCard>
                   ))}
-                </TableBody>
-              </Table>
+                </ReportCardList>
+                <ReportTableView>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Recurrence</TableHead>
+                        <TableHead>Allocation</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deductionConfigs.map((d) => (
+                        <TableRow key={d.id}>
+                          <TableCell className="font-medium">{d.name}</TableCell>
+                          <TableCell className="capitalize">{d.category}</TableCell>
+                          <TableCell className="capitalize">{d.recurrence.replace('_', ' ')}</TableCell>
+                          <TableCell className="capitalize">{d.allocationMethod?.replace('_', ' ') ?? '—'}</TableCell>
+                          <TableCell>{d.isActive ? 'Active' : 'Inactive'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ReportTableView>
+              </>
             )}
           </div>
         </div>

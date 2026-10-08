@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
+import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { FilterLabel, ReportFilterBar, ReportScopePicker, ReportViewShell } from '@ops/features/reports/components/shared'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
+import { FilterLabel,ReportFilterBar, ReportScopePicker, ReportViewShell } from '@ops/features/reports/components/shared'
 import { defaultScope, inScope, scopeLabel, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
 import { useAllPayrollLines } from '@ops/features/reports/hooks/useReports'
@@ -130,6 +132,27 @@ export function DebitCreditReport() {
           {periodLines.length === 0 ? (
             <EmptyState title={scope.basis === 'run' ? "This period hasn't been run yet" : 'No payroll runs in this report period'} />
           ) : (
+            <>
+            <ReportCardList count={accounts.length} noun={accounts.length === 1 ? 'account' : 'accounts'}>
+              {accounts.map((a) => (
+                <ReportRecordCard key={a.account} title={a.account}>
+                  <CardStat label="Debit (₱)">{a.debit ? formatCurrency(a.debit) : '—'}</CardStat>
+                  <CardStat label="Credit (₱)">{a.credit ? formatCurrency(a.credit) : '—'}</CardStat>
+                </ReportRecordCard>
+              ))}
+              <Card watermark={null} className="space-y-1.5 bg-muted/50 p-4 text-sm sm:col-span-2">
+                <p className="font-semibold">Total</p>
+                <div className="grid grid-cols-2 gap-x-3">
+                  <CardStat label="Total Debit">
+                    <span className="font-semibold">{formatCurrency(grandTotal.debit)}</span>
+                  </CardStat>
+                  <CardStat label="Total Credit">
+                    <span className="font-semibold">{formatCurrency(grandTotal.credit)}</span>
+                  </CardStat>
+                </div>
+              </Card>
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -153,6 +176,8 @@ export function DebitCreditReport() {
                 </TableRow>
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}

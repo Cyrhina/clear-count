@@ -41,6 +41,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={cn(
             'flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm',
+            // Keep the selected label on one line so a narrow field (e.g. two selects side by side on a phone) never grows taller.
+            '[&>span:first-child]:min-w-0 [&>span:first-child]:truncate [&>span:first-child]:text-left',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className,

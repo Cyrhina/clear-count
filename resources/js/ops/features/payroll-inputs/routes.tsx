@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
+import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FilterField } from '@ops/components/ui/FiltersPopover'
@@ -10,17 +11,16 @@ import { PlainCards } from '@ops/components/ui/PlainCards'
 import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { useSession } from '@ops/hooks/useSession'
+import { MONTH_NAMES } from '@ops/lib/payroll/complianceDeadlines'
 import { getPayrollInputs } from '@ops/lib/services/payrollInputsService'
 import type { PayrollInputs } from '@ops/lib/services/payrollInputsService'
-import { formatCurrency, formatDate } from '@ops/lib/utils/format'
+import { formatDate } from '@ops/lib/utils/format'
+import { OtherInputsView, OutputRecordsView, TimeRecordsView } from './components/InputRecordViews'
 
 const ALL = 'all'
-const hours = (n: number) => (n === 0 ? '—' : n.toLocaleString('en-PH', { maximumFractionDigits: 2 }))
-const count = (n: number) => (n === 0 ? '—' : String(n))
 
 type InputsTab = 'time' | 'output' | 'other'
 
@@ -52,8 +52,17 @@ export function PayrollInputsPage() {
   const [periodId, setPeriodId] = useState<string | undefined>()
   const [tab, setTab] = useState<InputsTab>('time')
 
+  const [year, setYear] = useState(ALL)
+  const [month, setMonth] = useState(ALL)
+
   const ordered = useMemo(() => [...periods].sort((a, b) => b.startDate.localeCompare(a.startDate)), [periods])
-  const selectedId = periodId ?? (ordered.find((p) => p.status !== 'finalized') ?? ordered[0])?.id
+  const years = useMemo(() => [...new Set(ordered.flatMap((p) => [p.startDate.slice(0, 4), p.endDate.slice(0, 4)]))].sort().reverse(), [ordered])
+  // A period matches a month/year when it starts or ends in it, so a period spanning two months shows under both.
+  const visible = useMemo(
+    () => ordered.filter((p) => [p.startDate, p.endDate].some((d) => (year === ALL || d.slice(0, 4) === year) && (month === ALL || d.slice(5, 7) === month))),
+    [ordered, year, month],
+  )
+  const selectedId = (visible.find((p) => p.id === periodId) ?? visible.find((p) => p.status !== 'finalized') ?? visible[0])?.id
   const inputs = usePayrollInputs(selectedId)
   const selected = ordered.find((p) => p.id === selectedId)
 
@@ -66,6 +75,8 @@ export function PayrollInputsPage() {
     setDepartment(ALL)
     setOutputStatus(ALL)
     setOtherKind(ALL)
+    setYear(ALL)
+    setMonth(ALL)
   }
 
   const shown = useMemo(() => {
@@ -81,7 +92,8 @@ export function PayrollInputsPage() {
   const kinds = useMemo(() => [...new Set((inputs?.other ?? []).map((r) => r.kind))].sort(), [inputs])
 
   // The Filters panel only offers what applies to the tab you are on; the badge counts those filters.
-  const activeCount = tab === 'time' ? Number(department !== ALL) : tab === 'output' ? Number(outputStatus !== ALL) : Number(otherKind !== ALL)
+  const activeCount =
+    Number(year !== ALL) + Number(month !== ALL) + (tab === 'time' ? Number(department !== ALL) : tab === 'output' ? Number(outputStatus !== ALL) : Number(otherKind !== ALL))
   const filtersActive = search.trim() !== '' || department !== ALL || outputStatus !== ALL || otherKind !== ALL
 
   if (isLoading) return <Skeleton className="h-96" />
@@ -99,21 +111,86 @@ export function PayrollInputsPage() {
 
   const pendingTotal = inputs ? inputs.pending.output + inputs.pending.overtime + inputs.pending.leave + inputs.pending.adjustments : 0
 
+  const periodFilters = (
+    <>
+      <FilterField label="Year">
+        <Select value={year} onValueChange={setYear} options={[{ value: ALL, label: 'All years' }, ...years.map((y) => ({ value: y, label: y }))]} />
+      </FilterField>
+      <FilterField label="Month">
+        <Select
+          value={month}
+          onValueChange={setMonth}
+          options={[{ value: ALL, label: 'All months' }, ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1).padStart(2, '0'), label: name }))]}
+        />
+      </FilterField>
+    </>
+  )
+
+  // The period picker sits in the same row as search and Filters; `contents` lets the bar's items flow in this row.
+  const toolbar = (
+    <div className="flex flex-wrap items-center gap-3 print:hidden">
+      {visible.length > 0 && (
+        <Select
+          value={selectedId}
+          onValueChange={setPeriodId}
+          aria-label="Payroll period"
+          options={visible.map((p) => ({ value: p.id, label: `${p.payrollNumber} · ${p.label}` }))}
+          className="w-full sm:w-72"
+        />
+      )}
+      <SearchFilterBar
+        className="contents"
+        search={search}
+      onSearchChange={setSearch}
+      placeholder="Search name, ID, department, details…"
+      activeCount={activeCount}
+      onClear={clearFilters}
+      filters={
+        <>
+          {periodFilters}
+          {inputs &&
+            (tab === 'time' ? (
+              <FilterField label="Department">
+                <Select value={department} onValueChange={setDepartment} options={[{ value: ALL, label: 'All departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
+              </FilterField>
+            ) : tab === 'output' ? (
+              <FilterField label="Status">
+                <Select
+                  value={outputStatus}
+                  onValueChange={setOutputStatus}
+                  options={[
+                    { value: ALL, label: 'All statuses' },
+                    { value: 'approved', label: 'Approved' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'rejected', label: 'Rejected' },
+                  ]}
+                />
+              </FilterField>
+            ) : (
+              <FilterField label="Input type">
+                <Select value={otherKind} onValueChange={setOtherKind} options={[{ value: ALL, label: 'All types' }, ...kinds.map((k) => ({ value: k, label: k }))]} />
+              </FilterField>
+            ))}
+        </>
+      }
+      trailing={
+        inputs &&
+        (tab === 'time'
+          ? `${shown.time.length} of ${inputs.time.length} employees`
+          : tab === 'output'
+            ? `${shown.output.length} of ${inputs.output.length} records`
+            : `${shown.other.length} of ${inputs.other.length} inputs`)
+      }
+      />
+    </div>
+  )
+
   return (
     <PlainCards>
       <div className="space-y-5">
         <PageHeader
           title="Payroll Inputs"
           description="The approved time, output, leave and adjustment records a payroll run reads. Read-only — approvals happen with HR and managers."
-          actions={
-            <Select
-              value={selectedId}
-              onValueChange={setPeriodId}
-              aria-label="Payroll period"
-              options={ordered.map((p) => ({ value: p.id, label: `${p.payrollNumber} · ${p.label}` }))}
-              className="min-w-64"
-            />
-          }
         />
 
         {selected && (
@@ -138,53 +215,42 @@ export function PayrollInputsPage() {
           </Card>
         )}
 
-        {inputs === undefined ? (
+        {!selected ? (
+          <div className="space-y-4">
+            {toolbar}
+            <EmptyState
+              icon={ListChecks}
+              title="No payroll periods in this month"
+              description="Try another month or year in Filters."
+              action={
+                <Button size="sm" variant="secondary" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              }
+            />
+          </div>
+        ) : inputs === undefined ? (
           <Skeleton className="h-72" />
         ) : inputs === null ? (
           <EmptyState title="Period not found" />
         ) : (
           <div className="space-y-4">
-            <SearchFilterBar
-              search={search}
-              onSearchChange={setSearch}
-              placeholder="Search name, ID, department, details…"
-              activeCount={activeCount}
-              onClear={clearFilters}
-              filters={
-                tab === 'time' ? (
-                  <FilterField label="Department">
-                    <Select value={department} onValueChange={setDepartment} options={[{ value: ALL, label: 'All departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
-                  </FilterField>
-                ) : tab === 'output' ? (
-                  <FilterField label="Status">
-                    <Select
-                      value={outputStatus}
-                      onValueChange={setOutputStatus}
-                      options={[
-                        { value: ALL, label: 'All statuses' },
-                        { value: 'approved', label: 'Approved' },
-                        { value: 'pending', label: 'Pending' },
-                        { value: 'rejected', label: 'Rejected' },
-                      ]}
-                    />
-                  </FilterField>
-                ) : (
-                  <FilterField label="Input type">
-                    <Select value={otherKind} onValueChange={setOtherKind} options={[{ value: ALL, label: 'All types' }, ...kinds.map((k) => ({ value: k, label: k }))]} />
-                  </FilterField>
-                )
-              }
-              trailing={
-                tab === 'time'
-                  ? `${shown.time.length} of ${inputs.time.length} employees`
-                  : tab === 'output'
-                    ? `${shown.output.length} of ${inputs.output.length} records`
-                    : `${shown.other.length} of ${inputs.other.length} inputs`
-              }
-            />
+            {toolbar}
 
             <Tabs value={tab} onValueChange={(value) => setTab(value as InputsTab)}>
-              <TabsList>
+              {/* Phones and tablets: a dropdown instead of a row of tabs. */}
+              <Select
+                className="lg:hidden"
+                value={tab}
+                onValueChange={(value) => setTab(value as InputsTab)}
+                aria-label="Input type"
+                options={[
+                  { value: 'time', label: `Time Records (${shown.time.length})` },
+                  { value: 'output', label: `Output Records (${shown.output.length})` },
+                  { value: 'other', label: `Other Inputs (${shown.other.length})` },
+                ]}
+              />
+              <TabsList className="hidden lg:flex">
                 <TabsTrigger value="time">Time Records ({shown.time.length})</TabsTrigger>
                 <TabsTrigger value="output">Output Records ({shown.output.length})</TabsTrigger>
                 <TabsTrigger value="other">Other Inputs ({shown.other.length})</TabsTrigger>
@@ -194,41 +260,7 @@ export function PayrollInputsPage() {
                 {shown.time.length === 0 ? (
                   <EmptyState icon={Clock} title={filtersActive ? 'No time records match these filters' : 'No time records in this period'} />
                 ) : (
-                  <Card className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Department</TableHead>
-                          <TableHead className="text-right">Days present</TableHead>
-                          <TableHead className="text-right">Regular hrs</TableHead>
-                          <TableHead className="text-right">Late</TableHead>
-                          <TableHead className="text-right">Undertime</TableHead>
-                          <TableHead className="text-right">Absent</TableHead>
-                          <TableHead className="text-right">OT hrs</TableHead>
-                          <TableHead className="text-right">ND hrs</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {shown.time.map((row) => (
-                          <TableRow key={row.employeeId}>
-                            <TableCell>
-                              <p className="text-sm font-medium">{row.name}</p>
-                              <p className="text-[11px] text-muted-foreground">{row.employeeNumber}</p>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{row.department}</TableCell>
-                            <TableCell className="text-right tabular-nums">{count(row.daysPresent)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{hours(row.regularHours)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{count(row.late)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{count(row.undertime)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{count(row.absent)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{hours(row.overtimeHours)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{hours(row.nightDiffHours)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Card>
+                  <TimeRecordsView rows={shown.time} />
                 )}
               </TabsContent>
 
@@ -240,46 +272,7 @@ export function PayrollInputsPage() {
                     description={filtersActive ? undefined : 'Piece-rate and output-based entries dated in this period show up here once submitted.'}
                   />
                 ) : (
-                  <Card className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Output</TableHead>
-                          <TableHead className="text-right">Piece rate</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {shown.output.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell>
-                              <p className="text-sm font-medium">{row.name}</p>
-                              <p className="text-[11px] text-muted-foreground">{row.employeeNumber}</p>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{formatDate(row.workDate)}</TableCell>
-                            <TableCell className="text-sm">{row.description || row.unitLabel}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatCurrency(row.rate)}</TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {row.quantity} {row.unitLabel}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">{formatCurrency(row.amount)}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <Badge tone={row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'danger' : 'warning'} className="capitalize">
-                                  {row.status}
-                                </Badge>
-                                {row.payrollNumber && <span className="text-[11px] text-muted-foreground">Paid in {row.payrollNumber}</span>}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Card>
+                  <OutputRecordsView rows={shown.output} />
                 )}
               </TabsContent>
 
@@ -287,35 +280,7 @@ export function PayrollInputsPage() {
                 {shown.other.length === 0 ? (
                   <EmptyState icon={ListChecks} title={filtersActive ? 'No other inputs match these filters' : 'No other inputs for this period'} />
                 ) : (
-                  <Card className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Employee / item</TableHead>
-                          <TableHead>Detail</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {shown.other.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell>
-                              <Badge tone="brand">{row.kind}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <p className="text-sm font-medium">{row.name}</p>
-                              {row.employeeNumber && <p className="text-[11px] text-muted-foreground">{row.employeeNumber}</p>}
-                            </TableCell>
-                            <TableCell className="text-sm capitalize text-muted-foreground">{row.detail}</TableCell>
-                            <TableCell className="text-right tabular-nums">{row.amount === undefined ? '—' : formatCurrency(row.amount)}</TableCell>
-                            <TableCell className="text-sm capitalize text-muted-foreground">{row.status}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Card>
+                  <OtherInputsView rows={shown.other} />
                 )}
               </TabsContent>
             </Tabs>

@@ -7,6 +7,7 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportScopePicker, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import { defaultScope, inScope, scopeLabel, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
@@ -101,11 +102,29 @@ export function StatutoryContributionReport({ type }: { type: ContributionType }
             <EmptyState title={scope.basis === 'run' ? "This period hasn't been run yet" : 'No payroll runs in this report period'} />
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                 <StatTile label="Employee Share" value={formatCurrency(totals.ee)} />
                 <StatTile label="Employer Share" value={formatCurrency(totals.er)} />
-                <StatTile label={`Total Remitted (${meta.formLabel})`} value={formatCurrency(totals.ee + totals.er)} />
+                <StatTile label={`Total Remitted (${meta.formLabel})`} value={formatCurrency(totals.ee + totals.er)} className="max-sm:col-span-2" />
               </div>
+              <ReportCardList count={periodRows.length} noun={periodRows.length === 1 ? 'employee' : 'employees'}>
+                {periodRows.map((r) => (
+                  <ReportRecordCard
+                    key={r.employee.id}
+                    avatar={fullName(r.employee.personal)}
+                    title={fullName(r.employee.personal)}
+                    subtitle={`${r.employee.employment.position} · ${r.employee.employment.department}`}
+                    meta={r.employee.employeeNumber}
+                  >
+                    <CardStat label="Employee Share">{formatCurrency(r.ee)}</CardStat>
+                    <CardStat label="Employer Share">{formatCurrency(r.er)}</CardStat>
+                    <CardStat label="Total Remittance" className="col-span-2">
+                      {formatCurrency(r.ee + r.er)}
+                    </CardStat>
+                  </ReportRecordCard>
+                ))}
+              </ReportCardList>
+              <ReportTableView>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -126,6 +145,7 @@ export function StatutoryContributionReport({ type }: { type: ContributionType }
                   ))}
                 </TableBody>
               </Table>
+              </ReportTableView>
             </>
           )}
         </div>
@@ -277,8 +297,8 @@ export function Bir1601CReport() {
             <Select value={activeMonth} onValueChange={setMonth} options={months.map((m) => ({ value: m, label: m }))} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatTile label="Employees Paid" value={String(employeeCount)} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+            <StatTile label="Employees Paid" value={String(employeeCount)} className="max-sm:col-span-2" />
             <StatTile label="Total Gross Compensation" value={formatCurrency(totals.compensation)} />
             <StatTile label="Total Tax Withheld" value={formatCurrency(totals.tax)} />
           </div>
@@ -286,6 +306,22 @@ export function Bir1601CReport() {
           {monthRows.length === 0 ? (
             <EmptyState title="No payroll lines for this month" />
           ) : (
+            <>
+            <ReportCardList count={monthRows.length} noun={monthRows.length === 1 ? 'payroll line' : 'payroll lines'}>
+              {monthRows.map((r) => (
+                <ReportRecordCard
+                  key={`${r.period.id}-${r.employee.id}`}
+                  avatar={fullName(r.employee.personal)}
+                  title={fullName(r.employee.personal)}
+                  subtitle={r.period.label}
+                  meta={r.employee.employeeNumber}
+                >
+                  <CardStat label="Gross Compensation">{formatCurrency(r.line.grossPay)}</CardStat>
+                  <CardStat label="Tax Withheld">{formatCurrency(r.line.withholdingTax)}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -304,6 +340,8 @@ export function Bir1601CReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
@@ -379,6 +417,31 @@ function ContributionCells({ t, strong }: { t: ContributionTotals; strong?: bool
       <MoneyCell value={employeeTotal(t)} className={cn('border-l border-border', emphasis)} />
       <MoneyCell value={employerTotal(t)} className={emphasis} />
     </>
+  )
+}
+
+/** Per-agency Employee / Employer grid for the card view, mirroring the table's grouped columns. */
+function ContributionBreakdown({ t, strong }: { t: ContributionTotals; strong?: boolean }) {
+  const emphasis = strong ? 'font-semibold' : 'font-medium'
+  return (
+    <div className="col-span-2 grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1.5 text-xs tabular-nums">
+      <span />
+      <span className="text-right text-[11px] text-muted-foreground">Employee</span>
+      <span className="text-right text-[11px] text-muted-foreground">Employer</span>
+      {AGENCY_GROUPS.map((g) => (
+        <div key={g.label} className="contents">
+          <span className="text-muted-foreground">{g.label}</span>
+          <span className="text-right">{formatCurrency(t[g.ee])}</span>
+          <span className="text-right">{formatCurrency(t[g.er])}</span>
+        </div>
+      ))}
+      <span className="text-muted-foreground">Withholding Tax</span>
+      <span className="text-right">{formatCurrency(t.tax)}</span>
+      <span className="text-right">—</span>
+      <span className={cn('border-t border-border pt-1.5', emphasis)}>Total</span>
+      <span className={cn('border-t border-border pt-1.5 text-right', emphasis)}>{formatCurrency(employeeTotal(t))}</span>
+      <span className={cn('border-t border-border pt-1.5 text-right', emphasis)}>{formatCurrency(employerTotal(t))}</span>
+    </div>
   )
 }
 
@@ -523,7 +586,7 @@ export function ConsolidatedStatutoryReport() {
             </FilterLabel>
           </ReportFilterBar>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Employees" value={String(tableRows.length)} />
             <StatTile label="Total Employee Deductions" value={formatCurrency(employeeTotal(totals))} />
             <StatTile label="Total Employer Contributions" value={formatCurrency(employerTotal(totals))} />
@@ -537,6 +600,27 @@ export function ConsolidatedStatutoryReport() {
           {tableRows.length === 0 ? (
             <EmptyState title="No employees match these filters" description="Try another department or clear the search." />
           ) : (
+            <>
+            <ReportCardList count={tableRows.length} noun={tableRows.length === 1 ? 'employee' : 'employees'} note={scopeLabel}>
+              {tableRows.map((r) => (
+                <ReportRecordCard
+                  key={r.employee.id}
+                  avatar={fullName(r.employee.personal)}
+                  title={fullName(r.employee.personal)}
+                  subtitle={`${r.employee.employment.position} · ${r.employee.employment.department}`}
+                  meta={r.employee.employeeNumber}
+                  details={<ContributionBreakdown t={r} />}
+                >
+                  <CardStat label="Employee Total">{formatCurrency(employeeTotal(r))}</CardStat>
+                  <CardStat label="Employer Total">{formatCurrency(employerTotal(r))}</CardStat>
+                </ReportRecordCard>
+              ))}
+              <ReportRecordCard title={`Total (${tableRows.length})`} subtitle={scopeLabel} details={<ContributionBreakdown t={totals} strong />}>
+                <CardStat label="Employee Total">{formatCurrency(employeeTotal(totals))}</CardStat>
+                <CardStat label="Employer Total">{formatCurrency(employerTotal(totals))}</CardStat>
+              </ReportRecordCard>
+            </ReportCardList>
+            <ReportTableView>
             <Table className="print:text-[9px]">
               <TableHeader>
                 <TableRow>
@@ -594,6 +678,8 @@ export function ConsolidatedStatutoryReport() {
                 </TableRow>
               </tfoot>
             </Table>
+            </ReportTableView>
+            </>
           )}
         </div>
       )}
