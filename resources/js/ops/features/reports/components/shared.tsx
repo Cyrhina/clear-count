@@ -9,6 +9,7 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
+import { useCompactCharts } from '@ops/features/reports/components/chartResponsive'
 import { useAllPayrollLines } from '@ops/features/reports/hooks/useReports'
 import { REPORT_BASIS_LABEL, defaultScope, inScope, monthLabel, payrollMonthKey, scopeLabel, type ReportBasis, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { PayrollPeriod } from '@ops/types/domain'
@@ -167,9 +168,9 @@ export function ReportViewShell({
           {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </div>
         {/* Phones: Excel and PDF share a full-width two-column row. */}
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+        <div className="flex w-full gap-2 sm:w-auto sm:items-center">
           {onExportExcel && (
-            <Button size="sm" variant="secondary" className="w-full sm:w-auto" icon={<Download className="size-3.5" />} onClick={onExcel} disabled={exporting}>
+            <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" icon={<Download className="size-3.5" />} onClick={onExcel} disabled={exporting}>
               {exportLabel === DEFAULT_EXCEL_LABEL ? (
                 <>
                   <span className="sm:hidden">Excel</span>
@@ -208,7 +209,7 @@ function PdfExportMenu({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <Button size="sm" variant="secondary" className="w-full sm:w-auto" icon={<FileText className="size-3.5" />}>
+        <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" icon={<FileText className="size-3.5" />}>
           <span className="sm:hidden">PDF</span>
           <span className="hidden sm:inline">Export to PDF</span>
           <ChevronDown className="size-3.5 opacity-60" />
@@ -394,28 +395,34 @@ export function useScopedPayrollLines() {
 
 export type ReportViewMode = 'graph' | 'table' | 'split'
 
-const VIEW_MODE_OPTIONS: { value: ReportViewMode; label: string; icon: LucideIcon }[] = [
-  { value: 'graph', label: 'Graph View', icon: BarChart3 },
-  { value: 'table', label: 'Data Table', icon: Rows3 },
-  { value: 'split', label: 'Split View', icon: SquareStack },
+const VIEW_MODE_OPTIONS: { value: ReportViewMode; label: string; short: string; icon: LucideIcon }[] = [
+  { value: 'graph', label: 'Graph View', short: 'Graph', icon: BarChart3 },
+  { value: 'table', label: 'Data Table', short: 'Table', icon: Rows3 },
+  { value: 'split', label: 'Split View', short: 'Split', icon: SquareStack },
 ]
 
-/** Graph/Table/Split toggle shown above analytics reports that pair a chart with its underlying table. */
+/**
+ * Graph/Table/Split toggle shown above analytics reports that pair a chart with its underlying table.
+ * On phones and tablets Split view is left out (two big panes don't fit) and the buttons share the row, one line each.
+ */
 export function ViewModeToggle({ value, onChange }: { value: ReportViewMode; onChange: (mode: ReportViewMode) => void }) {
+  const compact = useCompactCharts()
+  const options = compact ? VIEW_MODE_OPTIONS.filter((o) => o.value !== 'split') : VIEW_MODE_OPTIONS
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 print:hidden">
-      {VIEW_MODE_OPTIONS.map((o) => (
+    <div className="flex w-full items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 sm:inline-flex sm:w-auto print:hidden">
+      {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           className={cn(
-            'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+            'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex-none',
             value === o.value ? 'bg-card text-foreground shadow-soft' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <o.icon className="size-3.5" />
-          {o.label}
+          <span className="lg:hidden">{o.short}</span>
+          <span className="hidden lg:inline">{o.label}</span>
         </button>
       ))}
     </div>

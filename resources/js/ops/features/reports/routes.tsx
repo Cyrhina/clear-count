@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { DebitCreditReport } from '@ops/features/reports/components/AccountingReports'
 import {
@@ -286,7 +287,8 @@ export function ReportsPage() {
       />
 
       <Tabs value={activeTab} onValueChange={onTabChange}>
-        <TabsList>
+        <Select className="-mb-2 lg:hidden" value={activeTab} onValueChange={onTabChange} aria-label="Reports section" options={[{ value: 'basic', label: 'Basic Reports' }, { value: 'advanced', label: 'Advanced Reports' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="basic">Basic Reports</TabsTrigger>
           <TabsTrigger value="advanced">Advanced Reports</TabsTrigger>
         </TabsList>

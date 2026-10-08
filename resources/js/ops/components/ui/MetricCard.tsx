@@ -42,13 +42,13 @@ export function MetricCard({ label, value, hint, icon: Icon, tone = 'default', f
           <Link
             to={footer.to}
             data-slot="metric-card-footer"
-            className="flex items-center justify-between border-t border-border bg-muted/50 px-5 py-2.5 text-xs font-medium transition-colors hover:bg-muted"
+            className={cn('flex items-center justify-between border-t border-border bg-muted/50 px-5 py-2.5 text-xs font-medium', compact && 'max-sm:px-3.5 max-sm:py-2', ' transition-colors hover:bg-muted')}
           >
             <span className={t.footerText}>{footer.label}</span>
             <ArrowRight className={cn('size-3.5 shrink-0', t.footerText)} />
           </Link>
         ) : (
-          <div data-slot="metric-card-footer" className="flex items-center justify-between border-t border-border bg-muted/50 px-5 py-2.5 text-xs font-medium text-muted-foreground">
+          <div data-slot="metric-card-footer" className={cn('flex items-center justify-between border-t border-border bg-muted/50 px-5 py-2.5 text-xs font-medium', compact && 'max-sm:px-3.5 max-sm:py-2', ' text-muted-foreground')}>
             <span>{footer.label}</span>
             <ArrowRight className="size-3.5 shrink-0 opacity-40" />
           </div>

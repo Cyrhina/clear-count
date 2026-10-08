@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FileText, Lock, ShieldCheck } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { PageHeader } from '@ops/components/layout/PageHeader'
@@ -12,6 +12,7 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { useToast } from '@ops/components/ui/Toast'
 import { CompensationHistoryTable } from '@ops/features/employees/components/CompensationHistoryTable'
@@ -48,11 +49,23 @@ function ViewOnlyBadge() {
   )
 }
 
+const TAB_OPTIONS = [
+  { value: 'personal', label: 'Personal Information' },
+  { value: 'employment', label: 'Employment' },
+  { value: 'compensation', label: 'Compensation' },
+  { value: 'benefits', label: 'Benefits' },
+  { value: 'government', label: 'Government Information' },
+  { value: 'bank', label: 'Bank/Payment' },
+  { value: 'documents', label: 'Documents' },
+  { value: 'history', label: 'History' },
+]
+
 export function EssProfilePage() {
   const { employee, isLoading, refetch } = useSelfEmployee()
   const { user } = useSession()
   const { branches } = useTenant()
   const { notify } = useToast()
+  const [tab, setTab] = useState('personal')
 
   const {
     register,
@@ -101,8 +114,10 @@ export function EssProfilePage() {
         </div>
       </Card>
 
-      <Tabs defaultValue="personal">
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        {/* Phones and tablets: a dropdown instead of a wrapped row of tabs. */}
+        <Select className="lg:hidden" value={tab} onValueChange={setTab} aria-label="Profile section" options={TAB_OPTIONS} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="personal">Personal Information</TabsTrigger>
           <TabsTrigger value="employment">Employment</TabsTrigger>
           <TabsTrigger value="compensation">Compensation</TabsTrigger>

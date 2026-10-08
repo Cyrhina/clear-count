@@ -4,6 +4,7 @@ import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
 import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import type { SortDirection } from '@ops/components/ui/FiltersPopover'
 import { AttendanceFilterBar } from '@ops/features/attendance/components/AttendanceFilterBar'
@@ -216,7 +217,8 @@ export function AttendancePage() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <Select className="-mb-2 lg:hidden" value={activeTab} onValueChange={setActiveTab} aria-label="Attendance section" options={[{ value: 'daily', label: 'Daily Attendance' }, { value: 'adjustments', label: 'Adjustments' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="daily">Daily Attendance</TabsTrigger>
           <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
         </TabsList>

@@ -23,7 +23,7 @@ export function useHighlightTarget() {
 
     let attempts = 0
     const scrollInterval = setInterval(() => {
-      const el = document.getElementById(`row-${targetId}`)
+      const el = [...document.querySelectorAll<HTMLElement>(`[id="row-${targetId}"],[data-highlight-id="${targetId}"]`)].find((n) => n.offsetParent !== null)
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         clearInterval(scrollInterval)

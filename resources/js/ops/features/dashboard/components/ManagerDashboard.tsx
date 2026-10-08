@@ -39,7 +39,7 @@ export function ManagerDashboard({ greetingName }: { greetingName: string }) {
     return (
       <div className="dashboard-elevated space-y-6">
         <Skeleton className="h-16" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-36" />
           ))}
@@ -88,11 +88,11 @@ export function ManagerDashboard({ greetingName }: { greetingName: string }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="My Team" value={String(data.headcount)} hint={`${data.departments} department${data.departments === 1 ? '' : 's'}`} icon={Users} tone="primary" footer={{ label: 'View My Team', to: '/employees' }} />
-        <MetricCard label="Attendance Rate" value={`${rate}%`} hint={`${data.present} of ${data.headcount} present ${asOf}`} icon={CheckCircle2} tone="success" footer={{ label: 'View Attendance', to: '/attendance' }} />
-        <MetricCard label="On Leave Today" value={String(data.onLeaveToday)} hint={`${pending.leave} leave request${pending.leave === 1 ? '' : 's'} pending`} icon={Plane} tone="warning" footer={{ label: 'View Leave', to: '/leave' }} />
-        <MetricCard label="Late" value={String(data.late)} hint={`${data.absent} absent · ${data.undertime} undertime ${asOf}`} icon={Clock3} tone="accent" footer={{ label: 'View Attendance', to: '/attendance' }} />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <MetricCard compact label="My Team" value={String(data.headcount)} hint={`${data.departments} department${data.departments === 1 ? '' : 's'}`} icon={Users} tone="primary" footer={{ label: 'View My Team', to: '/employees' }} />
+        <MetricCard compact label="Attendance Rate" value={`${rate}%`} hint={`${data.present} of ${data.headcount} present ${asOf}`} icon={CheckCircle2} tone="success" footer={{ label: 'View Attendance', to: '/attendance' }} />
+        <MetricCard compact label="On Leave Today" value={String(data.onLeaveToday)} hint={`${pending.leave} leave request${pending.leave === 1 ? '' : 's'} pending`} icon={Plane} tone="warning" footer={{ label: 'View Leave', to: '/leave' }} />
+        <MetricCard compact label="Late" value={String(data.late)} hint={`${data.absent} absent · ${data.undertime} undertime ${asOf}`} icon={Clock3} tone="accent" footer={{ label: 'View Attendance', to: '/attendance' }} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

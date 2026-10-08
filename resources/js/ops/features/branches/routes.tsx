@@ -160,7 +160,7 @@ function BranchesTab() {
       ) : branches.length === 0 ? (
         <EmptyState title="No branches yet" description="Add a branch to start assigning employees to locations." />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {branches.map((branch) => (
             <BranchCard
               key={branch.id}
@@ -229,12 +229,14 @@ function ConsolidatedReportTab() {
 }
 
 export function BranchesPage() {
+  const [tab, setTab] = useState('branches')
   return (
     <div className="space-y-5">
       <PageHeader title="Multi-Branch Management" description="Branches with their assigned employees, and consolidated cross-branch reporting." />
 
-      <Tabs defaultValue="branches">
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        <Select className="-mb-2 lg:hidden" value={tab} onValueChange={setTab} aria-label="Branches section" options={[{ value: 'branches', label: 'Branches' }, { value: 'report', label: 'Consolidated Report' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="branches">Branches</TabsTrigger>
           <TabsTrigger value="report">Consolidated Report</TabsTrigger>
         </TabsList>

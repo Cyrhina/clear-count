@@ -62,7 +62,7 @@ export function AdminDashboard() {
 
   if (isLoading || !overview) {
     return (
-      <div className="dashboard-elevated grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="dashboard-elevated grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 [&>:last-child:nth-child(odd)]:col-span-2 lg:[&>:last-child:nth-child(odd)]:col-span-1">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-36" />
         ))}
@@ -92,8 +92,9 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 [&>:last-child:nth-child(odd)]:col-span-2 lg:[&>:last-child:nth-child(odd)]:col-span-1">
         <MetricCard
+          compact
           label="Total Employees"
           value={String(metrics.totalEmployees)}
           hint={`Active: ${metrics.activeEmployees} | Inactive: ${metrics.inactiveEmployees}`}
@@ -102,6 +103,7 @@ export function AdminDashboard() {
           footer={{ label: 'View Employees', to: '/employees' }}
         />
         <MetricCard
+          compact
           label="Present Today"
           value={String(metrics.presentToday)}
           hint={`${metrics.attendanceRate}% attendance rate`}
@@ -110,6 +112,7 @@ export function AdminDashboard() {
           footer={{ label: 'View Attendance', to: '/attendance' }}
         />
         <MetricCard
+          compact
           label="On Leave Today"
           value={String(metrics.onLeaveToday)}
           hint={`${metrics.leaveApproved} approved | ${metrics.leavePending} pending`}
@@ -118,6 +121,7 @@ export function AdminDashboard() {
           footer={{ label: 'View Leave', to: '/leave' }}
         />
         <MetricCard
+          compact
           label="With Overtime Today"
           value={`${metrics.overtimeHours} hrs`}
           hint={`${metrics.overtimeEmployees} employees with approved OT`}
@@ -126,6 +130,7 @@ export function AdminDashboard() {
           footer={{ label: 'View Overtime', to: '/overtime' }}
         />
         <MetricCard
+          compact
           label="Payroll Status"
           value={metrics.payrollStatusLabel}
           hint={`Next cut-off: ${metrics.nextCutoffLabel}`}

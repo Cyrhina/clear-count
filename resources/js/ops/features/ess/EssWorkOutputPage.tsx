@@ -12,9 +12,11 @@ import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
+import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useSession } from '@ops/hooks/useSession'
 import { getCompensationApprovals, submitWorkLog, withdrawWorkLog } from '@ops/lib/services/compensationApprovalService'
+import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { CompensationApproval } from '@ops/types/domain'
 
@@ -77,10 +79,10 @@ export function EssWorkOutputPage() {
         }
       />
 
-      <div className={paidByEntries ? 'grid gap-4 sm:grid-cols-3' : 'grid gap-4 sm:grid-cols-2'}>
-        <MetricCard label="Pending Approval" value={String(pending.length)} hint={`${pending.reduce((s, r) => s + r.quantity, 0)} ${unit} waiting`} icon={Hourglass} tone="warning" />
-        <MetricCard label="Approved" value={String(approved.length)} hint={`${approved.reduce((s, r) => s + r.quantity, 0)} ${unit} in total`} icon={CheckCircle2} tone="success" />
-        {paidByEntries && <MetricCard label="Pending + Approved Pay" value={formatCurrency(rows.filter((r) => r.status !== 'rejected').reduce((s, r) => s + r.amount, 0))} hint={`Rate ${formatCurrency(employee.compensation.basicPay)} / ${isOutput ? unit : 'hr'}`} icon={Wallet} tone="primary" />}
+      <div className={cn('grid grid-cols-2 gap-3 sm:gap-4 [&>:last-child:nth-child(odd)]:col-span-2', paidByEntries ? 'sm:grid-cols-3 sm:[&>:last-child:nth-child(odd)]:col-span-1' : 'sm:[&>:last-child:nth-child(odd)]:col-span-1')}>
+        <MetricCard compact label="Pending Approval" value={String(pending.length)} hint={`${pending.reduce((s, r) => s + r.quantity, 0)} ${unit} waiting`} icon={Hourglass} tone="warning" />
+        <MetricCard compact label="Approved" value={String(approved.length)} hint={`${approved.reduce((s, r) => s + r.quantity, 0)} ${unit} in total`} icon={CheckCircle2} tone="success" />
+        {paidByEntries && <MetricCard compact label="Pending + Approved Pay" value={formatCurrency(rows.filter((r) => r.status !== 'rejected').reduce((s, r) => s + r.amount, 0))} hint={`Rate ${formatCurrency(employee.compensation.basicPay)} / ${isOutput ? unit : 'hr'}`} icon={Wallet} tone="primary" />}
       </div>
 
       <Card>
@@ -94,6 +96,34 @@ export function EssWorkOutputPage() {
           {rows.length === 0 ? (
             <EmptyState title="No entries yet" description={`Log your first ${noun} entry using the button above.`} />
           ) : (
+            <>
+            <EssCardList>
+              {rows.map((r) => (
+                <EssRecordCard
+                  key={r.id}
+                  title={formatDate(r.workDate)}
+                  subtitle={r.decidedBy ? `Decided by ${r.decidedBy}` : undefined}
+                  badge={
+                    <Badge tone={STATUS_TONE[r.status]} className="capitalize">
+                      {r.status}
+                    </Badge>
+                  }
+                  stats={[
+                    { label: isOutput ? 'Output' : 'Hours', value: `${r.quantity} ${r.unitLabel}` },
+                    ...(paidByEntries ? [{ label: 'Amount', value: formatCurrency(r.amount) }] : []),
+                    ...(r.description ? [{ label: 'Notes', value: <span className="line-clamp-2">{r.description}</span> }] : []),
+                  ]}
+                  actions={
+                    r.status === 'pending' ? (
+                      <Button size="sm" variant="secondary" icon={<X className="size-3.5" />} onClick={() => withdraw(r.id)}>
+                        Withdraw
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </EssCardList>
+            <EssTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -133,6 +163,8 @@ export function EssWorkOutputPage() {
                 ))}
               </TableBody>
             </Table>
+            </EssTableView>
+            </>
           )}
         </Card.Body>
       </Card>

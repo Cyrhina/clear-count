@@ -31,6 +31,19 @@ import {
   EARNINGS_DEDUCTIONS_PALETTE,
   NIVO_THEME,
 } from '@ops/features/reports/components/nivoTheme'
+import {
+  ChartLimitNote,
+  compactCurrency,
+  currencyAxis,
+  latest,
+  shortMonthFormatter,
+  shortPeriodLabel,
+  topWithOthers,
+  useChartLimit,
+  useCompactCharts,
+  useViewMode,
+} from '@ops/features/reports/components/chartResponsive'
+import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { ChartPane, FilterLabel, ReportFilterBar, ReportViewShell, StatTile, TablePane, ViewModeToggle, useScopedPayrollLines } from '@ops/features/reports/components/shared'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
 import type { ReportViewMode } from '@ops/features/reports/components/shared'
@@ -43,6 +56,9 @@ import { cn } from '@ops/lib/utils/cn'
 import { PAY_RATE_TYPE_LABEL } from '@ops/lib/payroll/payRate'
 import { hourlyRateFor } from '@ops/lib/payroll/rateBasis'
 import { formatCurrency } from '@ops/lib/utils/format'
+
+/** Small tables (3-5 short columns) stay tables on phones: tighter cells so nothing scrolls sideways. */
+const COMPACT_TABLE = '[&_th]:px-2.5 [&_td]:px-2.5 [&_th]:text-[11px] [&_td]:text-xs sm:[&_th]:px-4 sm:[&_td]:px-4 sm:[&_th]:text-xs sm:[&_td]:text-sm'
 
 function fullName(personal: { firstName: string; lastName: string }) {
   return `${personal.firstName} ${personal.lastName}`
@@ -132,7 +148,7 @@ function DonutChart({ data, total, unit }: { data: [string, number][]; total: nu
 
 export function HeadcountAnalysisReport() {
   const { employees, isLoading } = useEmployees()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const byDepartment = useMemo(() => {
     const map = new Map<string, { active: number; inactive: number }>()
@@ -147,6 +163,16 @@ export function HeadcountAnalysisReport() {
 
   const active = employees.filter((e) => e.employment.status === 'active').length
 
+  // Phones/tablets chart the five biggest departments and group the rest; the table keeps every department.
+  const limit = useChartLimit(byDepartment.length, 5)
+  const chartDepartments = topWithOthers(
+    byDepartment,
+    limit.limit,
+    (c) => c.active + c.inactive,
+    (rest) => ({ active: rest.reduce((s, c) => s + c.active, 0), inactive: rest.reduce((s, c) => s + c.inactive, 0) }),
+    limit.limited,
+  )
+
   return (
     <ReportViewShell title="Headcount Analysis" description="Active vs. inactive headcount by department.">
       {isLoading ? (
@@ -155,7 +181,7 @@ export function HeadcountAnalysisReport() {
         <EmptyState title="No employees yet" />
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
             <StatTile label="Total Employees" value={String(employees.length)} />
             <StatTile label="Active" value={String(active)} />
             <StatTile label="Inactive" value={String(employees.length - active)} />
@@ -163,20 +189,21 @@ export function HeadcountAnalysisReport() {
 
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="departments" kind="top" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-72">
-            <AnimatedChart className="h-full w-full" chartKey={byDepartment.length}>
+            <AnimatedChart className="h-full w-full" chartKey={`${chartDepartments.length}-${limit.limited}`}>
               <ResponsiveBar
-                data={byDepartment.map(([dept, c]) => ({ dept, Active: c.active, Inactive: c.inactive }))}
+                data={chartDepartments.map(([dept, c]) => ({ dept, Active: c.active, Inactive: c.inactive }))}
                 keys={['Active', 'Inactive']}
                 indexBy="dept"
                 theme={NIVO_THEME}
                 colors={ACTIVE_INACTIVE_PALETTE}
-                margin={{ top: 40, right: 12, bottom: 40, left: 40 }}
+                margin={{ top: 40, right: 12, bottom: limit.compact ? 56 : 40, left: limit.compact ? 32 : 40 }}
                 padding={0.3}
                 innerPadding={2}
                 borderRadius={4}
                 enableLabel={false}
-                axisBottom={{ tickSize: 0, tickPadding: 8 }}
+                axisBottom={{ tickSize: 0, tickPadding: 8, tickRotation: limit.compact ? -30 : 0 }}
                 axisLeft={{ tickSize: 0, tickPadding: 8 }}
                 gridYValues={5}
                 legends={[
@@ -200,7 +227,7 @@ export function HeadcountAnalysisReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
-            <Table>
+            <Table className={COMPACT_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Department</TableHead>
@@ -229,7 +256,7 @@ export function HeadcountAnalysisReport() {
 
 export function CompensationAnalysisReport() {
   const { employees, isLoading } = useEmployees()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const byPayType = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>()
@@ -247,6 +274,8 @@ export function CompensationAnalysisReport() {
     avgRate: Math.round(bucket.total / bucket.count),
     totalCost: bucket.total,
   }))
+  const compact = useCompactCharts()
+  const money = currencyAxis(compact)
 
   return (
     <ReportViewShell title="Compensation Analysis" description="Employee count and average base rate by Pay Rate Type.">
@@ -269,12 +298,13 @@ export function CompensationAnalysisReport() {
                   axisLine={false}
                   fontSize={11}
                   stroke="var(--color-muted-foreground)"
-                  width={70}
-                  tickFormatter={(v: number) => formatCurrency(v)}
+                  width={compact ? 44 : 70}
+                  tickFormatter={(v: number) => money(v)}
                 />
                 <YAxis
                   yAxisId="cost"
                   orientation="right"
+                  hide={compact}
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
@@ -291,7 +321,7 @@ export function CompensationAnalysisReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
-            <Table>
+            <Table className={COMPACT_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Pay Rate Type</TableHead>
@@ -329,7 +359,7 @@ const ATTENDANCE_KEYS = ['Present', 'Late', 'Undertime', 'Absent'] as const
 
 export function AttendanceAbsenteeismReport() {
   const { rows, isLoading } = useAttendanceSummary()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
   // A single-row chart legend of four statuses doesn't fit a phone-width card; wrap it in HTML instead.
   const isPhone = useMediaQuery('(max-width: 639px)')
   const [department, setDepartment] = useState<string>('all')
@@ -393,6 +423,12 @@ export function AttendanceAbsenteeismReport() {
       })
   }, [rows, department, selectedEmployee])
 
+  // Phones/tablets chart the six rows with the most late, undertime and absence share; the table keeps every row.
+  const limit = useChartLimit(chartData.length, 6)
+  const chartRows = limit.limited
+    ? [...chartData].sort((a, b) => b.Late + b.Undertime + b.Absent - (a.Late + a.Undertime + a.Absent)).slice(0, limit.limit)
+    : chartData
+
   return (
     <ReportViewShell title="Attendance / Absenteeism Analysis" description="Present, late, undertime, and absence rate — by department by default, or drill into one department or employee.">
       {isLoading ? (
@@ -443,10 +479,11 @@ export function AttendanceAbsenteeismReport() {
               ))}
             </div>
           )}
-          <ChartPane mode={mode} style={{ height: Math.max(240, chartData.length * 36) }}>
-            <AnimatedChart className="h-full w-full" chartKey={`${department}-${employeeId ?? 'none'}`}>
+          <ChartLimitNote limit={limit} noun="rows" kind="top" detail="highest late / absent share" hidden={mode === 'table'} />
+          <ChartPane mode={mode} style={{ height: Math.max(240, chartRows.length * 36) }}>
+            <AnimatedChart className="h-full w-full" chartKey={`${department}-${employeeId ?? 'none'}-${limit.limited}`}>
               <ResponsiveBar
-                data={chartData}
+                data={chartRows}
                 keys={[...ATTENDANCE_KEYS]}
                 indexBy="name"
                 layout="horizontal"
@@ -481,7 +518,18 @@ export function AttendanceAbsenteeismReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
-            <Table>
+            <ReportCardList count={chartData.length} noun={chartData.length === 1 ? 'row' : 'rows'}>
+              {chartData.map((row) => (
+                <ReportRecordCard key={row.name} title={row.name}>
+                  <CardStat label="Present">{row.Present}%</CardStat>
+                  <CardStat label="Late">{row.Late}%</CardStat>
+                  <CardStat label="Undertime">{row.Undertime}%</CardStat>
+                  <CardStat label="Absent">{row.Absent}%</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
+            <Table className={COMPACT_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>{selectedEmployee ? 'Employee' : department !== 'all' ? 'Employee' : 'Department'}</TableHead>
@@ -503,6 +551,7 @@ export function AttendanceAbsenteeismReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -513,7 +562,7 @@ export function AttendanceAbsenteeismReport() {
 /** Re-homed from Basic Reports — leave utilization is a workforce analytic, not a basic report. */
 export function LeaveUtilizationReport() {
   const { rows, isLoading } = useLeaveSummary()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const byLeaveType = useMemo(() => {
     const map = new Map<string, number>()
@@ -521,6 +570,9 @@ export function LeaveUtilizationReport() {
     return [...map.entries()].sort((a, b) => b[1] - a[1])
   }, [rows])
   const totalDays = byLeaveType.reduce((s, [, d]) => s + d, 0)
+  // Phones/tablets show the four most-used leave types and group the rest; the table keeps every record.
+  const limit = useChartLimit(byLeaveType.length, 4)
+  const chartLeave = topWithOthers(byLeaveType, limit.limit, (d) => d, (rest) => rest.reduce((s, d) => s + d, 0), limit.limited)
 
   return (
     <ReportViewShell title="Leave Utilization Analysis" description="Approved leave days taken per employee, by leave type.">
@@ -532,10 +584,11 @@ export function LeaveUtilizationReport() {
         <div className="space-y-4">
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="leave types" kind="top" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="grid gap-4 sm:grid-cols-2">
-            <DonutChart data={byLeaveType} total={totalDays} unit="days" />
+            <DonutChart data={chartLeave} total={totalDays} unit="days" />
             <div className="flex flex-col justify-center gap-2">
-              {byLeaveType.map(([name, days], idx) => (
+              {chartLeave.map(([name, days], idx) => (
                 <div key={name} className="flex items-center justify-between gap-3 text-sm">
                   <span className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[idx % CATEGORY_COLORS.length] }} />
@@ -550,7 +603,7 @@ export function LeaveUtilizationReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
-            <Table>
+            <Table className={COMPACT_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
@@ -585,7 +638,7 @@ export function OvertimeCostAnalysisReport() {
   const { records, isLoading: recordsLoading } = useOvertimeRecords()
   const { employees, isLoading: employeesLoading } = useEmployees()
   const { rows: payrollRows } = useAllPayrollLines()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   /** OT, night differential and rest day/holiday pay actually paid in payroll runs, per department. */
   const paidByDepartment = useMemo(
@@ -613,6 +666,27 @@ export function OvertimeCostAnalysisReport() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [records, employees])
 
+  // Phones/tablets chart the latest six months and the five costliest departments; the tables keep everything.
+  const monthLimit = useChartLimit(byMonth.length, 6)
+  const deptLimit = useChartLimit(paidByDepartment.length, 5)
+  const chartMonths = latest(byMonth, monthLimit.limit, monthLimit.limited)
+  const chartDepartments = topWithOthers(
+    paidByDepartment,
+    deptLimit.limit,
+    (t) => t.overtime + t.nightDiff + t.restDay,
+    (rest) => ({
+      ...rest[0],
+      overtime: rest.reduce((s, t) => s + t.overtime, 0),
+      nightDiff: rest.reduce((s, t) => s + t.nightDiff, 0),
+      restDay: rest.reduce((s, t) => s + t.restDay, 0),
+      gross: rest.reduce((s, t) => s + t.gross, 0),
+    }),
+    deptLimit.limited,
+  )
+  const compact = monthLimit.compact
+  const money = currencyAxis(compact)
+  const monthShort = shortMonthFormatter(chartMonths.map(([k]) => monthLabel(k)))
+
   return (
     <ReportViewShell title="Overtime Cost Analysis" description="Overtime hours and estimated cost trend month over month, and OT / night differential pay by department from payroll runs.">
       {recordsLoading || employeesLoading ? (
@@ -623,24 +697,25 @@ export function OvertimeCostAnalysisReport() {
         <div className="space-y-4">
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={monthLimit} noun="months" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
-                data={byMonth.map(([monthKey, b]) => ({ month: monthLabel(monthKey), cost: Math.round(b.cost), hours: Math.round(b.hours * 10) / 10 }))}
+                data={chartMonths.map(([monthKey, b]) => ({ month: monthLabel(monthKey), cost: Math.round(b.cost), hours: Math.round(b.hours * 10) / 10 }))}
                 margin={{ left: 4, right: 8, top: 8 }}
               >
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" tickFormatter={compact ? monthShort : undefined} />
                 <YAxis
                   yAxisId="cost"
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
                   stroke="var(--color-muted-foreground)"
-                  width={70}
-                  tickFormatter={(v: number) => formatCurrency(v)}
+                  width={compact ? 44 : 70}
+                  tickFormatter={(v: number) => money(v)}
                 />
-                <YAxis yAxisId="hours" orientation="right" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} />
+                <YAxis yAxisId="hours" orientation="right" hide={compact} tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} />
                 <Tooltip formatter={(v, name) => (name === 'Estimated OT Cost' ? formatCurrency(Number(v)) : `${v} hrs`)} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
                 <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 <Line yAxisId="cost" type="monotone" dataKey="cost" name="Estimated OT Cost" stroke="var(--color-brand-500)" strokeWidth={2} dot={{ r: 3 }} />
@@ -650,7 +725,7 @@ export function OvertimeCostAnalysisReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
-            <Table>
+            <Table className={COMPACT_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Month</TableHead>
@@ -676,15 +751,16 @@ export function OvertimeCostAnalysisReport() {
                 <p className="text-sm font-semibold">OT &amp; Night Differential Pay by Department</p>
                 <p className="text-xs text-muted-foreground">Amounts paid in payroll runs, by type.</p>
               </div>
+              <ChartLimitNote limit={deptLimit} noun="departments" kind="top" hidden={mode === 'table'} />
               <ChartPane mode={mode} className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
-                    data={paidByDepartment.map(([dept, t]) => ({ dept, overtime: Math.round(t.overtime), nightDiff: Math.round(t.nightDiff), restDay: Math.round(t.restDay) }))}
+                    data={chartDepartments.map(([dept, t]) => ({ dept, overtime: Math.round(t.overtime), nightDiff: Math.round(t.nightDiff), restDay: Math.round(t.restDay) }))}
                     margin={{ left: 4, right: 8, top: 8 }}
                   >
                     <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                    <XAxis dataKey="dept" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                    <XAxis dataKey="dept" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" interval={compact ? 0 : 'preserveEnd'} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={compact ? 44 : 70} tickFormatter={(v: number) => money(v)} />
                     <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                     <Bar dataKey="overtime" name="Regular OT" stackId="ot" fill="var(--color-brand-500)" />
@@ -694,6 +770,19 @@ export function OvertimeCostAnalysisReport() {
                 </ResponsiveContainer>
               </ChartPane>
               <TablePane mode={mode}>
+                <ReportCardList count={paidByDepartment.length} noun={paidByDepartment.length === 1 ? 'department' : 'departments'}>
+                  {paidByDepartment.map(([dept, t]) => {
+                    const total = t.overtime + t.nightDiff + t.restDay
+                    return (
+                      <ReportRecordCard key={dept} title={dept} meta={t.gross > 0 ? `${((total / t.gross) * 100).toFixed(1)}% of gross · ${formatCurrency(total)} total` : `${formatCurrency(total)} total`}>
+                        <CardStat label="Regular OT">{formatCurrency(t.overtime)}</CardStat>
+                        <CardStat label="Night Differential">{formatCurrency(t.nightDiff)}</CardStat>
+                        <CardStat label="Rest Day / Holiday OT">{formatCurrency(t.restDay)}</CardStat>
+                      </ReportRecordCard>
+                    )
+                  })}
+                </ReportCardList>
+                <ReportTableView>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -721,6 +810,7 @@ export function OvertimeCostAnalysisReport() {
                     })}
                   </TableBody>
                 </Table>
+                </ReportTableView>
               </TablePane>
             </div>
           )}
@@ -734,7 +824,7 @@ export function OvertimeCostAnalysisReport() {
 
 export function PayrollTrendReport() {
   const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   // Month over month (every payroll group's runs combined), so weekly, semi-monthly and monthly runs compare like for like.
   const byMonth = useMemo(() => summarizeByPayrollMonth(rows), [rows])
@@ -755,6 +845,14 @@ export function PayrollTrendReport() {
   const variance =
     byMonth.length >= 2 ? byMonth[byMonth.length - 1][1].gross - byMonth[byMonth.length - 2][1].gross : 0
 
+  // Phones/tablets chart the latest six months, gross and net only (the variance line and its axis crowd a narrow chart —
+  // the variance still shows in the tile above and in the table).
+  const limit = useChartLimit(chartData.length, 6)
+  const chartRows = latest(chartData, limit.limit, limit.limited)
+  const compact = limit.compact
+  const money = currencyAxis(compact)
+  const monthShort = shortMonthFormatter(chartRows.map((r) => r.label))
+
   return (
     <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Payroll Trend & Variance" description="Gross vs. net pay per payroll month (all payroll groups), with month-over-month variance.">
       {isLoading ? (
@@ -772,31 +870,53 @@ export function PayrollTrendReport() {
 
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="months" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ left: 4, right: 8, top: 8 }}>
+              <ComposedChart data={chartRows} margin={{ left: 4, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" tickFormatter={compact ? monthShort : undefined} />
                 <YAxis
                   yAxisId="amount"
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
                   stroke="var(--color-muted-foreground)"
-                  width={70}
-                  tickFormatter={(v: number) => formatCurrency(v)}
+                  width={compact ? 44 : 70}
+                  tickFormatter={(v: number) => money(v)}
                 />
-                <YAxis yAxisId="variance" orientation="right" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} tickFormatter={(v: number) => `${v}%`} />
+                <YAxis yAxisId="variance" orientation="right" hide={compact} tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={48} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip formatter={(v, name) => (name === 'Variance %' ? `${v}%` : formatCurrency(Number(v)))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
                 <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 <Line yAxisId="amount" dataKey="gross" name="Gross Pay" stroke="var(--color-brand-400)" strokeWidth={2} dot={{ r: 3 }} />
                 <Line yAxisId="amount" dataKey="net" name="Net Pay" stroke="var(--color-brand-700)" strokeWidth={2} dot={{ r: 3 }} />
-                <Line yAxisId="variance" dataKey="variancePct" name="Variance %" stroke="var(--color-warning)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+                {!compact && <Line yAxisId="variance" dataKey="variancePct" name="Variance %" stroke="var(--color-warning)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />}
               </ComposedChart>
             </ResponsiveContainer>
           </ChartPane>
 
           <TablePane mode={mode}>
+            <ReportCardList count={chartData.length} noun={chartData.length === 1 ? 'month' : 'months'}>
+              {chartData.map((p) => (
+                <ReportRecordCard key={p.label} title={p.label} meta={`${p.runs} payroll run${p.runs === 1 ? '' : 's'}`}>
+                  <CardStat label="Gross Pay">{formatCurrency(p.gross)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(p.net)}</CardStat>
+                  <CardStat label="Gross vs. prev. month">
+                    <span className={p.variancePct < 0 ? 'text-danger' : undefined}>
+                      {p.variancePct >= 0 ? '+' : ''}
+                      {p.variancePct}%
+                    </span>
+                  </CardStat>
+                  <CardStat label="Net vs. prev. month">
+                    <span className={p.netVariancePct < 0 ? 'text-danger' : undefined}>
+                      {p.netVariancePct >= 0 ? '+' : ''}
+                      {p.netVariancePct}%
+                    </span>
+                  </CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -821,6 +941,7 @@ export function PayrollTrendReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -834,7 +955,7 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
   const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
   const { branches } = useTenant()
   const { groups } = usePayrollGroups()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const label = dimension === 'department' ? 'Department' : dimension === 'branch' ? 'Branch' : 'Payroll Group'
 
@@ -874,6 +995,20 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
 
   const totalGross = byDimension.reduce((sum, [, t]) => sum + t.gross, 0)
 
+  // Phones/tablets chart the latest six months for the five costliest groups, the rest summed into "Others".
+  const monthLimit = useChartLimit(trend[0]?.data.length ?? 0, 6)
+  const seriesLimit = useChartLimit(trend.length, 5)
+  const compact = monthLimit.compact
+  const chartTrend = useMemo(() => {
+    const months = (series: typeof trend) => series.map((s) => ({ ...s, data: latest(s.data, monthLimit.limit, monthLimit.limited) }))
+    if (!seriesLimit.limited) return months(trend)
+    const top = trend.slice(0, seriesLimit.limit)
+    const rest = trend.slice(seriesLimit.limit)
+    const others = { id: 'Others', data: rest[0].data.map((point, i) => ({ x: point.x, y: rest.reduce((s, r) => s + (r.data[i]?.y ?? 0), 0) })) }
+    return months([...top, others])
+  }, [trend, monthLimit.limit, monthLimit.limited, seriesLimit.limit, seriesLimit.limited])
+  const monthShort = shortMonthFormatter(chartTrend[0]?.data.map((d) => String(d.x)) ?? [])
+
   return (
     <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title={`Payroll Cost by ${label}`} description={`Month-over-month payroll cost trend and comparative metrics, grouped by ${label.toLowerCase()}.`}>
       {isLoading ? (
@@ -885,7 +1020,7 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
           <ViewModeToggle value={mode} onChange={setMode} />
 
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {trend.map((series, idx) => (
+            {chartTrend.map((series, idx) => (
               <span key={series.id} className="flex items-center gap-1.5">
                 <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: CHART_PALETTE_NO_RED[idx % CHART_PALETTE_NO_RED.length] }} />
                 {series.id}
@@ -893,19 +1028,22 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
             ))}
           </div>
 
+          <ChartLimitNote limit={seriesLimit} noun={`${label.toLowerCase()}s`} kind="top" hidden={mode === 'table'} />
+          <ChartLimitNote limit={monthLimit} noun="months" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-80">
-            <AnimatedChart className="h-full w-full" chartKey={dimension}>
+            <AnimatedChart className="h-full w-full" chartKey={`${dimension}-${seriesLimit.limited}-${monthLimit.limited}`}>
               <ResponsiveLine
-                data={trend}
+                data={chartTrend}
                 theme={NIVO_THEME}
                 colors={CHART_PALETTE_NO_RED}
-                margin={{ top: 16, right: 24, bottom: 50, left: 70 }}
+                margin={{ top: 16, right: compact ? 16 : 24, bottom: 50, left: compact ? 54 : 70 }}
                 xScale={{ type: 'point' }}
                 yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
                 curve="monotoneX"
-                axisBottom={{ tickSize: 0, tickPadding: 10 }}
-                axisLeft={{ tickSize: 0, tickPadding: 8, format: (v) => formatCurrency(Number(v)) }}
+                axisBottom={{ tickSize: 0, tickPadding: 10, format: compact ? (v) => monthShort(String(v)) : undefined }}
+                axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: compact ? 5 : undefined, format: (v) => (compact ? compactCurrency(Number(v)) : formatCurrency(Number(v))) }}
                 enableGridX={false}
+                gridYValues={compact ? 5 : undefined}
                 lineWidth={2.5}
                 pointSize={7}
                 pointColor={{ theme: 'background' }}
@@ -937,6 +1075,27 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
           </ChartPane>
 
           <TablePane mode={mode}>
+            <ReportCardList count={byDimension.length} noun={byDimension.length === 1 ? label.toLowerCase() : `${label.toLowerCase()}s`}>
+              {byDimension.map(([key, t]) => (
+                <ReportRecordCard
+                  key={key}
+                  title={key}
+                  meta={`${t.employees} employee${t.employees === 1 ? '' : 's'} · ${t.runs} run${t.runs === 1 ? '' : 's'}`}
+                  details={
+                    <>
+                      <CardStat label="Deductions">{formatCurrency(t.totalDeductions)}</CardStat>
+                      <CardStat label="OT & Night Diff">{formatCurrency(t.overtime + t.nightDiff + t.restDay)}</CardStat>
+                      <CardStat label="Avg Gross / Payslip">{formatCurrency(t.lines ? t.gross / t.lines : 0)}</CardStat>
+                      <CardStat label="Share of Gross">{totalGross > 0 ? `${((t.gross / totalGross) * 100).toFixed(1)}%` : '—'}</CardStat>
+                    </>
+                  }
+                >
+                  <CardStat label="Gross Pay">{formatCurrency(t.gross)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(t.net)}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -967,6 +1126,7 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -976,7 +1136,7 @@ export function PayrollCostByDimensionReport({ dimension }: { dimension: CostDim
 
 export function PayrollCostAnalysisReport() {
   const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const totals = rows.reduce(
     (acc, { line }) => ({
@@ -998,6 +1158,11 @@ export function PayrollCostAnalysisReport() {
     }
     return [...map.values()].sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
   }, [rows])
+  // Phones/tablets chart the latest six periods; the table keeps every period.
+  const limit = useChartLimit(byPeriod.length, 6)
+  const chartPeriods = latest(byPeriod, limit.limit, limit.limited)
+  const compact = limit.compact
+  const money = currencyAxis(compact)
 
   return (
     <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Payroll Cost Analysis" description="Trend of Gross Pay, Employer Contributions, and Net Pay across every payroll period.">
@@ -1007,7 +1172,7 @@ export function PayrollCostAnalysisReport() {
         <EmptyState title="No payroll history yet" />
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
             <StatTile label="Total Gross Pay" value={formatCurrency(totals.gross)} />
             <StatTile label="Employer Contributions" value={formatCurrency(totals.employerContributions)} />
             <StatTile label="Total Cost to Company" value={formatCurrency(totals.gross + totals.employerContributions)} />
@@ -1015,12 +1180,13 @@ export function PayrollCostAnalysisReport() {
 
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="periods" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={byPeriod.map((p) => ({ label: p.period.label, gross: p.gross, employerContributions: p.employerContributions, net: p.net }))} margin={{ left: 4, right: 8, top: 8 }}>
+              <LineChart data={chartPeriods.map((p) => ({ label: p.period.label, gross: p.gross, employerContributions: p.employerContributions, net: p.net }))} margin={{ left: 4, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
-                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" tickFormatter={compact ? shortPeriodLabel : undefined} />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={compact ? 44 : 70} tickFormatter={(v: number) => money(v)} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
                 <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 <Line type="monotone" dataKey="gross" name="Gross Pay" stroke="var(--color-brand-400)" strokeWidth={2} dot={{ r: 3 }} />
@@ -1031,6 +1197,18 @@ export function PayrollCostAnalysisReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
+            <ReportCardList count={byPeriod.length} noun={byPeriod.length === 1 ? 'period' : 'periods'}>
+              {byPeriod.map((p) => (
+                <ReportRecordCard key={p.period.id} title={p.period.label} meta={p.period.payrollNumber}>
+                  <CardStat label="Gross Pay">{formatCurrency(p.gross)}</CardStat>
+                  <CardStat label="Net Pay">{formatCurrency(p.net)}</CardStat>
+                  <CardStat label="Employer Contributions" className="col-span-2">
+                    {formatCurrency(p.employerContributions)}
+                  </CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1051,6 +1229,7 @@ export function PayrollCostAnalysisReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -1062,7 +1241,7 @@ export function PayrollCostAnalysisReport() {
 
 export function LaborCostAnalysisReport() {
   const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const byPeriod = useMemo(() => {
     const map = new Map<string, { period: (typeof rows)[number]['period']; grossPay: number; employerContributions: number }>()
@@ -1074,6 +1253,11 @@ export function LaborCostAnalysisReport() {
     }
     return [...map.values()].sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
   }, [rows])
+  // Phones/tablets chart the latest six periods; the table keeps every period.
+  const limit = useChartLimit(byPeriod.length, 6)
+  const chartPeriods = latest(byPeriod, limit.limit, limit.limited)
+  const compact = limit.compact
+  const money = currencyAxis(compact)
 
   function onExport(): ExcelExport {
     const header = ['Period', 'Gross Pay', 'Employer Contributions', 'Total Labor Cost']
@@ -1097,12 +1281,13 @@ export function LaborCostAnalysisReport() {
         <div className="space-y-4">
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="periods" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={byPeriod.map((p) => ({ label: p.period.label, grossPay: p.grossPay, employerContributions: p.employerContributions }))} margin={{ left: 4, right: 8, top: 8 }}>
+              <AreaChart data={chartPeriods.map((p) => ({ label: p.period.label, grossPay: p.grossPay, employerContributions: p.employerContributions }))} margin={{ left: 4, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" />
-                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={70} tickFormatter={(v: number) => formatCurrency(v)} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" tickFormatter={compact ? shortPeriodLabel : undefined} />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--color-muted-foreground)" width={compact ? 44 : 70} tickFormatter={(v: number) => money(v)} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} />
                 <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 <Area type="monotone" dataKey="grossPay" name="Gross Pay" stackId="labor" stroke="var(--color-brand-400)" fill="var(--color-brand-400)" fillOpacity={0.35} />
@@ -1112,6 +1297,18 @@ export function LaborCostAnalysisReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
+            <ReportCardList count={byPeriod.length} noun={byPeriod.length === 1 ? 'period' : 'periods'}>
+              {byPeriod.map((p) => (
+                <ReportRecordCard key={p.period.id} title={p.period.label} meta={p.period.payrollNumber}>
+                  <CardStat label="Gross Pay">{formatCurrency(p.grossPay)}</CardStat>
+                  <CardStat label="Employer Contributions">{formatCurrency(p.employerContributions)}</CardStat>
+                  <CardStat label="Total Labor Cost" className="col-span-2">
+                    <span className="font-semibold">{formatCurrency(p.grossPay + p.employerContributions)}</span>
+                  </CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1132,6 +1329,7 @@ export function LaborCostAnalysisReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -1141,13 +1339,19 @@ export function LaborCostAnalysisReport() {
 
 export function EarningsVsDeductionsReport() {
   const { rows, isLoading, scopePicker, scopeMeta } = useScopedPayrollLines()
-  const [mode, setMode] = useState<ReportViewMode>('split')
+  const [mode, setMode] = useViewMode()
 
   const byMonth = useMemo(() => summarizeByPayrollMonth(rows), [rows])
   const totals = byMonth.reduce(
     (acc, [, t]) => ({ statutory: acc.statutory + t.statutory, tax: acc.tax + t.tax, loans: acc.loans + t.loans, other: acc.other + t.otherDeductions }),
     { statutory: 0, tax: 0, loans: 0, other: 0 },
   )
+
+  // Phones/tablets chart the latest six months; the table keeps every month.
+  const limit = useChartLimit(byMonth.length, 6)
+  const chartMonths = latest(byMonth, limit.limit, limit.limited)
+  const compact = limit.compact
+  const monthShort = shortMonthFormatter(chartMonths.map(([k]) => monthLabel(k)))
 
   return (
     <ReportViewShell filters={scopePicker} meta={[scopeMeta]} title="Earnings vs. Deductions Analysis" description="Total earnings against deductions per payroll month, with deductions tracked by type (statutory, tax, loans, other).">
@@ -1157,7 +1361,7 @@ export function EarningsVsDeductionsReport() {
         <EmptyState title="No payroll history yet" />
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Statutory (SSS, PhilHealth, Pag-IBIG)" value={formatCurrency(totals.statutory)} />
             <StatTile label="Withholding Tax" value={formatCurrency(totals.tax)} />
             <StatTile label="Loan Amortizations" value={formatCurrency(totals.loans)} />
@@ -1166,22 +1370,24 @@ export function EarningsVsDeductionsReport() {
 
           <ViewModeToggle value={mode} onChange={setMode} />
 
+          <ChartLimitNote limit={limit} noun="months" kind="latest" hidden={mode === 'table'} />
           <ChartPane mode={mode} className="h-80">
-            <AnimatedChart className="h-full w-full" chartKey={byMonth.length}>
+            <AnimatedChart className="h-full w-full" chartKey={`${chartMonths.length}-${limit.limited}`}>
               <ResponsiveLine
                 data={[
-                  { id: 'Earnings', data: byMonth.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.gross) })) },
-                  { id: 'Deductions', data: byMonth.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.totalDeductions) })) },
+                  { id: 'Earnings', data: chartMonths.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.gross) })) },
+                  { id: 'Deductions', data: chartMonths.map(([key, t]) => ({ x: monthLabel(key), y: Math.round(t.totalDeductions) })) },
                 ]}
                 theme={NIVO_THEME}
                 colors={EARNINGS_DEDUCTIONS_PALETTE}
-                margin={{ top: 40, right: 24, bottom: 50, left: 70 }}
+                margin={{ top: 40, right: compact ? 16 : 24, bottom: 50, left: compact ? 54 : 70 }}
                 xScale={{ type: 'point' }}
                 yScale={{ type: 'linear', min: 0, max: 'auto' }}
                 curve="monotoneX"
-                axisBottom={{ tickSize: 0, tickPadding: 10 }}
-                axisLeft={{ tickSize: 0, tickPadding: 8, format: (v) => formatCurrency(Number(v)) }}
+                axisBottom={{ tickSize: 0, tickPadding: 10, format: compact ? (v) => monthShort(String(v)) : undefined }}
+                axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: compact ? 5 : undefined, format: (v) => (compact ? compactCurrency(Number(v)) : formatCurrency(Number(v))) }}
                 enableGridX={false}
+                gridYValues={compact ? 5 : undefined}
                 lineWidth={2.5}
                 pointSize={7}
                 pointColor={{ theme: 'background' }}
@@ -1223,6 +1429,27 @@ export function EarningsVsDeductionsReport() {
           </ChartPane>
 
           <TablePane mode={mode}>
+            <ReportCardList count={byMonth.length} noun={byMonth.length === 1 ? 'month' : 'months'}>
+              {byMonth.map(([key, t]) => (
+                <ReportRecordCard
+                  key={key}
+                  title={monthLabel(key)}
+                  meta={t.gross > 0 ? `${((t.totalDeductions / t.gross) * 100).toFixed(1)}% deduction rate` : undefined}
+                  details={
+                    <>
+                      <CardStat label="Statutory">{formatCurrency(t.statutory)}</CardStat>
+                      <CardStat label="Tax">{formatCurrency(t.tax)}</CardStat>
+                      <CardStat label="Loans">{formatCurrency(t.loans)}</CardStat>
+                      <CardStat label="Other">{formatCurrency(t.otherDeductions)}</CardStat>
+                    </>
+                  }
+                >
+                  <CardStat label="Earnings">{formatCurrency(t.gross)}</CardStat>
+                  <CardStat label="Total Deductions">{formatCurrency(t.totalDeductions)}</CardStat>
+                </ReportRecordCard>
+              ))}
+            </ReportCardList>
+            <ReportTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1251,6 +1478,7 @@ export function EarningsVsDeductionsReport() {
                 ))}
               </TableBody>
             </Table>
+            </ReportTableView>
           </TablePane>
         </div>
       )}
@@ -1280,6 +1508,20 @@ export function EmployerContributionAnalysisReport() {
       ) : byPeriod.length === 0 ? (
         <EmptyState title="No payroll history yet" />
       ) : (
+        <>
+        <ReportCardList count={byPeriod.length} noun={byPeriod.length === 1 ? 'period' : 'periods'}>
+          {byPeriod.map((p) => (
+            <ReportRecordCard key={p.period.id} title={p.period.label} meta={p.period.payrollNumber}>
+              <CardStat label="SSS Employer Share">{formatCurrency(p.sss)}</CardStat>
+              <CardStat label="PhilHealth Employer Share">{formatCurrency(p.philhealth)}</CardStat>
+              <CardStat label="Pag-IBIG Employer Share">{formatCurrency(p.pagibig)}</CardStat>
+              <CardStat label="Total">
+                <span className="font-semibold">{formatCurrency(p.sss + p.philhealth + p.pagibig)}</span>
+              </CardStat>
+            </ReportRecordCard>
+          ))}
+        </ReportCardList>
+        <ReportTableView>
         <Table>
           <TableHeader>
             <TableRow>
@@ -1302,6 +1544,8 @@ export function EmployerContributionAnalysisReport() {
             ))}
           </TableBody>
         </Table>
+        </ReportTableView>
+        </>
       )}
     </ReportViewShell>
   )
@@ -1334,6 +1578,21 @@ export function PayrollExpenseByAccountReport() {
       ) : accountsByPeriod.length === 0 ? (
         <EmptyState title="No payroll history yet" />
       ) : (
+        <>
+        <ReportCardList count={accountsByPeriod.length} noun={accountsByPeriod.length === 1 ? 'period' : 'periods'}>
+          {accountsByPeriod.map((p) => (
+            <ReportRecordCard key={p.period.id} title={p.period.label} meta={p.period.payrollNumber}>
+              <CardStat label="Salaries & Wages">{formatCurrency(p.salaries)}</CardStat>
+              <CardStat label="SSS Expense">{formatCurrency(p.sss)}</CardStat>
+              <CardStat label="PhilHealth Expense">{formatCurrency(p.philhealth)}</CardStat>
+              <CardStat label="Pag-IBIG Expense">{formatCurrency(p.pagibig)}</CardStat>
+              <CardStat label="Total Expense" className="col-span-2">
+                <span className="font-semibold">{formatCurrency(p.total)}</span>
+              </CardStat>
+            </ReportRecordCard>
+          ))}
+        </ReportCardList>
+        <ReportTableView>
         <Table>
           <TableHeader>
             <TableRow>
@@ -1358,6 +1617,8 @@ export function PayrollExpenseByAccountReport() {
             ))}
           </TableBody>
         </Table>
+        </ReportTableView>
+        </>
       )}
     </ReportViewShell>
   )

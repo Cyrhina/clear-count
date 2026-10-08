@@ -3,6 +3,7 @@ import { PageHeader } from '@ops/components/layout/PageHeader'
 import type { SortDirection } from '@ops/components/ui/FiltersPopover'
 import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { LeaveFilterBar } from '@ops/features/leave/components/LeaveFilterBar'
@@ -114,8 +115,9 @@ function LeaveContent() {
         actions={activeTab === 'requests' && canRequest && <LeaveRequestDialog employees={employees} leaveTypes={leaveTypes} onCreated={refetch} />}
       />
 
-      <Tabs defaultValue="requests" onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Select className="-mb-2 lg:hidden" value={activeTab} onValueChange={setActiveTab} aria-label="Leave section" options={[{ value: 'requests', label: 'Requests' }, { value: 'types', label: canManageTypes ? 'Leave Types & Credits' : 'Leave Credits' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="types">{canManageTypes ? 'Leave Types & Credits' : 'Leave Credits'}</TabsTrigger>
         </TabsList>

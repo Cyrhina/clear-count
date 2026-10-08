@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@ops/components/ui/Toast'
 import { OvertimeApplicationDialog } from '@ops/features/ess/components/OvertimeApplicationDialog'
 import { getOtRateById, usePayrollRatesStore } from '@ops/features/company-settings/payrollRatesStore'
+import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useMyOtApplications, useOtApplicationStore } from '@ops/features/ess/otApplicationStore'
 import type { OtApplication, OtApplicationType } from '@ops/features/ess/otApplicationStore'
@@ -133,8 +134,9 @@ export function EssOvertimePage() {
         actions={<OvertimeApplicationDialog employeeId={employee.id} />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>:last-child:nth-child(odd)]:col-span-2 sm:[&>:last-child:nth-child(odd)]:col-span-1">
         <MetricCard
+          compact
           label="Total OT Hours Approved"
           value={`${totalApprovedHours.toFixed(1)} hrs`}
           hint="This month"
@@ -142,6 +144,7 @@ export function EssOvertimePage() {
           tone="primary"
         />
         <MetricCard
+          compact
           label="Pending Applications"
           value={`${pendingCount} ${pendingCount === 1 ? 'Request' : 'Requests'}`}
           hint="Awaiting manager approval"
@@ -149,6 +152,7 @@ export function EssOvertimePage() {
           tone="warning"
         />
         <MetricCard
+          compact
           label="Estimated OT / Night Diff Pay"
           value={formatCurrency(estimatedPay)}
           hint="Pending + approved, this history"
@@ -168,6 +172,39 @@ export function EssOvertimePage() {
           {applications.length === 0 ? (
             <EmptyState title="No applications yet" description="File your first OT / Night Diff request using the button above." />
           ) : (
+            <>
+            <EssCardList>
+              {applications.map((app) => (
+                <EssRecordCard
+                  key={app.id}
+                  title={formatDate(app.date)}
+                  subtitle={`${app.startTime} – ${app.endTime}`}
+                  badge={
+                    <Badge tone={OT_STATUS_TONE[app.status]} className="capitalize">
+                      {app.status}
+                    </Badge>
+                  }
+                  stats={[
+                    { label: 'Type', value: otTypeLabel(app.type) },
+                    { label: 'Total Hours', value: `${app.totalHours.toFixed(1)} hrs` },
+                    { label: 'Reason', value: <span className="line-clamp-2">{app.reason}</span> },
+                  ]}
+                  actions={
+                    <>
+                      <Button size="sm" variant="secondary" icon={<Eye className="size-3.5" />} onClick={() => setViewing(app)}>
+                        View
+                      </Button>
+                      {app.status === 'pending' && (
+                        <Button size="sm" variant="secondary" icon={<X className="size-3.5" />} onClick={() => handleCancel(app)}>
+                          Cancel
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
+              ))}
+            </EssCardList>
+            <EssTableView>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -215,6 +252,8 @@ export function EssOvertimePage() {
                 ))}
               </TableBody>
             </Table>
+            </EssTableView>
+            </>
           )}
         </Card.Body>
       </Card>

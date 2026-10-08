@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { AddHolidayDialog } from '@ops/features/company-settings/components/AddHolidayDialog'
 import { CompanyInfoForm } from '@ops/features/company-settings/components/CompanyInfoForm'
@@ -37,6 +39,8 @@ export function CompanySettingsPage() {
     refetch,
     complianceDeadlines,
   } = useCompanySettings()
+  const [tab, setTab] = useState('company')
+  const [payrollTab, setPayrollTab] = useState('groups')
   const canEditCompany = usePermission('settings.company.edit')
   const canEditPayroll = usePermission('settings.payroll.edit') || canEditCompany
 
@@ -49,8 +53,9 @@ export function CompanySettingsPage() {
         description="Company profile, payroll structure, and holidays for your organization."
       />
 
-      <Tabs defaultValue="company">
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        <Select className="-mb-2 lg:hidden" value={tab} onValueChange={setTab} aria-label="Settings section" options={[{ value: 'company', label: 'Company Info' }, { value: 'payroll-settings', label: 'Payroll Settings' }, { value: 'holidays', label: 'Holidays' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="company">Company Info</TabsTrigger>
           <TabsTrigger value="payroll-settings">Payroll Settings</TabsTrigger>
           <TabsTrigger value="holidays">Holidays</TabsTrigger>
@@ -61,8 +66,9 @@ export function CompanySettingsPage() {
         </TabsContent>
 
         <TabsContent value="payroll-settings">
-          <Tabs defaultValue="groups">
-            <TabsList>
+          <Tabs value={payrollTab} onValueChange={setPayrollTab}>
+            <Select className="-mb-2 lg:hidden" value={payrollTab} onValueChange={setPayrollTab} aria-label="Payroll settings section" options={[{ value: 'groups', label: 'Payroll Groups' }, { value: 'earnings', label: 'Earnings' }, { value: 'deductions', label: 'Deductions' }, { value: 'rules', label: 'Payroll Rules' }, { value: 'ot-holiday-rates', label: 'Overtime & Holiday Rates' }, { value: 'schedules', label: 'Work Schedules' }, { value: 'calendar', label: 'Payroll Calendar' }]} />
+            <TabsList className="hidden lg:flex">
               <TabsTrigger value="groups">Payroll Groups</TabsTrigger>
               <TabsTrigger value="earnings">Earnings</TabsTrigger>
               <TabsTrigger value="deductions">Deductions</TabsTrigger>

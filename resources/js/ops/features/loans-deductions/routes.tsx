@@ -68,10 +68,10 @@ export function LoansDeductionsPage() {
 
         <Tabs value={section.value} onValueChange={(value) => go(value)}>
           {/* Phones: dropdowns instead of two rows of tabs. */}
-          <div className="grid gap-3 sm:hidden">
+          <div className="grid gap-3 lg:hidden">
             <Select value={section.value} onValueChange={(value) => go(value)} aria-label="Section" options={SECTIONS.map((s) => ({ value: s.value, label: s.label }))} />
           </div>
-          <TabsList className="hidden sm:flex">
+          <TabsList className="hidden lg:flex">
             {SECTIONS.map((s) => (
               <TabsTrigger key={s.value} value={s.value}>
                 {s.label}

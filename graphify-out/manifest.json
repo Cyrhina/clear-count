@@ -966,9 +966,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/components/ui/Select.tsx": {
-    "mtime": 1791159387.9079225,
-    "seen": 1791334082.8972058,
-    "ast_hash": "a9ca3aae874f8b37bf9a10fb3ffbc59f",
+    "mtime": 1791440350.0149877,
+    "seen": 1791452258.24584,
+    "ast_hash": "172e61d3877d6d97863019498ee4feff",
     "semantic_hash": ""
   },
   "resources/js/ops/components/ui/SelectCheckboxes.tsx": {
@@ -1152,15 +1152,15 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/bonuses/components/AddBonusDialog.tsx": {
-    "mtime": 1791185507.9217346,
-    "seen": 1791334082.8972385,
-    "ast_hash": "8d4fa9be0d02d121243e6eeade9a58a9",
+    "mtime": 1791437771.3029113,
+    "seen": 1791452258.2459686,
+    "ast_hash": "3d01a0d2504b5cad0f411a1c1b87d095",
     "semantic_hash": ""
   },
   "resources/js/ops/features/bonuses/components/BonusDetailsDialog.tsx": {
-    "mtime": 1791185507.9217346,
-    "seen": 1791334082.8972394,
-    "ast_hash": "4a2f9a3efed7447b8aab73d3e4c0d8eb",
+    "mtime": 1791437802.90615,
+    "seen": 1791452258.245973,
+    "ast_hash": "9ccad3fe5eeda2affe37e404a28d4165",
     "semantic_hash": ""
   },
   "resources/js/ops/features/bonuses/hooks/useBonuses.ts": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/bonuses/routes.tsx": {
-    "mtime": 1791159387.9257307,
-    "seen": 1791334082.8972416,
-    "ast_hash": "277f115e91a486d17f83be07ae8e84eb",
+    "mtime": 1791437817.2071044,
+    "seen": 1791452258.2459807,
+    "ast_hash": "73f97eb2babdb21da9b934e547d6e5e6",
     "semantic_hash": ""
   },
   "resources/js/ops/features/branches/branchUtils.ts": {
@@ -1896,9 +1896,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/payroll-inputs/routes.tsx": {
-    "mtime": 1791268010.0566404,
-    "seen": 1791334082.8973632,
-    "ast_hash": "6f3c8c94d0eac5f1d5ba244f6adaff81",
+    "mtime": 1791437365.8513029,
+    "seen": 1791452258.2467036,
+    "ast_hash": "0451a748d2778553ae1226bae9e6502c",
     "semantic_hash": ""
   },
   "resources/js/ops/features/payroll/PayrollListPage.tsx": {
@@ -1950,9 +1950,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/payslips/PayslipsListPage.tsx": {
-    "mtime": 1791177120.3379653,
-    "seen": 1791334082.8973725,
-    "ast_hash": "1257186629d8db319d97f1b8a5d747cf",
+    "mtime": 1791439582.898097,
+    "seen": 1791452258.2467697,
+    "ast_hash": "67f9cf3b40962cc8c3b5d47a8777a7fa",
     "semantic_hash": ""
   },
   "resources/js/ops/features/payslips/components/PayslipCard.tsx": {
@@ -2016,9 +2016,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/AccountingReports.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.8973835,
-    "ast_hash": "e0888dcf9c87e1dfb6a1d60cb454da3c",
+    "mtime": 1791442661.9520354,
+    "seen": 1791452258.2468395,
+    "ast_hash": "45a0be5bb0d2915688b2ecd35901224b",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/AdvancedReports.tsx": {
@@ -2034,9 +2034,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/BasicReports.tsx": {
-    "mtime": 1791337848.522909,
-    "seen": 1791351961.6343904,
-    "ast_hash": "ed5a887799afbd1d6d23b11205dfee67",
+    "mtime": 1791442728.8547192,
+    "seen": 1791452258.2468567,
+    "ast_hash": "09557950bd872fc3930159f0e888431e",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/CustomReportBuilder.tsx": {
@@ -2046,21 +2046,21 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/PayrollRecordReports.tsx": {
-    "mtime": 1791266982.9406657,
-    "seen": 1791334082.8973947,
-    "ast_hash": "f287f4773d661c22cbaf4dd7a64623b7",
+    "mtime": 1791442662.61613,
+    "seen": 1791452258.24687,
+    "ast_hash": "481095aec41d6016ec5ef967047927d6",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/StatutoryReports.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.8973956,
-    "ast_hash": "6408bac34d99c3ab95117d3ec6375a55",
+    "mtime": 1791442704.3024564,
+    "seen": 1791452258.2468834,
+    "ast_hash": "7706a14fff8d11a95b8a04f73a157c25",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/TaxComplianceReports.tsx": {
-    "mtime": 1791185614.8377779,
-    "seen": 1791334082.8973968,
-    "ast_hash": "f51dd8299a97cf33d3c8e8cd122a7e4a",
+    "mtime": 1791442935.0310533,
+    "seen": 1791452258.2468905,
+    "ast_hash": "026e7233b77ea1bbf4c14809512d57e5",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/nivoTheme.ts": {
@@ -2070,9 +2070,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/shared.tsx": {
-    "mtime": 1791426315.4113185,
-    "seen": 1791436039.5811315,
-    "ast_hash": "272b960e38d640235f8d9c8c5bc1ea29",
+    "mtime": 1791440282.1853216,
+    "seen": 1791452258.24691,
+    "ast_hash": "d7d0e6c07abb0512b4e5b1f54d4587e5",
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/hooks/useReports.ts": {
@@ -2148,33 +2148,33 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/components/EmployeeContributionsTable.tsx": {
-    "mtime": 1791349350.4557025,
-    "seen": 1791351961.634415,
-    "ast_hash": "3c96923bed1e3b82eafb950e1a212e7e",
+    "mtime": 1791439426.1498475,
+    "seen": 1791452258.2470095,
+    "ast_hash": "cb8f938c3b9c1bc60841337110cf79f0",
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/components/PagibigCard.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.8974128,
-    "ast_hash": "60728489f946bfa3d6b8b8bbd15ddff6",
+    "mtime": 1791439051.7224858,
+    "seen": 1791452258.247015,
+    "ast_hash": "f5ab1da82c2d88bd6809caec8aa72f7b",
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/components/PhilhealthCard.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.897414,
-    "ast_hash": "6078b8cb95ac67178bbc76b938658aee",
+    "mtime": 1791439051.7038195,
+    "seen": 1791452258.2470193,
+    "ast_hash": "1a75f4c1e661b7b53dfc962e9f2a5e83",
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/components/SssBracketCard.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.897415,
-    "ast_hash": "7bd68574e33237119e84c280a68d95cb",
+    "mtime": 1791438976.9708927,
+    "seen": 1791452258.2470267,
+    "ast_hash": "684e42bbdb47b613fefb9d508bd502b3",
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/components/WithholdingTaxCard.tsx": {
-    "mtime": 1791350636.0272236,
-    "seen": 1791351961.6344197,
-    "ast_hash": "17b6654bbbd496b674e7ccfcc5a23441",
+    "mtime": 1791439006.4033475,
+    "seen": 1791452258.2470326,
+    "ast_hash": "bcf1bee820312b1a1d74c842b56a3a7d",
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/hooks/useStatutoryConfig.ts": {
@@ -2184,9 +2184,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/statutory/routes.tsx": {
-    "mtime": 1791159387.987699,
-    "seen": 1791334082.8974178,
-    "ast_hash": "ba281a4eca009584abc23f13ca51a161",
+    "mtime": 1791439051.6244617,
+    "seen": 1791452258.2470448,
+    "ast_hash": "fb8d74912ec068947f0edaf2a741c961",
     "semantic_hash": ""
   },
   "resources/js/ops/features/subscription/hooks/useSubscription.ts": {
@@ -2226,9 +2226,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/thirteenth-month/routes.tsx": {
-    "mtime": 1791185532.7552195,
-    "seen": 1791334082.8974245,
-    "ast_hash": "2e8cf0e1ef554642193922f848f4e124",
+    "mtime": 1791438492.6446383,
+    "seen": 1791452258.2470894,
+    "ast_hash": "72c3089dbd6c6c4c2134a4468f16214a",
     "semantic_hash": ""
   },
   "resources/js/ops/features/user-access/components/ActivityLogPanel.tsx": {
@@ -3168,9 +3168,9 @@
     "semantic_hash": ""
   },
   "resources/js/ops/features/reports/components/TeamReports.tsx": {
-    "mtime": 1791337816.4591243,
-    "seen": 1791351961.6343963,
-    "ast_hash": "594a921fe8804f9338d2017fd14bf5a4",
+    "mtime": 1791442661.6980329,
+    "seen": 1791452258.2468982,
+    "ast_hash": "85a8072f4c05fefaca4a44b0f6946d76",
     "semantic_hash": ""
   },
   "resources/js/ops/lib/leave/leaveDays.ts": {
@@ -3213,6 +3213,24 @@
     "mtime": 1791426315.3923829,
     "seen": 1791436039.5810719,
     "ast_hash": "1abbf1c1819302858b1de91562933597",
+    "semantic_hash": ""
+  },
+  "resources/js/ops/features/payroll-inputs/components/InputRecordViews.tsx": {
+    "mtime": 1791437306.8608599,
+    "seen": 1791452258.2466974,
+    "ast_hash": "50176a93360e4bbc0154499a0f2240b5",
+    "semantic_hash": ""
+  },
+  "resources/js/ops/features/reports/components/ReportRecordCard.tsx": {
+    "mtime": 1791442923.081784,
+    "seen": 1791452258.246876,
+    "ast_hash": "e97f99776f66ccbd777bceaf340f8807",
+    "semantic_hash": ""
+  },
+  "resources/js/ops/features/statutory/components/BracketAccordion.tsx": {
+    "mtime": 1791439369.377229,
+    "seen": 1791452258.2470021,
+    "ast_hash": "562a4dc50ef6155a6d6ca05ba2e65380",
     "semantic_hash": ""
   }
 }

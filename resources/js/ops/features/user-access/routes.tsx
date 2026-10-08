@@ -119,10 +119,83 @@ function UsersTab() {
     refetch()
   }
 
+  const renderRole = (u: SessionUser) => (
+    <>
+        {u.role === 'super_admin' ? (
+          <span className="text-sm font-medium">{ROLE_LABELS.super_admin}</span>
+        ) : (
+          <Select value={u.role} onValueChange={(value) => changeRole(u.id, value)} options={ROLE_OPTIONS} />
+        )}
+    </>
+  )
+
+  const renderActions = (u: SessionUser) => (
+    <>
+        {u.id === session.id || u.role === 'super_admin' ? (
+          <span className="text-xs text-muted-foreground">{u.id === session.id ? 'You' : '—'}</span>
+        ) : (
+          <div className="flex justify-end gap-1.5">
+            {u.isActive !== false && (
+              <ActionIcon
+                label={u.isSuspended ? 'Unsuspend' : 'Suspend'}
+                icon={u.isSuspended ? CirclePlay : CirclePause}
+                onClick={() =>
+                  setPending({
+                    user: u,
+                    action: u.isSuspended ? 'unsuspend' : 'suspend',
+                  })
+                }
+              />
+            )}
+            {u.isActive !== false && (
+              <ActionIcon
+                label="Reset password"
+                icon={KeyRound}
+                onClick={() =>
+                  setPending({
+                    user: u,
+                    action: 'reset',
+                  })
+                }
+              />
+            )}
+            <ActionIcon
+              label={u.isActive === false ? 'Reactivate' : 'Deactivate'}
+              icon={u.isActive === false ? UserCheck : UserX}
+              onClick={() =>
+                setPending({
+                  user: u,
+                  action: u.isActive === false ? 'reactivate' : 'deactivate',
+                })
+              }
+            />
+          </div>
+        )}
+    </>
+  )
+
   if (isLoading) return <Skeleton className="h-72" />
 
   return (
     <>
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:hidden">
+        {users.map((u) => (
+          <div key={u.id} className="space-y-3 rounded-xl border border-border bg-card p-3.5 shadow-soft">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{u.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+              </div>
+              <StatusBadge status={u.isActive === false ? 'inactive' : u.isSuspended ? 'suspended' : 'active'} />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">{renderRole(u)}</div>
+              {renderActions(u)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden lg:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -140,61 +213,19 @@ function UsersTab() {
                 <p className="text-xs text-muted-foreground">{u.email}</p>
               </TableCell>
               <TableCell className="w-48">
-                {u.role === 'super_admin' ? (
-                  <span className="text-sm font-medium">{ROLE_LABELS.super_admin}</span>
-                ) : (
-                  <Select value={u.role} onValueChange={(value) => changeRole(u.id, value)} options={ROLE_OPTIONS} />
-                )}
+                {renderRole(u)}
               </TableCell>
               <TableCell>
                 <StatusBadge status={u.isActive === false ? 'inactive' : u.isSuspended ? 'suspended' : 'active'} />
               </TableCell>
               <TableCell>
-                {u.id === session.id || u.role === 'super_admin' ? (
-                  <span className="text-xs text-muted-foreground">{u.id === session.id ? 'You' : '—'}</span>
-                ) : (
-                  <div className="flex justify-end gap-1.5">
-                    {u.isActive !== false && (
-                      <ActionIcon
-                        label={u.isSuspended ? 'Unsuspend' : 'Suspend'}
-                        icon={u.isSuspended ? CirclePlay : CirclePause}
-                        onClick={() =>
-                          setPending({
-                            user: u,
-                            action: u.isSuspended ? 'unsuspend' : 'suspend',
-                          })
-                        }
-                      />
-                    )}
-                    {u.isActive !== false && (
-                      <ActionIcon
-                        label="Reset password"
-                        icon={KeyRound}
-                        onClick={() =>
-                          setPending({
-                            user: u,
-                            action: 'reset',
-                          })
-                        }
-                      />
-                    )}
-                    <ActionIcon
-                      label={u.isActive === false ? 'Reactivate' : 'Deactivate'}
-                      icon={u.isActive === false ? UserCheck : UserX}
-                      onClick={() =>
-                        setPending({
-                          user: u,
-                          action: u.isActive === false ? 'reactivate' : 'deactivate',
-                        })
-                      }
-                    />
-                  </div>
-                )}
+                {renderActions(u)}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+      </div>
       <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
         <DialogContent className="max-w-md">
           {pending && (
@@ -275,7 +306,7 @@ const TAB_VALUES = ['users', 'permissions', 'activity']
 export function UserAccessPage() {
   const { refetch } = useUsers()
   // Dashboard shortcuts open a specific tab with ?tab=permissions / ?tab=activity.
-  const [initialTab] = useState(() => {
+  const [tab, setTab] = useState(() => {
     const tab = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab')
     return tab && TAB_VALUES.includes(tab) ? tab : 'users'
   })
@@ -284,8 +315,9 @@ export function UserAccessPage() {
     <div className="space-y-5">
       <PageHeader title="Users & Access Management" description="Manage who can sign in, what they can do, and track important account changes." actions={<InviteUserDialog onCreated={refetch} />} />
 
-      <Tabs defaultValue={initialTab}>
-        <TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        <Select className="-mb-2 lg:hidden" value={tab} onValueChange={setTab} aria-label="Users & access section" options={[{ value: 'users', label: 'Users' }, { value: 'permissions', label: 'Permission Map' }, { value: 'activity', label: 'Activity Log' }]} />
+        <TabsList className="hidden lg:flex">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="permissions">Permission Map</TabsTrigger>
           <TabsTrigger value="activity">Activity Log</TabsTrigger>

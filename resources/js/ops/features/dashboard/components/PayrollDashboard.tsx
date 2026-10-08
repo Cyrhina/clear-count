@@ -39,7 +39,7 @@ export function PayrollDashboard() {
 
   if (isLoading || !data || !overview) {
     return (
-      <div className="dashboard-elevated grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="dashboard-elevated grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-36" />
         ))}
@@ -68,8 +68,9 @@ export function PayrollDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <MetricCard
+          compact
           label="Current Payroll"
           value={current ? current.payrollNumber : '—'}
           hint={current ? `${current.label} · ${STATUS_LABEL[current.status]} · ${current.employees} employees` : NO_RUN_HINT}
@@ -78,6 +79,7 @@ export function PayrollDashboard() {
           footer={{ label: 'View Payroll Runs', to: current ? `/payroll/${current.id}` : '/payroll' }}
         />
         <MetricCard
+          compact
           label="Upcoming Payroll"
           value={overview.metrics.payrollStatusLabel}
           hint={`${overview.metrics.payrollPeriodLabel} · cut-off ${overview.metrics.nextCutoffLabel}`}
@@ -86,6 +88,7 @@ export function PayrollDashboard() {
           footer={{ label: 'Create Payroll Run', to: '/payroll' }}
         />
         <MetricCard
+          compact
           label="Total Payroll Cost"
           value={current ? formatCurrency(totals.payrollCost) : '—'}
           hint={current ? `Gross ${formatCurrency(totals.grossPay)} + employer share ${formatCurrency(totals.employerContributions)}` : NO_RUN_HINT}
@@ -94,6 +97,7 @@ export function PayrollDashboard() {
           footer={current ? { label: 'View Computation', to: `/payroll/${current.id}` } : undefined}
         />
         <MetricCard
+          compact
           label="Net Payroll"
           value={current ? formatCurrency(totals.netPay) : '—'}
           hint={current ? `Pay date ${formatDate(current.payDate)} · deductions ${formatCurrency(totals.totalDeductions)}` : NO_RUN_HINT}

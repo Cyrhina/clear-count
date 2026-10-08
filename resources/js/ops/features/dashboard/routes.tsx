@@ -42,7 +42,7 @@ function DefaultDashboard() {
 
   if (isLoading || !stats) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-28" />
         ))}
@@ -57,16 +57,17 @@ function DefaultDashboard() {
         description="A quick read on payroll status, workforce health, and what needs your attention."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Employee Count" value={String(stats.headcount)} icon={Users} tone="primary" hint={`${stats.activeHeadcount} active`} />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <MetricCard compact label="Employee Count" value={String(stats.headcount)} icon={Users} tone="primary" hint={`${stats.activeHeadcount} active`} />
         <MetricCard
+          compact
           label="Next Payroll Date"
           value={formatDate(stats.nextPayrollDate, { month: 'short', day: 'numeric' })}
           icon={Wallet}
           hint={stats.payrollPeriodLabel}
         />
-        <MetricCard label="Pending Approvals" value={String(stats.pendingApprovals)} icon={ListChecks} hint="Awaiting your action" />
-        <MetricCard label="On Leave Today" value={String(stats.onLeaveToday)} icon={CalendarCheck} hint={`${stats.attendanceRate}% attendance rate`} />
+        <MetricCard compact label="Pending Approvals" value={String(stats.pendingApprovals)} icon={ListChecks} hint="Awaiting your action" />
+        <MetricCard compact label="On Leave Today" value={String(stats.onLeaveToday)} icon={CalendarCheck} hint={`${stats.attendanceRate}% attendance rate`} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

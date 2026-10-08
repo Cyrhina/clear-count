@@ -34,21 +34,21 @@ function SchedulesContent() {
       <PageHeader title="Schedules" description={teamOnly ? "Plan your team's shifts and rest days, and see who is working, resting or on leave." : "View and manage every employee's schedule — shifts, rest days and flexible hours — and choose who supervises each team."} />
       <Tabs value={tab} onValueChange={setTab}>
         {/* Phones: a dropdown instead of a row of tabs. */}
-        <Select className="sm:hidden" value={tab} onValueChange={setTab} aria-label="Schedules section" options={TAB_OPTIONS} />
-        <TabsList className="hidden sm:flex">
+        <Select className="lg:hidden" value={tab} onValueChange={setTab} aria-label="Schedules section" options={TAB_OPTIONS} />
+        <TabsList className="hidden lg:flex">
           {TAB_OPTIONS.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
               {t.label}
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="roster" className="pt-4 sm:pt-6">
+        <TabsContent value="roster" className="pt-4 lg:pt-6">
           <RosterTab />
         </TabsContent>
-        <TabsContent value="teams" className="pt-4 sm:pt-6">
+        <TabsContent value="teams" className="pt-4 lg:pt-6">
           <TeamsTab />
         </TabsContent>
-        <TabsContent value="templates" className="pt-4 sm:pt-6">
+        <TabsContent value="templates" className="pt-4 lg:pt-6">
           <ShiftTemplatesTab />
         </TabsContent>
       </Tabs>

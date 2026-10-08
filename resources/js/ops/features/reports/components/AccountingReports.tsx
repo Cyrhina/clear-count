@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel,ReportFilterBar, ReportScopePicker, ReportViewShell } from '@ops/features/reports/components/shared'
 import { defaultScope, inScope, scopeLabel, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
@@ -132,52 +130,35 @@ export function DebitCreditReport() {
           {periodLines.length === 0 ? (
             <EmptyState title={scope.basis === 'run' ? "This period hasn't been run yet" : 'No payroll runs in this report period'} />
           ) : (
-            <>
-            <ReportCardList count={accounts.length} noun={accounts.length === 1 ? 'account' : 'accounts'}>
-              {accounts.map((a) => (
-                <ReportRecordCard key={a.account} title={a.account}>
-                  <CardStat label="Debit (₱)">{a.debit ? formatCurrency(a.debit) : '—'}</CardStat>
-                  <CardStat label="Credit (₱)">{a.credit ? formatCurrency(a.credit) : '—'}</CardStat>
-                </ReportRecordCard>
-              ))}
-              <Card watermark={null} className="space-y-1.5 bg-muted/50 p-4 text-sm sm:col-span-2">
-                <p className="font-semibold">Total</p>
-                <div className="grid grid-cols-2 gap-x-3">
-                  <CardStat label="Total Debit">
-                    <span className="font-semibold">{formatCurrency(grandTotal.debit)}</span>
-                  </CardStat>
-                  <CardStat label="Total Credit">
-                    <span className="font-semibold">{formatCurrency(grandTotal.credit)}</span>
-                  </CardStat>
-                </div>
-              </Card>
-            </ReportCardList>
-            <ReportTableView>
-            <Table>
+            // A journal reads as columns, so it stays a table on phones too: the debit and credit columns are tinted so
+            // they stand out, the account name wraps, and nothing scrolls sideways.
+            <Table className="table-fixed sm:table-auto">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Account Title</TableHead>
-                  <TableHead className="text-right">Debit (₱)</TableHead>
-                  <TableHead className="text-right">Credit (₱)</TableHead>
+                  <TableHead className="w-[44%] px-3 sm:w-auto sm:px-4">Account Title</TableHead>
+                  <TableHead className="bg-primary/10 px-3 text-right text-primary sm:px-4">Debit (₱)</TableHead>
+                  <TableHead className="bg-accent/10 px-3 text-right text-accent sm:px-4">Credit (₱)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {accounts.map((a) => (
                   <TableRow key={a.account}>
-                    <TableCell className="font-medium">{a.account}</TableCell>
-                    <TableCell className="text-right tabular-nums">{a.debit ? formatCurrency(a.debit) : '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{a.credit ? formatCurrency(a.credit) : '—'}</TableCell>
+                    <TableCell className="px-3 text-[13px] font-medium leading-snug sm:px-4 sm:text-sm">{a.account}</TableCell>
+                    <TableCell className={`bg-primary/5 px-3 text-right text-xs tabular-nums sm:px-4 sm:text-sm ${a.debit ? 'font-semibold' : 'text-muted-foreground'}`}>
+                      {a.debit ? formatCurrency(a.debit) : '—'}
+                    </TableCell>
+                    <TableCell className={`bg-accent/5 px-3 text-right text-xs tabular-nums sm:px-4 sm:text-sm ${a.credit ? 'font-semibold' : 'text-muted-foreground'}`}>
+                      {a.credit ? formatCurrency(a.credit) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell>Total</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(grandTotal.debit)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(grandTotal.credit)}</TableCell>
+                <TableRow className="border-t-2 border-border bg-muted/60 font-semibold">
+                  <TableCell className="px-3 sm:px-4">Total</TableCell>
+                  <TableCell className="bg-primary/10 px-3 text-right text-xs tabular-nums text-primary sm:px-4 sm:text-sm">{formatCurrency(grandTotal.debit)}</TableCell>
+                  <TableCell className="bg-accent/10 px-3 text-right text-xs tabular-nums text-accent sm:px-4 sm:text-sm">{formatCurrency(grandTotal.credit)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
-            </ReportTableView>
-            </>
           )}
         </div>
       )}

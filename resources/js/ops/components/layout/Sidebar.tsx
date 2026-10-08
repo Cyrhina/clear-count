@@ -10,6 +10,7 @@ import type { NavGroup } from '@ops/components/layout/navConfig'
 import { NotificationsBell } from '@ops/components/layout/NotificationsBell'
 import { SidebarPlanWidget } from '@ops/components/layout/SidebarPlanWidget'
 import { PLAN_DETAILS, minimumPlanFor, planHasFeature } from '@ops/lib/plans'
+import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { cn } from '@ops/lib/utils/cn'
 
 export interface SidebarProps {
@@ -25,7 +26,8 @@ function useNavGroups(): NavGroup[] {
   if (user.role === 'employee') return EMPLOYEE_NAV
   if (user.role === 'manager') return MANAGER_NAV
   if (user.role === 'super_admin') return SUPER_ADMIN_NAV
-  return ADMIN_NAV
+  // Drop items the role can't open, and any group left with no items (so no empty section headers).
+  return ADMIN_NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.capability || roleHasCapability(user.role, item.capability)) })).filter((group) => group.items.length > 0)
 }
 
 function NavItemLink({ item, collapsed, onNavigate }: { item: NavGroup['items'][number]; collapsed: boolean; onNavigate?: () => void }) {

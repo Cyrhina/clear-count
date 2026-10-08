@@ -11,6 +11,7 @@ import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { buildSamplePayslips } from '@ops/features/ess/sampleData'
 import type { SamplePayslip } from '@ops/features/ess/sampleData'
@@ -107,6 +108,35 @@ export function EssPayslipsPage() {
       {visible.length === 0 ? (
         <EmptyState title="No payslips match these filters" description="Try another year or clear the search." />
       ) : (
+      <>
+      <EssCardList>
+        {visible.map(({ period, line, otHours }) => (
+          <EssRecordCard
+            key={line.id}
+            className={cn(line.id === highlightId && 'highlight-target')}
+            id={line.id}
+            title={period.label}
+            subtitle={`${period.payrollNumber} · Pay date ${formatDate(period.payDate)}`}
+            stats={[
+              { label: 'Gross Pay', value: formatCurrency(line.grossPay) },
+              { label: 'Net Pay', value: formatCurrency(line.netPay) },
+              { label: 'Statutory', value: formatCurrency(statutoryTotal(line)) },
+              { label: 'Overtime', value: otHours > 0 ? `${otHours} hrs` : '—' },
+            ]}
+            actions={
+              <>
+                <Button size="sm" variant="secondary" icon={<Eye className="size-3.5" />} onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}>
+                  View
+                </Button>
+                <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}>
+                  Download
+                </Button>
+              </>
+            }
+          />
+        ))}
+      </EssCardList>
+      <EssTableView>
       <Table>
         <TableHeader>
           <TableRow>
@@ -155,6 +185,8 @@ export function EssPayslipsPage() {
           ))}
         </TableBody>
       </Table>
+      </EssTableView>
+      </>
       )}
 
       <Dialog open={!!preview} onOpenChange={(open) => !open && setPreview(null)}>

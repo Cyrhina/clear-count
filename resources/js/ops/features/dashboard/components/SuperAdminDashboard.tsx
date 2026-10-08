@@ -92,11 +92,11 @@ export function SuperAdminDashboard() {
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="min-w-0 space-y-6">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <MetricCard label="Total Users" value={String(data.totalUsers)} icon={Users} tone="primary" hint={`${data.activeUsers} active`} />
-            <MetricCard label="Total Companies" value={String(data.totalCompanies)} icon={Building2} tone="success" hint="Across the platform" />
-            <MetricCard label="Active Roles" value={String(data.roleCount)} icon={ShieldCheck} tone="accent" hint="Roles in use" />
-            <MetricCard label="Total Employees" value={String(data.totalEmployees)} icon={UsersRound} tone="warning" hint={`${data.activeEmployees} active`} />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <MetricCard compact label="Total Users" value={String(data.totalUsers)} icon={Users} tone="primary" hint={`${data.activeUsers} active`} />
+            <MetricCard compact label="Total Companies" value={String(data.totalCompanies)} icon={Building2} tone="success" hint="Across the platform" />
+            <MetricCard compact label="Active Roles" value={String(data.roleCount)} icon={ShieldCheck} tone="accent" hint="Roles in use" />
+            <MetricCard compact label="Total Employees" value={String(data.totalEmployees)} icon={UsersRound} tone="warning" hint={`${data.activeEmployees} active`} />
           </div>
 
           <Card className="p-5">

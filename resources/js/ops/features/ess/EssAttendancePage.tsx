@@ -3,6 +3,7 @@ import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { buildSampleAttendance } from '@ops/features/ess/sampleData'
 import type { SampleAttendanceStatus } from '@ops/features/ess/sampleData'
@@ -73,6 +74,26 @@ export function EssAttendancePage() {
     <div className="space-y-5">
       <PageHeader title="My Attendance" description="Your recorded time-in/time-out and attendance status." />
 
+      <EssCardList>
+        {(realRecords.length > 0
+          ? realRecords.map((r) => ({ id: r.id, date: r.date, timeIn: r.timeIn, timeOut: r.timeOut, hours: hoursWorkedFor(r), badge: <RealStatusBadge status={r.status} /> }))
+          : sampleRows.map((r) => ({ id: r.id, date: r.date, timeIn: r.timeIn, timeOut: r.timeOut, hours: r.hoursWorked, badge: <SampleStatusBadge status={r.status} /> }))
+        ).map((r) => (
+          <EssRecordCard
+            key={r.id}
+            id={r.id}
+            className={cn(r.id === highlightId && 'highlight-target')}
+            title={formatDate(r.date)}
+            badge={r.badge}
+            stats={[
+              { label: 'Time In', value: r.timeIn ?? '—' },
+              { label: 'Time Out', value: r.timeOut ?? '—' },
+              { label: 'Hours Worked', value: r.hours },
+            ]}
+          />
+        ))}
+      </EssCardList>
+      <EssTableView>
       <Table>
         <TableHeader>
           <TableRow>
@@ -109,6 +130,7 @@ export function EssAttendancePage() {
               ))}
         </TableBody>
       </Table>
+      </EssTableView>
     </div>
   )
 }
