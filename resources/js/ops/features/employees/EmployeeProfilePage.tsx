@@ -1,5 +1,5 @@
-import { ArrowLeft, Archive, FileText, Pencil, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, Archive, FileText, KeyRound, Pencil, ShieldCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Avatar } from '@ops/components/ui/Avatar'
@@ -36,8 +36,9 @@ import { useSession } from '@ops/hooks/useSession'
 import { categoryLabel, findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, estimatedEquivalentFor, formatBaseRate, rateFieldLabel } from '@ops/lib/payroll/payRate'
 import { setEmployeePayrollGroup } from '@ops/lib/services/payrollSettingsService'
+import { getUsers, resetUserPassword } from '@ops/lib/services/userService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { EmploymentStatus } from '@ops/types/domain'
+import type { EmploymentStatus, SessionUser } from '@ops/types/domain'
 
 const FREQUENCY_LABEL: Record<string, string> = {
   weekly: 'Weekly',
@@ -97,6 +98,14 @@ function EmployeeProfileContent() {
   const canSeparate = usePermission('employees.separate')
   const canViewPay = usePermission('employees.pay.view')
   const canViewAttendance = usePermission('attendance.view')
+  const canManageUsers = usePermission('users.manage')
+  // The sign-in account linked to this employee, if they have one — only then is there a password to reset.
+  const [account, setAccount] = useState<SessionUser | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
+  useEffect(() => {
+    if (!canManageUsers || !id) return
+    getUsers(user).then((users) => setAccount(users.find((u) => u.employeeId === id) ?? null))
+  }, [canManageUsers, id, user])
   const [tab, setTab] = useState('personal')
   // Same sections as the tab row, in the same order — shown as a dropdown on phones.
   const tabOptions = [
@@ -150,6 +159,13 @@ function EmployeeProfileContent() {
     refetch()
   }
 
+  async function applyPasswordReset() {
+    if (!account) return
+    await resetUserPassword(user, account.id)
+    notify({ title: 'Password reset sent', description: `A reset link was sent to ${account.email}.`, tone: 'success' })
+    setResetOpen(false)
+  }
+
   async function applySeparation() {
     if (!employee || !separationDate) return
     await updateEmployeeStatus(user, employee.id, 'archived', { reason: separationReason, date: separationDate, notes: separationNotes.trim() || undefined })
@@ -185,6 +201,11 @@ function EmployeeProfileContent() {
               </Badge>
             ) : (
               <StatusBadge status={employee.employment.status} />
+            )}
+            {account && account.isActive !== false && (
+              <Button size="sm" variant="secondary" icon={<KeyRound className="size-4" />} onClick={() => setResetOpen(true)}>
+                Reset password
+              </Button>
             )}
             {canSeparate && employee.employment.status === 'active' && (
               <Button size="sm" variant="secondary" onClick={() => setStatusDialog('inactive')}>
@@ -512,6 +533,23 @@ function EmployeeProfileContent() {
             </Button>
             <Button variant={statusDialog === 'archived' ? 'destructive' : 'primary'} onClick={applyStatusChange}>
               Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Reset password?</DialogTitle>
+          <DialogDescription>
+            {fullName} ({account?.email}) — a reset link is sent to their email, and they must choose a new password at next sign-in.
+          </DialogDescription>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setResetOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={applyPasswordReset}>
+              Send reset link
             </Button>
           </div>
         </DialogContent>

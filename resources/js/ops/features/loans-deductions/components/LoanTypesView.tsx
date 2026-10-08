@@ -3,6 +3,8 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
+import { SectionIntro } from '@ops/features/loans-deductions/components/SectionIntro'
+import { Card } from '@ops/components/ui/Card'
 import { LoanTypeDialog } from '@ops/features/loans-deductions/components/LoanTypeDialog'
 import { useDeductionConfigs, useLoanTypes } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { useLoans } from '@ops/features/loans-deductions/hooks/useLoans'
@@ -46,16 +48,95 @@ export function LoanTypesView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">Loan Types</p>
-          <p className="max-w-3xl text-xs text-muted-foreground">
-            The types you can choose when adding an employee loan. Each is deducted per its entry in Company &amp; Payroll Settings → Deductions (how the monthly amount is split across a month’s pay runs); types you add are collected like a Company Loan.
-          </p>
-        </div>
-        {canManage && <LoanTypeDialog existing={types} onSaved={refetch} />}
+      <SectionIntro
+        title="Loan Types"
+        description="The types you can choose when adding an employee loan. Each is deducted per its entry in Company & Payroll Settings → Deductions (how the monthly amount is split across a month’s pay runs); types you add are collected like a Company Loan."
+        action={canManage && <LoanTypeDialog existing={types} onSaved={refetch} />}
+      />
+
+      {/* Phones and tablets: one card per loan type (two columns on tablet). */}
+      <div className="grid items-start gap-3 sm:grid-cols-2 lg:hidden">
+        {types.map((type) => {
+          const ofType = loans.filter((l) => l.type === type.key)
+          const active = ofType.filter((l) => l.status === 'active')
+          const settingName = loanConfigNameFor(type.key)
+          const config = configs.find((c) => c.name === settingName)
+          return (
+            <Card key={type.id} watermark={null} className={type.isActive ? 'space-y-3 p-4' : 'space-y-3 p-4 opacity-60'}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="text-sm font-semibold">{type.label}</p>
+                    {!type.builtIn && <Badge tone="neutral">Custom</Badge>}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{type.description}</p>
+                </div>
+                <Badge tone={type.isActive ? 'success' : 'neutral'}>{type.isActive ? 'Active' : 'Inactive'}</Badge>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-muted/40 p-3 text-xs">
+                <div>
+                  <dt className="text-muted-foreground">Provider</dt>
+                  <dd className="mt-1">
+                    <Badge tone={PROVIDER_TONE[type.provider]}>{type.provider}</Badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Typical terms</dt>
+                  <dd className="mt-1 font-medium">{type.typicalTerm}</dd>
+                  <dd className="text-muted-foreground">{type.typicalAmount}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Active loans</dt>
+                  <dd className="mt-1 font-medium">{active.length}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Outstanding balance</dt>
+                  <dd className="mt-1 font-medium">{active.length > 0 ? formatCurrency(active.reduce((sum, l) => sum + l.balance, 0)) : '—'}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-muted-foreground">Collected in payroll</dt>
+                  <dd className="mt-1 font-medium">{allocationLabel(config)}</dd>
+                  <dd className="text-muted-foreground">Setting: {settingName}</dd>
+                </div>
+              </dl>
+
+              {canManage && (
+                <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
+                  <LoanTypeDialog
+                    type={type}
+                    existing={types}
+                    onSaved={refetch}
+                    trigger={
+                      <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} iconOnlyOnMobile>
+                        Edit
+                      </Button>
+                    }
+                  />
+                  <Button size="sm" variant="ghost" icon={<Power className="size-3.5" />} iconOnlyOnMobile onClick={() => toggle(type)}>
+                    {type.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  {!type.builtIn && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Trash2 className="size-3.5" />}
+                      iconOnlyOnMobile
+                      disabled={ofType.length > 0}
+                      title={ofType.length > 0 ? 'Loans use this type — deactivate it instead.' : undefined}
+                      onClick={() => remove(type)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Card>
+          )
+        })}
       </div>
 
+      <div className="hidden lg:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -136,6 +217,7 @@ export function LoanTypesView() {
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }

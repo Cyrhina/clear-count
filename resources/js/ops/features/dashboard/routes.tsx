@@ -9,6 +9,7 @@ import { AdminDashboard } from '@ops/features/dashboard/components/AdminDashboar
 import { HrDashboard } from '@ops/features/dashboard/components/HrDashboard'
 import { ManagerDashboard } from '@ops/features/dashboard/components/ManagerDashboard'
 import { PayrollDashboard } from '@ops/features/dashboard/components/PayrollDashboard'
+import { SuperAdminDashboard } from '@ops/features/dashboard/components/SuperAdminDashboard'
 import { useDashboardData } from '@ops/features/dashboard/hooks/useDashboardData'
 import { useSession } from '@ops/hooks/useSession'
 import { formatDate } from '@ops/lib/utils/format'
@@ -16,8 +17,10 @@ import { formatDate } from '@ops/lib/utils/format'
 export function DashboardPage() {
   const { user } = useSession()
 
-  // Company, HR, Payroll Admin and Manager get their own operational dashboards; every other role
-  // (Super Admin) keeps the existing dashboard below untouched.
+  // Each admin role and the Manager get their own dashboard; the platform-wide Super Admin overview is separate.
+  if (user.role === 'super_admin') {
+    return <SuperAdminDashboard />
+  }
   if (user.role === 'company_admin') {
     return <AdminDashboard />
   }

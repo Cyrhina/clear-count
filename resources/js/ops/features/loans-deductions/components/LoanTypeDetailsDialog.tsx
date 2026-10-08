@@ -71,16 +71,16 @@ export function LoanTypeDetailsDialog({
           Typical term {type.typicalTerm} · typical amount {type.typicalAmount}
         </p>
 
-        <div className="mt-5 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
             <p className="text-sm font-semibold">Loans ({loans.length})</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-56">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:w-56">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employees…" className="pl-9" />
               </div>
               {canManage && (
-                <>
+                <div className="grid grid-cols-2 gap-2 sm:contents">
                   <LoanTypeDialog
                     type={type}
                     existing={allTypes}
@@ -92,11 +92,11 @@ export function LoanTypeDetailsDialog({
                     }
                   />
                   {type.isActive && (
-                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} onClick={onAdd}>
+                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} className="max-sm:col-span-2" onClick={onAdd}>
                       Add Employees
                     </Button>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -104,7 +104,7 @@ export function LoanTypeDetailsDialog({
           {list.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{loans.length === 0 ? 'No employees have this loan yet.' : 'No employees match.'}</p>
           ) : (
-            <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((loan) => renderLoanCard(loan))}</div>
+            <div className="grid max-h-[55vh] grid-cols-1 gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((loan) => renderLoanCard(loan))}</div>
           )}
         </div>
       </DialogContent>

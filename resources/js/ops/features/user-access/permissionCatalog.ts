@@ -32,11 +32,11 @@ export const PERMISSION_GROUP_DESCRIPTION: Record<PermissionGroup, string> = {
 
 export const CAPABILITY_INFO: Record<Capability, { label: string; description: string; group: PermissionGroup }> = {
   'dashboard.view': { label: 'View dashboard', description: 'See the company dashboard, metrics, and quick actions.', group: 'Overview' },
-  'ess.view': { label: 'Employee self-service', description: 'Access the personal portal: own payslips, leave, attendance, and profile.', group: 'Overview' },
+  'ess.view': { label: 'Employee self-service', description: 'Access the personal portal: own profile, schedule, attendance, work and output, overtime, leave, and payslips.', group: 'Overview' },
 
   'employees.view': { label: 'View employees', description: 'Browse the employee directory and profiles.', group: 'Workforce' },
   'employees.pay.view': { label: 'View pay & sensitive details', description: 'See pay rates, compensation history, benefits, government IDs, bank details, and documents on employee profiles. Without it, only personal and employment details are shown.', group: 'Workforce' },
-  'employees.edit': { label: 'Edit employees', description: 'Add, update, archive, and restore employee records.', group: 'Workforce' },
+  'employees.edit': { label: 'Edit employees', description: 'Add employees and update their personal and employment details.', group: 'Workforce' },
   'employees.government.edit': { label: 'Edit government IDs', description: 'Update SSS, PhilHealth, Pag-IBIG and TIN numbers on employee records.', group: 'Workforce' },
   'employees.bank.edit': { label: 'Edit bank details', description: 'Update the bank account an employee is paid into.', group: 'Workforce' },
   'employees.separate': { label: 'Separate & deactivate employees', description: 'Record resignations and terminations, and deactivate or reactivate employees (this affects final pay).', group: 'Workforce' },
@@ -47,8 +47,8 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'attendance.adjust': { label: 'Adjust attendance', description: 'Correct time logs and file attendance adjustments.', group: 'Time & Attendance' },
   'attendance.import': { label: 'Import biometrics', description: 'Upload punch logs from a biometrics device and apply them to attendance.', group: 'Time & Attendance' },
   'attendance.approve': { label: 'Approve attendance adjustments', description: 'Approve or reject attendance correction requests.', group: 'Time & Attendance' },
-  'schedules.view': { label: 'View schedules', description: 'See the shift roster, teams and supervisors, and shift templates.', group: 'Time & Attendance' },
-  'schedules.manage': { label: 'Manage schedules', description: 'Assign shifts and rest days, copy the roster, and assign team supervisors.', group: 'Time & Attendance' },
+  'schedules.view': { label: 'View schedules', description: 'See the shift roster, teams and supervisors, and shift templates. The Schedules module is part of the Professional Plus plan and above.', group: 'Time & Attendance' },
+  'schedules.manage': { label: 'Manage schedules', description: 'Assign shifts and rest days, copy the roster, and assign team supervisors. The Schedules module is part of the Professional Plus plan and above.', group: 'Time & Attendance' },
   'overtime.view': { label: 'View overtime', description: 'See overtime and night differential records.', group: 'Time & Attendance' },
   'overtime.log': { label: 'Log overtime', description: 'File overtime and night differential entries.', group: 'Time & Attendance' },
   'overtime.approve': { label: 'Approve overtime', description: 'Approve or reject overtime before it is paid in payroll.', group: 'Time & Attendance' },
@@ -87,7 +87,7 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
   'notifications.view': { label: 'View notifications', description: 'Receive in-app notifications.', group: 'Communication' },
   'notifications.send': { label: 'Send notifications', description: 'Send announcements and notifications to employees.', group: 'Communication' },
 
-  'users.manage': { label: 'Manage users & access', description: 'Invite users, change roles, and deactivate accounts.', group: 'Settings & Administration' },
+  'users.manage': { label: 'Manage users & access', description: 'Invite users, change roles, suspend or deactivate accounts, and reset passwords.', group: 'Settings & Administration' },
   'settings.company.edit': { label: 'Edit company settings', description: 'Update company profile, holidays, and branding.', group: 'Settings & Administration' },
   'settings.payroll.edit': { label: 'Edit payroll settings', description: 'Configure payroll groups, earnings, deductions, rules, and rates.', group: 'Settings & Administration' },
   'integrations.manage': { label: 'Manage integrations', description: 'Configure API keys, webhooks, and connected apps.', group: 'Settings & Administration' },
@@ -97,12 +97,12 @@ export const CAPABILITY_INFO: Record<Capability, { label: string; description: s
 }
 
 export const ROLE_DESCRIPTION: Record<Role, string> = {
-  super_admin: 'Full platform access across all companies, including platform administration.',
-  company_admin: 'Full access to everything in this company — people, payroll, settings, and billing.',
-  hr_admin: 'Manages people and time — employee records, attendance, schedules, leave, overtime, approvals, benefits, loans and deductions. Views payroll results and 13th month; no payroll processing, bank details, or separations.',
-  payroll_admin: 'Runs payroll from approved records — payroll runs and inputs, statutory and tax, payslips, loans and deductions, bonuses, 13th month, and payroll reports.',
-  manager: 'Manages their team — views attendance and requests adjustments, plans the shift schedule of the team, approves work and output, views overtime and leave requests (and files overtime for the team), views leave credits, and sees team reports. No biometrics import, adjustment approvals, pay details, or payroll.',
-  employee: 'Self-service only — own payslips, leave, attendance, and notifications.',
+  super_admin: 'Platform administration across all companies, plus every Company Admin capability.',
+  company_admin: 'Full access to everything in this company — people, time, schedules, payroll, users, settings, and billing.',
+  hr_admin: 'Manages people and time — employee records (with pay details and government IDs), attendance and biometrics, schedules, leave and leave types, overtime, work-log approvals, benefits, loans and deductions, bonuses, branches, and announcements. Views payroll runs, payslips and 13th month; no payroll processing, pay-rate or bank-detail edits, or separations.',
+  payroll_admin: 'Runs payroll from approved records — payroll runs and inputs, statutory contributions and tax, payslips, loans and deductions, bonuses, 13th month, payroll settings, and payroll reports. No employee records, attendance, or leave.',
+  manager: 'Manages their team (their branch only) — views the team roster without pay details, views attendance and files adjustments, plans the team shift schedule, approves work and output, views leave requests and overtime (and files overtime for the team), and sees team reports. No biometrics import, attendance or leave approvals, pay details, or payroll.',
+  employee: 'Self-service only — own profile, schedule, attendance, work and output, overtime, leave, payslips, and notifications.',
 }
 
 export interface GroupedCapabilities {

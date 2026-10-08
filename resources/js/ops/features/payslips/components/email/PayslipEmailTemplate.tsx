@@ -188,9 +188,9 @@ export function PayslipEmailTemplate({ email }: { email: PayslipEmailContent }) 
 
       {/* Footer */}
       <div className="border-t px-6 py-5 sm:px-9" style={{ background: C.card, borderColor: C.border }}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col items-center gap-3">
           <Brand small />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             {SOCIAL_LINKS.map((s) => (
               <a
                 key={s.label}
@@ -207,7 +207,7 @@ export function PayslipEmailTemplate({ email }: { email: PayslipEmailContent }) 
             ))}
           </div>
         </div>
-        <p className="mt-4 text-[11px]" style={{ color: C.muted }}>
+        <p className="mt-4 text-center text-[11px]" style={{ color: C.muted }}>
           This is an automated message. Please do not reply to this email.
         </p>
       </div>

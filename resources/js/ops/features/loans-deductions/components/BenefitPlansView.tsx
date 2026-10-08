@@ -78,7 +78,7 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
   /** The per-employee Transfer button, added to that employee's card actions. */
   const transferAction = (row: R) =>
     canTransfer && row.benefit?.planId && row.status !== 'cancelled' ? (
-      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} onClick={() => setTransfer({ planId: row.benefit!.planId!, employeeIds: [row.employee.id] })}>
+      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} iconOnlyOnMobile onClick={() => setTransfer({ planId: row.benefit!.planId!, employeeIds: [row.employee.id] })}>
         Transfer
       </Button>
     ) : undefined
@@ -92,13 +92,13 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
       {shown.length === 0 && unlinked.length === 0 ? (
         <EmptyState title={`No ${plural} found`} description="Try clearing the search or status filter." />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="space-y-4 md:block md:columns-2 md:gap-4 md:space-y-0 2xl:columns-3">
           {shown.map((plan) => {
             const all = rowsOf(plan.id, rows)
             const live = liveRows(all)
             const list = rowsOf(plan.id, filteredRows).sort((a, b) => fullName(a.employee).localeCompare(fullName(b.employee)))
             return (
-              <Card key={plan.id} className="flex flex-col">
+              <Card key={plan.id} className="flex flex-col md:mb-4 md:break-inside-avoid">
                 <Card.Header className="items-start">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
                 </Card.Header>
 
                 <Card.Body className="flex flex-1 flex-col gap-3 pt-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
                     <span className="text-muted-foreground">
                       {plan.amountType === 'custom' ? (
                         <>
@@ -129,7 +129,7 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-hidden rounded-xl border border-border">
+                  <div className={`overflow-hidden rounded-xl border border-border${list.length > 0 ? " flex-1" : ""}`}>
                     {list.length === 0 ? (
                       <p className="px-3 py-6 text-center text-xs text-muted-foreground">{all.length === 0 ? 'No employees enrolled yet.' : 'No enrolled employees match the filters.'}</p>
                     ) : (
@@ -152,17 +152,17 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
                     )}
                   </div>
 
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} onClick={() => setViewingId(plan.id)}>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setViewingId(plan.id)}>
                       View Details
                     </Button>
                     {canTransfer && live.length > 0 && (
-                      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} onClick={() => setTransfer({ planId: plan.id, employeeIds: [] })}>
+                      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setTransfer({ planId: plan.id, employeeIds: [] })}>
                         Transfer
                       </Button>
                     )}
                     {canManage && plan.status === 'active' && (
-                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} onClick={() => setAddingId(plan.id)}>
+                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setAddingId(plan.id)}>
                         Add Employees
                       </Button>
                     )}
@@ -177,7 +177,7 @@ export function BenefitPlansView<R extends EnrollmentRow>({ category, plans, row
       {unlinked.length > 0 && (
         <div className="mt-6 space-y-3">
           <p className="text-sm font-medium">Not linked to a plan ({unlinked.length})</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlinked.map((r) => renderRecordCard(r))}</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlinked.map((r) => renderRecordCard(r))}</div>
         </div>
       )}
 
@@ -268,16 +268,16 @@ function PlanDetailsDialog<R extends EnrollmentRow>({
         </div>
         {plan.notes && <p className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">{plan.notes}</p>}
 
-        <div className="mt-5 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
             <p className="text-sm font-semibold">Enrolled employees ({rows.length})</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-56">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:w-56">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employees…" className="pl-9" />
               </div>
               {canManage && (
-                <>
+                <div className="grid grid-cols-2 gap-2 sm:contents">
                   <BenefitPlanDialog
                     category={plan.category}
                     plan={plan}
@@ -298,11 +298,11 @@ function PlanDetailsDialog<R extends EnrollmentRow>({
                     </Button>
                   )}
                   {plan.status === 'active' && (
-                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} onClick={onAdd}>
+                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} className="max-sm:col-span-2" onClick={onAdd}>
                       Add Employees
                     </Button>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -310,7 +310,7 @@ function PlanDetailsDialog<R extends EnrollmentRow>({
           {list.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{rows.length === 0 ? 'No employees enrolled in this plan yet.' : 'No employees match.'}</p>
           ) : (
-            <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((r) => renderRecordCard(r))}</div>
+            <div className="grid max-h-[55vh] grid-cols-1 gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((r) => renderRecordCard(r))}</div>
           )}
         </div>
       </DialogContent>

@@ -11,7 +11,7 @@ class DemoSeeder extends Seeder
 {
     public function run(): void
     {
-        $company = Company::create(['name' => 'Frontline Business Solutions', 'plan_tier' => 'professional']);
+        $company = Company::create(['name' => 'Frontline Business Solutions', 'plan_tier' => 'professional_plus']);
         $head = Branch::withoutGlobalScopes()->create([
             'company_id' => $company->id, 'name' => 'Head Office', 'code' => 'FBS-HO', 'is_head_office' => true,
         ]);

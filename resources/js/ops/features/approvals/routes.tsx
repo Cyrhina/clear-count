@@ -5,6 +5,7 @@ import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
+import { Card } from '@ops/components/ui/Card'
 import { Checkbox } from '@ops/components/ui/Checkbox'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FilterField, FiltersPopover } from '@ops/components/ui/FiltersPopover'
@@ -117,7 +118,8 @@ export function CompensationApprovalsPage() {
   const hasHighlight = highlight !== null && !isLoading
   useEffect(() => {
     if (!hasHighlight) return
-    tableRef.current?.querySelector('[data-highlighted]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const shown = [...(tableRef.current?.querySelectorAll('[data-highlighted]') ?? [])].find((el) => (el as HTMLElement).offsetParent !== null)
+    shown?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [hasHighlight])
 
   function clearPeriodContext() {
@@ -199,14 +201,15 @@ export function CompensationApprovalsPage() {
       />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           <MetricCard
+            compact
             label="Pending Approvals"
             value={`${pending.length} ${pending.length === 1 ? 'Entry' : 'Entries'}`}
             hint={`${pendingHourly.length} Hourly | ${pendingOutput.length} Output`}
@@ -214,6 +217,7 @@ export function CompensationApprovalsPage() {
             tone="warning"
           />
           <MetricCard
+            compact
             label="Pending Hours"
             value={`${pendingHourly.reduce((sum, a) => sum + a.quantity, 0)} hrs`}
             hint="Hourly timecard entries"
@@ -221,6 +225,7 @@ export function CompensationApprovalsPage() {
             tone="primary"
           />
           <MetricCard
+            compact
             label="Pending Output"
             value={`${pendingOutput.reduce((sum, a) => sum + a.quantity, 0)} units`}
             hint="Piece-rate / task submissions"
@@ -228,6 +233,7 @@ export function CompensationApprovalsPage() {
             tone="accent"
           />
           <MetricCard
+            compact
             label="Pending Amount"
             value={formatCurrency(pending.reduce((sum, a) => sum + a.amount, 0))}
             hint="Payable once approved"
@@ -251,7 +257,7 @@ export function CompensationApprovalsPage() {
           </FilterField>
         </FiltersPopover>
         {periodContext && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 py-1 pl-3 pr-1.5 text-xs font-medium text-foreground">
+          <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-1 pl-3 pr-1.5 text-xs font-medium text-foreground">
             <CalendarRange className="size-3.5 text-primary" />
             Payroll period: {periodContext.period.payrollNumber} · {periodContext.period.label}
             <span className="font-normal text-muted-foreground">
@@ -267,18 +273,26 @@ export function CompensationApprovalsPage() {
             </button>
           </span>
         )}
-        <p className="ml-auto self-center text-sm text-muted-foreground">
-          {filtered.length} of {approvals.length} entries
-        </p>
+        <div className="ml-auto flex items-center gap-4 self-center">
+          {selectablePending.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground lg:hidden">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={(c) => toggleAllVisible(c === true)} aria-label="Select all pending entries" />
+              Select all pending ({selectablePending.length})
+            </label>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {filtered.length} of {approvals.length} entries
+          </p>
+        </div>
       </div>
 
       {selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
           <p className="text-sm font-medium">
             {selected.length} selected
             <span className="ml-2 font-normal text-muted-foreground">{formatCurrency(selected.reduce((sum, a) => sum + a.amount, 0))} total</span>
           </p>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:ml-auto sm:flex sm:items-center">
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
               Clear
             </Button>
@@ -305,6 +319,79 @@ export function CompensationApprovalsPage() {
         )
       ) : (
         <div ref={tableRef}>
+        {/* Phones and tablets: one card per entry, two columns on tablet. */}
+        <div className="grid items-start gap-2.5 sm:grid-cols-2 lg:hidden">
+          {filtered.map((a) => {
+            const employee = employeeById.get(a.employeeId)
+            const name = employee ? `${employee.personal.firstName} ${employee.personal.lastName}` : 'Unknown'
+            const isHighlighted = highlight?.ids.has(a.id) ?? false
+            return (
+              <Card
+                key={a.id}
+                watermark={null}
+                data-highlighted={isHighlighted && highlight?.phase === 'on' ? '' : undefined}
+                className={cn(
+                  'space-y-3 p-4',
+                  isHighlighted && 'transition-[background-color,box-shadow] duration-1000 ease-out',
+                  isHighlighted && highlight?.phase === 'on' && 'bg-warning/15 shadow-[inset_3px_0_0_var(--color-warning)]',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {a.status === 'pending' && (
+                    <span className="pt-2.5">
+                      <Checkbox checked={selectedIds.has(a.id)} onCheckedChange={(c) => toggle(a.id, c === true)} aria-label={`Select ${name}`} />
+                    </span>
+                  )}
+                  <Avatar name={name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold leading-tight">{name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {employee?.employeeNumber} · {employee?.employment.department}
+                    </p>
+                  </div>
+                  <StatusBadge status={a.status} />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge tone={a.type === 'hourly' ? 'brand' : 'neutral'}>{a.type === 'hourly' ? 'Hourly' : 'Output'}</Badge>
+                    <span className="min-w-0 truncate text-sm">{a.description}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(a.workDate)} · submitted {formatDate(a.submittedAt.slice(0, 10))}
+                  </p>
+                </div>
+
+                <div className="flex items-end justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <div className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium tabular-nums text-foreground">{formatQuantity(a)}</p>
+                    <p className="tabular-nums">
+                      {formatCurrency(a.rate)} / {unitNoun(a)}
+                    </p>
+                  </div>
+                  <p className="font-display text-lg font-semibold tabular-nums">{formatCurrency(a.amount)}</p>
+                </div>
+
+                {a.status === 'pending' ? (
+                  <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
+                    <Button size="sm" variant="secondary" onClick={() => decide([a.id], 'rejected')}>
+                      Reject
+                    </Button>
+                    <Button size="sm" onClick={() => decide([a.id], 'approved')}>
+                      Approve
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
+                    <p>by {a.decidedBy}</p>
+                    {a.payrollPeriodId && <p className="font-medium text-success">Paid in {periodLabelById.get(a.payrollPeriodId) ?? 'payroll run'}</p>}
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+        <div className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -397,6 +484,7 @@ export function CompensationApprovalsPage() {
             })}
           </TableBody>
         </Table>
+        </div>
         </div>
       )}
     </div>

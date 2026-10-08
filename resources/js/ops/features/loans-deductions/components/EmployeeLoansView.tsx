@@ -124,6 +124,7 @@ export function EmployeeLoansView() {
     return (
       <RecordCard
         key={loan.id}
+        compactActions
         title={employee ? fullName(employee) : 'Unknown'}
         subtitle={typeLabel}
         status={loan.status}
@@ -141,7 +142,7 @@ export function EmployeeLoansView() {
             amountLocked={fixedType}
             onCreated={refetch}
             trigger={
-              <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || loan.status === 'completed' || loan.status === 'cancelled'} title={loan.status === 'completed' || loan.status === 'cancelled' ? `This loan is ${loan.status}.` : undefined}>
+              <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} iconOnlyOnMobile disabled={!canManage || loan.status === 'completed' || loan.status === 'cancelled'} title={loan.status === 'completed' || loan.status === 'cancelled' ? `This loan is ${loan.status}.` : undefined}>
                 Edit
               </Button>
             }
@@ -186,14 +187,14 @@ export function EmployeeLoansView() {
       ) : shownTypes.length === 0 && unlisted.length === 0 ? (
         <EmptyState title="No loan types found" description={filtersActive ? 'Try clearing the search or status filter.' : 'Add a loan type under Loan Types, then add employees to it from its card.'} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="space-y-4 md:block md:columns-2 md:gap-4 md:space-y-0 2xl:columns-3">
           {shownTypes.map((type) => {
             const all = loansOf(type)
             const live = all.filter(isLive)
             const outstanding = live.filter((l) => l.status === 'active').reduce((sum, l) => sum + l.balance, 0)
             const list = all.filter(matches).sort((a, b) => Number(!isLive(a)) - Number(!isLive(b)) || fullName(employeeById.get(a.employeeId)).localeCompare(fullName(employeeById.get(b.employeeId))))
             return (
-              <Card key={type.id} className="flex flex-col">
+              <Card key={type.id} className="flex flex-col md:mb-4 md:break-inside-avoid">
                 <Card.Header className="items-start">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -208,7 +209,7 @@ export function EmployeeLoansView() {
                 </Card.Header>
 
                 <Card.Body className="flex flex-1 flex-col gap-3 pt-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
                     <span className="text-muted-foreground">
                       {type.amountType === 'fixed' ? (
                         <>
@@ -223,7 +224,7 @@ export function EmployeeLoansView() {
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-hidden rounded-xl border border-border">
+                  <div className={`overflow-hidden rounded-xl border border-border${list.length > 0 ? " flex-1" : ""}`}>
                     {list.length === 0 ? (
                       <p className="px-3 py-6 text-center text-xs text-muted-foreground">{all.length === 0 ? 'No employees have this loan yet.' : 'No loans match the filters.'}</p>
                     ) : (
@@ -247,12 +248,12 @@ export function EmployeeLoansView() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} onClick={() => setViewingKey(type.key)}>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setViewingKey(type.key)}>
                       View Details
                     </Button>
                     {canManage && type.isActive && (
-                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} onClick={() => setAddingKey(type.key)}>
+                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setAddingKey(type.key)}>
                         Add Employees
                       </Button>
                     )}
@@ -267,7 +268,7 @@ export function EmployeeLoansView() {
       {unlisted.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Loans with a type that no longer exists ({unlisted.length})</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlisted.map((loan) => renderLoanCard(loan))}</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlisted.map((loan) => renderLoanCard(loan))}</div>
         </div>
       )}
 

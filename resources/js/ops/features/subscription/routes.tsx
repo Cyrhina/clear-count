@@ -130,7 +130,7 @@ export function SubscriptionPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         {PLAN_ORDER.map((tier, idx) => {
           const details = PLAN_DETAILS[tier]
           const isCurrent = tier === usage.planTier

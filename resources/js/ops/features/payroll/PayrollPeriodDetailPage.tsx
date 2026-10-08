@@ -223,6 +223,89 @@ export function PayrollPeriodDetailPage() {
     { gross: 0, deductions: 0, net: 0 },
   )
 
+  const activePeriod = period
+
+  function rowData(line: (typeof lines)[number]) {
+    const period = activePeriod
+    const employee = employeeById.get(line.employeeId)
+    const employeeGroup = employee ? findEmployeePayrollGroup(groups, employee.id) : undefined
+    const compensationType = compensationTypes.find((c) => c.id === employeeGroup?.compensationTypeId)
+    const branch = branches.find((b) => b.id === employee?.branchId)
+    const basicPayResult = employee ? basicPayFor(employee, period, attendanceRecords, compensationApprovals, line.periodsPerMonth ?? 2) : undefined
+    const employeeApprovedBonuses = employee
+      ? bonuses.filter(
+          (b) =>
+            b.status === 'approved' &&
+            includedInRegularPayroll(b) &&
+            b.periodLabel.trim().toLowerCase() === period.label.trim().toLowerCase() &&
+            bonusAppliesToEmployee(b, employee),
+        )
+      : []
+    const employeeThirteenthMonthLine = employee ? thirteenthMonthLines.find((l) => l.employeeId === employee.id) : undefined
+    const email = emailFor(line.employeeId)
+    return { employee, employeeGroup, compensationType, branch, basicPayResult, employeeApprovedBonuses, employeeThirteenthMonthLine, email }
+  }
+
+  /** View Computation, View Payslip and the email preview/send buttons — the same set in the table row and the phone/tablet card. */
+  function renderActions(line: (typeof lines)[number], d: ReturnType<typeof rowData>) {
+    const period = activePeriod
+    const { employee, employeeGroup, compensationType, branch, employeeApprovedBonuses, employeeThirteenthMonthLine, email } = d
+    return (
+      <>
+                        {employee && (
+                          <EmployeeComputationDrawer
+                            employee={employee}
+                            line={line}
+                            period={period}
+                            payrollGroup={employeeGroup}
+                            compensationType={compensationType}
+                            branch={branch}
+                            deductionConfigs={deductionConfigs}
+                            loans={loans.filter((l) => l.employeeId === employee.id)}
+                            overtimeRecords={overtimeRecords}
+                            attendanceRecords={attendanceRecords}
+                            compensationApprovals={compensationApprovals}
+                            statutoryConfig={statutoryConfig}
+                            approvedBonuses={employeeApprovedBonuses}
+                            thirteenthMonthLine={employeeThirteenthMonthLine}
+                            trigger={
+                              <Button size="sm" variant="ghost" icon={<Calculator className="size-3.5" />}>
+                                View Computation
+                              </Button>
+                            }
+                          />
+                        )}
+                        {period.status === 'finalized' && (
+                          <Button size="sm" variant="secondary" onClick={() => navigate(`/payslips/${line.id}`)}>
+                            View Payslip
+                          </Button>
+                        )}
+                        {employee && email && (
+                          <PayslipEmailActions
+                            compact
+                            email={email}
+                            status={emails.statusFor(employee.id)}
+                            record={emails.records[employee.id]}
+                            canSend={canEmail}
+                            disabledReason={emailDisabledReason}
+                            onSend={() => sendEmails([employee.id])}
+                            renderPayslip={() => (
+                              <PayslipCard
+                                company={company}
+                                employee={employee}
+                                period={period}
+                                payrollGroup={employeeGroup}
+                                line={line}
+                                deductionConfigs={deductionConfigs}
+                                loans={loans.filter((l) => l.employeeId === employee.id)}
+                              />
+                            )}
+                          />
+                        )}
+      </>
+    )
+  }
+
   return (
     <div className="space-y-5">
       <Link to="/payroll" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
@@ -234,7 +317,7 @@ export function PayrollPeriodDetailPage() {
         title={period.label}
         description={`${period.payrollNumber} · ${formatDate(period.startDate)} – ${formatDate(period.endDate)} · Pay date ${formatDate(period.payDate)}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {payrollGroup ? <Badge tone="brand">{payrollGroup.name}</Badge> : <Badge tone="neutral">All Employees</Badge>}
             <StatusBadge status={period.status} />
             {period.status === 'draft' && canRun && (
@@ -295,7 +378,7 @@ export function PayrollPeriodDetailPage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <Card className="p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Gross Pay</p>
               <p className="mt-1 font-display text-xl font-semibold">{formatCurrency(totals.gross)}</p>
@@ -304,7 +387,7 @@ export function PayrollPeriodDetailPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Deductions</p>
               <p className="mt-1 font-display text-xl font-semibold">{formatCurrency(totals.deductions)}</p>
             </Card>
-            <Card className="p-4">
+            <Card className="col-span-2 p-4 sm:col-span-1">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Net Pay</p>
               <p className="mt-1 font-display text-xl font-semibold">{formatCurrency(totals.net)}</p>
             </Card>
@@ -344,6 +427,66 @@ export function PayrollPeriodDetailPage() {
             onSent={selection.clear}
           />
 
+          {/* Phones and tablets: one card per employee (two columns on tablet). */}
+          <div className="space-y-3 lg:hidden">
+            {filteredLines.length > 0 && (
+              <label className="flex items-center gap-2.5 px-1 text-sm text-muted-foreground">
+                <SelectAllCheckbox state={selection.headerState} onChange={selection.toggleAll} />
+                Select all ({filteredLines.length})
+              </label>
+            )}
+            {filteredLines.length === 0 && <p className="rounded-xl border border-border px-4 py-10 text-center text-sm text-muted-foreground">No employees match these filters.</p>}
+            <div className="grid grid-cols-1 items-start gap-2.5 sm:grid-cols-2">
+              {filteredLines.map((line) => {
+                const d = rowData(line)
+                const { employee, employeeGroup, basicPayResult } = d
+                return (
+                  <Card key={line.id} watermark={null} className="space-y-3 p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="pt-0.5">
+                        <RowCheckbox checked={selection.selected.has(line.employeeId)} onChange={(c) => selection.toggle(line.employeeId, c)} label={employeeName(line.employeeId)} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold leading-tight">{employeeName(line.employeeId)}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {employee?.employment.position}
+                          {employeeGroup ? ` · ${employeeGroup.name}` : ' · Unassigned'}
+                        </p>
+                      </div>
+                      <EmailStatusBadge status={emails.statusFor(line.employeeId)} record={emails.records[line.employeeId]} />
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {employee ? formatBaseRateShort(employee.compensation.payType, employee.compensation.basicPay, employee.compensation.outputUnit) : '—'} · {employee ? PAY_RATE_TYPE_LABEL[employee.compensation.payType] : '—'} · {basicPayResult?.basis ? `${basicPayResult.basis.quantity} ${basicPayResult.basis.unit}` : '1 payroll period'}
+                    </p>
+
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-lg bg-muted/40 p-3 text-xs">
+                      <div>
+                        <dt className="text-muted-foreground">Basic pay</dt>
+                        <dd className="mt-0.5 font-medium tabular-nums">{formatCurrency(basicPayResult?.amount ?? line.earnings[0]?.amount ?? 0)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Gross pay</dt>
+                        <dd className="mt-0.5 font-medium tabular-nums">{formatCurrency(line.grossPay)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Deductions</dt>
+                        <dd className="mt-0.5 font-medium tabular-nums">{formatCurrency(line.totalDeductions)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Net pay</dt>
+                        <dd className="mt-0.5 font-display text-sm font-semibold tabular-nums">{formatCurrency(line.netPay)}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-3">{renderActions(line, d)}</div>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="hidden lg:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -374,22 +517,8 @@ export function PayrollPeriodDetailPage() {
                 </TableRow>
               )}
               {filteredLines.map((line) => {
-                const employee = employeeById.get(line.employeeId)
-                const employeeGroup = employee ? findEmployeePayrollGroup(groups, employee.id) : undefined
-                const compensationType = compensationTypes.find((c) => c.id === employeeGroup?.compensationTypeId)
-                const branch = branches.find((b) => b.id === employee?.branchId)
-                const basicPayResult = employee ? basicPayFor(employee, period, attendanceRecords, compensationApprovals, line.periodsPerMonth ?? 2) : undefined
-                const employeeApprovedBonuses = employee
-                  ? bonuses.filter(
-                      (b) =>
-                        b.status === 'approved' &&
-                        includedInRegularPayroll(b) &&
-                        b.periodLabel.trim().toLowerCase() === period.label.trim().toLowerCase() &&
-                        bonusAppliesToEmployee(b, employee),
-                    )
-                  : []
-                const employeeThirteenthMonthLine = employee ? thirteenthMonthLines.find((l) => l.employeeId === employee.id) : undefined
-                const email = emailFor(line.employeeId)
+                const d = rowData(line)
+                const { employee, employeeGroup, basicPayResult } = d
                 return (
                   <TableRow key={line.id}>
                     <TableCell>
@@ -421,56 +550,7 @@ export function PayrollPeriodDetailPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {employee && (
-                          <EmployeeComputationDrawer
-                            employee={employee}
-                            line={line}
-                            period={period}
-                            payrollGroup={employeeGroup}
-                            compensationType={compensationType}
-                            branch={branch}
-                            deductionConfigs={deductionConfigs}
-                            loans={loans.filter((l) => l.employeeId === employee.id)}
-                            overtimeRecords={overtimeRecords}
-                            attendanceRecords={attendanceRecords}
-                            compensationApprovals={compensationApprovals}
-                            statutoryConfig={statutoryConfig}
-                            approvedBonuses={employeeApprovedBonuses}
-                            thirteenthMonthLine={employeeThirteenthMonthLine}
-                            trigger={
-                              <Button size="sm" variant="ghost" icon={<Calculator className="size-3.5" />}>
-                                View Computation
-                              </Button>
-                            }
-                          />
-                        )}
-                        {period.status === 'finalized' && (
-                          <Button size="sm" variant="secondary" onClick={() => navigate(`/payslips/${line.id}`)}>
-                            View Payslip
-                          </Button>
-                        )}
-                        {employee && email && (
-                          <PayslipEmailActions
-                            compact
-                            email={email}
-                            status={emails.statusFor(employee.id)}
-                            record={emails.records[employee.id]}
-                            canSend={canEmail}
-                            disabledReason={emailDisabledReason}
-                            onSend={() => sendEmails([employee.id])}
-                            renderPayslip={() => (
-                              <PayslipCard
-                                company={company}
-                                employee={employee}
-                                period={period}
-                                payrollGroup={employeeGroup}
-                                line={line}
-                                deductionConfigs={deductionConfigs}
-                                loans={loans.filter((l) => l.employeeId === employee.id)}
-                              />
-                            )}
-                          />
-                        )}
+                        {renderActions(line, d)}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -478,6 +558,7 @@ export function PayrollPeriodDetailPage() {
               })}
             </TableBody>
           </Table>
+          </div>
 
           <BulkActionBar count={selection.selected.size} noun={selection.selected.size === 1 ? 'employee selected' : 'employees selected'} onClear={selection.clear}>
             <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={exportSelected}>

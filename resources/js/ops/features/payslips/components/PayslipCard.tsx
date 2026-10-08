@@ -265,9 +265,9 @@ export function PayslipCard({
   ]
 
   return (
-    <Card className="mx-auto max-w-4xl overflow-hidden p-0 print:m-0 print:max-w-none print:[zoom:0.8] print:rounded-none print:border-0 print:shadow-none">
+    <Card className="@container mx-auto max-w-4xl overflow-hidden p-0 print:m-0 print:max-w-none print:[zoom:0.8] print:rounded-none print:border-0 print:shadow-none">
       {/* 3-column header: company / employee / pay period */}
-      <div className="grid grid-cols-1 gap-6 border-b border-border p-6 sm:grid-cols-3 print:border-black/30">
+      <div className="grid grid-cols-1 gap-6 border-b border-border p-6 @xl:grid-cols-3 print:border-black/30">
         <div className="flex min-w-0 items-start gap-3">
           <Avatar name={company?.name ?? 'Company'} src={company?.logoUrl} size="lg" className="shrink-0 rounded-xl" />
           <div className="min-w-0">
@@ -306,7 +306,7 @@ export function PayslipCard({
       </div>
 
       {/* Earnings & deductions cards */}
-      <div className="grid gap-4 p-6 sm:grid-cols-2">
+      <div className="grid gap-4 p-6 @xl:grid-cols-2">
         <BreakdownCard tone="success" icon={TrendingUp} title="Earnings" total={line.grossPay} rows={earningsRows} />
         <BreakdownCard tone="danger" icon={TrendingDown} title="Deductions" total={line.totalDeductions} rows={deductionRows} />
       </div>
@@ -334,7 +334,7 @@ export function PayslipCard({
       </div>
 
       {/* Footer: additional info + appreciation note */}
-      <div className="grid gap-4 p-6 sm:grid-cols-2">
+      <div className="grid gap-4 p-6 @xl:grid-cols-2">
         <div className="rounded-2xl border border-border p-4">
           <SectionBadge icon={Info} label="Additional Information" tone="muted" />
           <div className="space-y-1">

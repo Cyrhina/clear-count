@@ -10,6 +10,7 @@ export type PlanFeature =
   | 'loans_deductions'
   | 'ess'
   | 'multi_branch'
+  | 'schedules'
   | 'flexible_compensation'
   | 'advanced_reports'
   | 'approvals'
@@ -39,7 +40,7 @@ export interface PlanDetails {
   highlights: string[]
 }
 
-export const PLAN_ORDER: PlanTier[] = ['basic', 'standard', 'professional', 'enterprise']
+export const PLAN_ORDER: PlanTier[] = ['basic', 'standard', 'professional', 'professional_plus', 'enterprise']
 
 const STANDARD_FEATURES: PlanFeature[] = [
   'attendance',
@@ -51,7 +52,9 @@ const STANDARD_FEATURES: PlanFeature[] = [
   'ess',
 ]
 
-const PROFESSIONAL_FEATURES: PlanFeature[] = [...STANDARD_FEATURES, 'flexible_compensation', 'advanced_reports', 'approvals']
+const PROFESSIONAL_FEATURES: PlanFeature[] = [...STANDARD_FEATURES, 'flexible_compensation', 'advanced_reports', 'approvals', 'multi_branch']
+
+const PROFESSIONAL_PLUS_FEATURES: PlanFeature[] = [...PROFESSIONAL_FEATURES, 'schedules']
 
 export const PLAN_DETAILS: Record<PlanTier, PlanDetails> = {
   basic: {
@@ -84,7 +87,18 @@ export const PLAN_DETAILS: Record<PlanTier, PlanDetails> = {
     userLimit: 15,
     features: PROFESSIONAL_FEATURES,
     includesTier: 'standard',
-    highlights: ['Flexible compensation', 'Commission / Output-Based pay', 'Multiple payroll groups', 'Advanced reports', 'Approvals'],
+    highlights: ['Flexible compensation', 'Commission / Output-Based pay', 'Multiple payroll groups', 'Multi-branch', 'Advanced reports', 'Approvals'],
+  },
+  professional_plus: {
+    label: 'Professional Plus',
+    targetAudience: 'Businesses that also plan shifts and rosters',
+    monthlyPricePhp: 6500,
+    additionalEmployeePricePhp: 60,
+    employeeLimit: 150,
+    userLimit: 15,
+    features: PROFESSIONAL_PLUS_FEATURES,
+    includesTier: 'professional',
+    highlights: ['Schedules module'],
   },
   enterprise: {
     label: 'Enterprise',
@@ -94,9 +108,9 @@ export const PLAN_DETAILS: Record<PlanTier, PlanDetails> = {
     additionalEmployeePricePhp: null,
     employeeLimit: null,
     userLimit: null,
-    features: [...PROFESSIONAL_FEATURES, 'multi_branch', 'api_integrations', 'customization', 'dedicated_support'],
-    includesTier: 'professional',
-    highlights: ['Multi-branch', 'Integrations', 'Customization', 'API', 'Dedicated support'],
+    features: [...PROFESSIONAL_PLUS_FEATURES, 'api_integrations', 'customization', 'dedicated_support'],
+    includesTier: 'professional_plus',
+    highlights: ['Integrations', 'Customization', 'API', 'Dedicated support'],
   },
 }
 
@@ -109,6 +123,7 @@ export const FEATURE_LABELS: Record<PlanFeature, string> = {
   loans_deductions: 'Benefits, Loans & Deductions',
   ess: 'Employee Self-Service',
   multi_branch: 'Multi-Branch Management',
+  schedules: 'Schedules',
   flexible_compensation: 'Flexible Compensation & Multiple Payroll Groups',
   advanced_reports: 'Advanced Payroll Reports',
   approvals: 'Approvals',

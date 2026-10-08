@@ -17,6 +17,7 @@ import { AddEmployeesToDeductionPlanDialog } from '@ops/features/loans-deduction
 import { DeductionDialog } from '@ops/features/loans-deductions/components/DeductionDialog'
 import { DeductionPlanDialog } from '@ops/features/loans-deductions/components/DeductionPlanDialog'
 import { RecordCard } from '@ops/features/loans-deductions/components/RecordCard'
+import { SectionIntro } from '@ops/features/loans-deductions/components/SectionIntro'
 import { RecordDetailsDialog } from '@ops/features/loans-deductions/components/RecordDetailsDialog'
 import { TransferDeductionPlanDialog } from '@ops/features/loans-deductions/components/TransferDeductionPlanDialog'
 import { useDeductionPlans, useEmployeeDeductions } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
@@ -91,6 +92,7 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
     return (
       <RecordCard
         key={d.id}
+        compactActions
         title={fullName(employee)}
         subtitle={`${d.name} · Recurring`}
         status={d.status}
@@ -113,13 +115,13 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
               amountLocked={plan?.amountType !== 'custom' && !!plan}
               onSaved={refetch}
               trigger={
-                <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || d.status === 'completed' || d.status === 'cancelled'} title={d.status === 'cancelled' ? `This record is ${d.status}.` : undefined}>
+                <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} iconOnlyOnMobile disabled={!canManage || d.status === 'completed' || d.status === 'cancelled'} title={d.status === 'cancelled' ? `This record is ${d.status}.` : undefined}>
                   Edit
                 </Button>
               }
             />
             {canTransfer && d.planId && isLive(d) && (
-              <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} onClick={() => setTransfer({ planId: d.planId!, employeeIds: [d.employeeId] })}>
+              <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} iconOnlyOnMobile onClick={() => setTransfer({ planId: d.planId!, employeeIds: [d.employeeId] })}>
                 Transfer
               </Button>
             )}
@@ -138,17 +140,15 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">Recurring Deductions</p>
-          <p className="max-w-3xl text-xs text-muted-foreground">Monthly amounts (cooperative savings, union dues, meal plans…), organised by deduction. Add employees to a deduction from its card; the amount is split across the month’s pay runs until it ends or is cancelled.</p>
-        </div>
-        {canManage && <DeductionPlanDialog onSaved={refreshAll} />}
-      </div>
+      <SectionIntro
+        title="Recurring Deductions"
+        description="Monthly amounts (cooperative savings, union dues, meal plans…), organised by deduction. Add employees to a deduction from its card; the amount is split across the month’s pay runs until it ends or is cancelled."
+        action={canManage && <DeductionPlanDialog onSaved={refreshAll} />}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StatTile label="Recurring / month" value={formatCurrency(active.reduce((s, d) => s + d.amount, 0))} />
-        <StatTile label="Employees affected" value={String(new Set(active.map((d) => d.employeeId)).size)} />
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+        <StatTile className="p-3 sm:p-4" label="Recurring / month" value={formatCurrency(active.reduce((s, d) => s + d.amount, 0))} />
+        <StatTile className="p-3 sm:p-4" label="Employees affected" value={String(new Set(active.map((d) => d.employeeId)).size)} />
       </div>
 
       <SearchFilterBar
@@ -177,13 +177,13 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
       ) : shown.length === 0 && unlinked.length === 0 ? (
         <EmptyState title="No recurring deductions found" description={plans.length === 0 ? (canManage ? 'Add a deduction, then add employees to it from its card.' : 'No recurring deductions have been set up.') : 'Try clearing the search or status filter.'} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="space-y-4 md:block md:columns-2 md:gap-4 md:space-y-0 2xl:columns-3">
           {shown.map((plan) => {
             const all = rowsOf(plan.id)
             const live = all.filter(isLive)
             const list = all.filter(matches).sort((a, b) => Number(!isLive(a)) - Number(!isLive(b)) || fullName(employeeById.get(a.employeeId)).localeCompare(fullName(employeeById.get(b.employeeId))))
             return (
-              <Card key={plan.id} className="flex flex-col">
+              <Card key={plan.id} className="flex flex-col md:mb-4 md:break-inside-avoid">
                 <Card.Header className="items-start">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
                   {plan.status === 'archived' && <Badge tone="neutral">Archived</Badge>}
                 </Card.Header>
                 <Card.Body className="flex flex-1 flex-col gap-3 pt-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
                     <span className="text-muted-foreground">
                       {plan.amountType === 'custom' ? (
                         <>
@@ -212,7 +212,7 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-hidden rounded-xl border border-border">
+                  <div className={`overflow-hidden rounded-xl border border-border${list.length > 0 ? " flex-1" : ""}`}>
                     {list.length === 0 ? (
                       <p className="px-3 py-6 text-center text-xs text-muted-foreground">{all.length === 0 ? 'No employees enrolled yet.' : 'No enrolled employees match the filters.'}</p>
                     ) : (
@@ -236,17 +236,17 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
                     )}
                   </div>
 
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} onClick={() => setViewingId(plan.id)}>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setViewingId(plan.id)}>
                       View Details
                     </Button>
                     {canTransfer && live.length > 0 && (
-                      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} onClick={() => setTransfer({ planId: plan.id, employeeIds: [] })}>
+                      <Button size="sm" variant="ghost" icon={<ArrowRightLeft className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setTransfer({ planId: plan.id, employeeIds: [] })}>
                         Transfer
                       </Button>
                     )}
                     {canManage && plan.status === 'active' && (
-                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} onClick={() => setAddingId(plan.id)}>
+                      <Button size="sm" variant="secondary" icon={<UserPlus className="size-3.5" />} className="flex-1 whitespace-nowrap sm:flex-none" onClick={() => setAddingId(plan.id)}>
                         Add Employees
                       </Button>
                     )}
@@ -261,7 +261,7 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
       {unlinked.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Not linked to a plan ({unlinked.length})</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlinked.map((d) => renderDeductionCard(d))}</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{unlinked.map((d) => renderDeductionCard(d))}</div>
         </div>
       )}
 
@@ -369,16 +369,16 @@ function PlanDetailsDialog({
           <Stat label={plan.amountType === 'custom' ? 'Default / month' : 'Per employee / month'} value={formatCurrency(plan.amount)} />
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
             <p className="text-sm font-semibold">Enrolled employees ({rows.length})</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-56">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:w-56">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employees…" className="pl-9" />
               </div>
               {canManage && (
-                <>
+                <div className="grid grid-cols-2 gap-2 sm:contents">
                   <DeductionPlanDialog
                     plan={plan}
                     enrolledCount={live.length}
@@ -398,11 +398,11 @@ function PlanDetailsDialog({
                     </Button>
                   )}
                   {plan.status === 'active' && (
-                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} onClick={onAdd}>
+                    <Button type="button" size="sm" icon={<UserPlus className="size-3.5" />} className="max-sm:col-span-2" onClick={onAdd}>
                       Add Employees
                     </Button>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -410,7 +410,7 @@ function PlanDetailsDialog({
           {list.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{rows.length === 0 ? 'No employees are enrolled yet.' : 'No employees match.'}</p>
           ) : (
-            <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((d) => renderCard(d))}</div>
+            <div className="grid max-h-[55vh] grid-cols-1 gap-4 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">{list.map((d) => renderCard(d))}</div>
           )}
         </div>
       </DialogContent>

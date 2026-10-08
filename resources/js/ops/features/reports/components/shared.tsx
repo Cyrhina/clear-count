@@ -452,10 +452,10 @@ const TILE_ICONS: Array<[RegExp, LucideIcon]> = [
   [/gross|net|pay|compensation/i, Wallet],
 ]
 
-export function StatTile({ label, value, icon }: { label: string; value: string; icon?: LucideIcon }) {
+export function StatTile({ label, value, icon, className }: { label: string; value: string; icon?: LucideIcon; className?: string }) {
   const Icon = icon ?? TILE_ICONS.find(([pattern]) => pattern.test(label))?.[1] ?? FileText
   return (
-    <div className="stat-tile relative isolate overflow-hidden rounded-xl border border-border bg-card p-4 shadow-soft">
+    <div className={cn('stat-tile relative isolate overflow-hidden rounded-xl border border-border bg-card p-4 shadow-soft', className)}>
       <Icon aria-hidden="true" className="pointer-events-none absolute -right-3 -top-3 -z-10 size-20 text-primary/10" />
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>

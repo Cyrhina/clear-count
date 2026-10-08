@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { PlanGate } from '@ops/components/ui/PlanGate'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { useSession } from '@ops/hooks/useSession'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlainCards } from '@ops/components/ui/PlainCards'
@@ -15,6 +17,15 @@ const TAB_OPTIONS = [
 ]
 
 export function SchedulesPage() {
+  const { tier } = useActivePlanTier()
+  return (
+    <PlanGate feature="schedules" planTier={tier}>
+      <SchedulesContent />
+    </PlanGate>
+  )
+}
+
+function SchedulesContent() {
   const { user } = useSession()
   const [tab, setTab] = useState('roster')
   const teamOnly = Boolean(user.branchId)

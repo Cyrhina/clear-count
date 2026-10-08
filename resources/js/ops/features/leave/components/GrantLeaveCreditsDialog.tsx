@@ -50,12 +50,14 @@ export function GrantLeaveCreditsDialog({ employees, leaveTypes, onGranted }: { 
         <DialogTitle>Grant leave credits</DialogTitle>
         <DialogDescription>Add days to, or reset, one leave type for the employees you pick.</DialogDescription>
 
-        <div className="mt-5 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <FormField label="Leave type" className="col-span-3 sm:col-span-1">
+        <div className="mt-6 space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">Credit details</h3>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+              <FormField label="Leave type" className="col-span-2 sm:col-span-1">
               <Select value={typeId} onValueChange={setLeaveTypeId} aria-label="Leave type" options={leaveTypes.map((t) => ({ value: t.id, label: t.name }))} />
             </FormField>
-            <FormField label="Action" className="col-span-3 sm:col-span-1">
+              <FormField label="Action" className="col-span-1">
               <Select
                 value={mode}
                 onValueChange={(v) => setMode(v as 'add' | 'set')}
@@ -66,14 +68,19 @@ export function GrantLeaveCreditsDialog({ employees, leaveTypes, onGranted }: { 
                 ]}
               />
             </FormField>
-            <FormField label="Days" className="col-span-3 sm:col-span-1">
-              <Input type="number" min="0" step="0.5" value={days} onChange={(e) => setDays(e.target.value)} />
-            </FormField>
-          </div>
-          <EmployeePickerPanel employees={active} value={selected} onChange={setSelected} maxHeightClass="max-h-56" />
+              <FormField label="Days" className="col-span-1">
+                <Input type="number" min="0" step="0.5" value={days} onChange={(e) => setDays(e.target.value)} />
+              </FormField>
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold">Select employees</h3>
+            <EmployeePickerPanel employees={active} value={selected} onChange={setSelected} maxHeightClass="max-h-56 sm:max-h-64" />
+          </section>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>

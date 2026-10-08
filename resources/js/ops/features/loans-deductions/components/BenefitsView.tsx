@@ -11,6 +11,7 @@ import { BenefitDialog } from '@ops/features/loans-deductions/components/Benefit
 import { BenefitPlanDialog } from '@ops/features/loans-deductions/components/BenefitPlanDialog'
 import { BenefitPlansView } from '@ops/features/loans-deductions/components/BenefitPlansView'
 import { RecordCard } from '@ops/features/loans-deductions/components/RecordCard'
+import { SectionIntro } from '@ops/features/loans-deductions/components/SectionIntro'
 import { RecordDetailsDialog } from '@ops/features/loans-deductions/components/RecordDetailsDialog'
 import { useBenefitPlans, useEmployeeBenefits } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { BENEFIT_CATEGORY_META, fullName } from '@ops/features/loans-deductions/loanUtils'
@@ -124,6 +125,7 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
     return (
     <RecordCard
       key={row.key}
+      compactActions
       title={fullName(row.employee)}
       subtitle={[row.name, row.provider].filter(Boolean).join(' · ')}
       status={row.benefit ? row.status : 'active'}
@@ -143,13 +145,13 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
             amountLocked={isAllowance && plans.find((p) => p.id === row.benefit?.planId)?.amountType !== 'custom'}
             onSaved={refetch}
             trigger={
-              <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage || row.status === 'cancelled'} title={row.status === 'cancelled' ? 'This record is cancelled.' : undefined}>
+              <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} iconOnlyOnMobile disabled={!canManage || row.status === 'cancelled'} title={row.status === 'cancelled' ? 'This record is cancelled.' : undefined}>
                 Edit
               </Button>
             }
           />
         ) : (
-          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} disabled={!canManage} title="Set on the employee profile" onClick={() => navigate(`/employees/${row.employee.id}`)}>
+          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} iconOnlyOnMobile disabled={!canManage} title="Set on the employee profile" onClick={() => navigate(`/employees/${row.employee.id}`)}>
             Edit
           </Button>
         )}
@@ -170,18 +172,12 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">{meta.title}</p>
-          <p className="max-w-3xl text-xs text-muted-foreground">{DESCRIPTION[category]}</p>
-        </div>
-        {canManage && <BenefitPlanDialog category={category} onSaved={refreshAll} />}
-      </div>
+      <SectionIntro title={meta.title} description={DESCRIPTION[category]} action={canManage && <BenefitPlanDialog category={category} onSaved={refreshAll} />} />
 
-      <div className={isAllowance ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4 sm:grid-cols-3'}>
-        <StatTile label="Employees covered" value={String(enrolled)} />
-        <StatTile label={isAllowance ? 'Paid monthly' : 'Company cost / month'} value={formatCurrency(employerCost)} />
-        {!isAllowance && <StatTile label="Employee contributions / month" value={formatCurrency(employeeContributions)} />}
+      <div className={isAllowance ? 'grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4' : 'grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4'}>
+        <StatTile className="p-3 sm:p-4" label="Employees covered" value={String(enrolled)} />
+        <StatTile className="p-3 sm:p-4" label={isAllowance ? 'Paid monthly' : 'Company cost / month'} value={formatCurrency(employerCost)} />
+        {!isAllowance && <StatTile className="col-span-2 p-3 sm:col-span-1 sm:p-4" label="Employee contributions / month" value={formatCurrency(employeeContributions)} />}
       </div>
 
       <SearchFilterBar

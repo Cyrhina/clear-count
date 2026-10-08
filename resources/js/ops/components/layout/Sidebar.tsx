@@ -32,6 +32,7 @@ function NavItemLink({ item, collapsed, onNavigate }: { item: NavGroup['items'][
   const { user } = useSession()
   const hasCapability = usePermission(item.capability ?? 'dashboard.view')
   const { tier } = useActivePlanTier()
+  const canManagePlan = usePermission('subscription.manage')
   if (item.capability && !hasCapability) return null
 
   // Company Admin gets a bolder "pill" active state (per its dashboard redesign); other
@@ -41,6 +42,7 @@ function NavItemLink({ item, collapsed, onNavigate }: { item: NavGroup['items'][
   // Module isn't included in the active plan tier (real, or a Demo Portal preview tier) — render
   // it locked instead of hiding it, with a direct link to the Subscription page to upgrade.
   if (item.feature && !planHasFeature(tier, item.feature)) {
+    if (!canManagePlan) return null
     const requiredPlan = minimumPlanFor(item.feature)
     return (
       <Link

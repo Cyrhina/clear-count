@@ -1,3 +1,5 @@
+import { PlanGate } from '@ops/components/ui/PlanGate'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
@@ -18,6 +20,15 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** The signed-in employee's own roster — shifts, rest days and approved leave — by week, month or year. */
 export function EssSchedulePage() {
+  const { tier } = useActivePlanTier()
+  return (
+    <PlanGate feature="schedules" planTier={tier}>
+      <EssScheduleContent />
+    </PlanGate>
+  )
+}
+
+function EssScheduleContent() {
   const { employee, isLoading: loadingEmployee } = useSelfEmployee()
   const [view, setView] = useState<RosterView>('week')
   const [anchor, setAnchor] = useState(todayKey())

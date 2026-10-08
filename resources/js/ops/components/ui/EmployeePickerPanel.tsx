@@ -52,8 +52,8 @@ export function EmployeePickerPanel({
   const selectAllShown = () => onChange([...new Set([...value, ...pickable.map((e) => e.id)])])
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Branch">
           <Select
             value={branchId}
@@ -71,7 +71,7 @@ export function EmployeePickerPanel({
       </div>
 
       <div>
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <p className="text-xs font-semibold">Employees ({selected.size} selected)</p>
           <div className="flex gap-3 text-xs">
             <button type="button" className="text-primary hover:underline disabled:opacity-50" disabled={pickable.length === 0 || allShownPicked} onClick={selectAllShown}>
@@ -83,15 +83,17 @@ export function EmployeePickerPanel({
           </div>
         </div>
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee…" aria-label="Search employees" />
-        <div className={cn('mt-2 overflow-auto rounded-lg border border-border', maxHeightClass)}>
+        <div className={cn('mt-3 divide-y divide-border/50 overflow-auto rounded-lg border border-border', maxHeightClass)}>
           {visible.map((e) => {
             const disabled = isDisabled?.(e) ?? false
             return (
-              <label key={e.id} className={cn('flex items-center gap-2 px-3 py-1.5 text-sm', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50')}>
+              <label key={e.id} className={cn('flex items-center gap-3 px-3 py-2.5 text-sm sm:py-2', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50')}>
                 <Checkbox checked={selected.has(e.id)} disabled={disabled} onCheckedChange={(v) => toggle(e.id, v === true)} />
-                <span className="font-medium">{fullName(e)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {e.employeeNumber} · {e.employment.department}
+                <span className="min-w-0 flex-1 sm:flex-none">
+                  <span className="block truncate font-medium sm:inline">{fullName(e)}</span>
+                  <span className="block truncate text-xs text-muted-foreground sm:ml-2 sm:inline">
+                    {e.employeeNumber} · {e.employment.department}
+                  </span>
                 </span>
                 {disabled && <span className="ml-auto text-xs text-warning">{typeof disabledLabel === 'function' ? disabledLabel(e) : disabledLabel}</span>}
               </label>

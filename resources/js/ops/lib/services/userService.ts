@@ -53,7 +53,22 @@ export async function updateUserRole(session: SessionUser, userId: string, role:
 
 export async function setUserActive(session: SessionUser, userId: string, isActive: boolean): Promise<void> {
   const user = db.users.find((u) => u.id === userId && u.companyId === session.companyId)
-  if (!user) return
+  if (!user || user.id === session.id || user.role === 'super_admin') return
   user.isActive = isActive
   logActivity(session, `${isActive ? 'Reactivated' : 'Deactivated'} ${user.name}`, isActive ? 'Reactivated' : 'Deactivated')
+}
+
+export async function setUserSuspended(session: SessionUser, userId: string, isSuspended: boolean): Promise<void> {
+  const user = db.users.find((u) => u.id === userId && u.companyId === session.companyId)
+  if (!user || user.id === session.id || user.role === 'super_admin') return
+  user.isSuspended = isSuspended
+  logActivity(session, `${isSuspended ? 'Suspended' : 'Lifted suspension of'} ${user.name}`, isSuspended ? 'Suspended' : 'Unsuspended')
+}
+
+/** Mock: records the reset; a real backend would email the user a one-time link. */
+export async function resetUserPassword(session: SessionUser, userId: string): Promise<void> {
+  const user = db.users.find((u) => u.id === userId && u.companyId === session.companyId)
+  if (!user || user.role === 'super_admin') return
+  user.passwordResetAt = new Date().toISOString()
+  logActivity(session, `Reset password for ${user.name}`, 'Password reset', `A reset link was sent to ${user.email}.`)
 }

@@ -9,7 +9,7 @@ export function useSession() {
   const logout = useSessionStore((s) => s.logout)
   return {
     user: currentUser,
-    availableUsers: availableUsers.filter((u) => u.isActive !== false),
+    availableUsers: availableUsers.filter((u) => u.isActive !== false && !u.isSuspended),
     setCurrentUserId,
     isAuthenticated,
     login,

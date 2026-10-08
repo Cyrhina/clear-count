@@ -5,7 +5,7 @@ export const companies: Company[] = [
     id: 'co_frontline',
     name: 'Frontline Business Solutions',
     tradeName: 'FBS Pay',
-    planTier: 'professional',
+    planTier: 'professional_plus',
     billingInterval: 'monthly',
     nextRenewalDate: '2026-10-15',
     timezone: 'Asia/Manila',

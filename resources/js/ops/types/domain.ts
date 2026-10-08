@@ -6,7 +6,7 @@ export type Role =
   | 'manager'
   | 'employee'
 
-export type PlanTier = 'basic' | 'standard' | 'professional' | 'enterprise'
+export type PlanTier = 'basic' | 'standard' | 'professional' | 'professional_plus' | 'enterprise'
 
 export type CompanyType = 'corporation' | 'partnership' | 'sole_proprietorship' | 'other'
 
@@ -97,6 +97,10 @@ export interface SessionUser {
   email: string
   avatarUrl?: string
   isActive?: boolean
+  /** Temporarily blocked from signing in; unlike deactivation it is meant to be lifted. */
+  isSuspended?: boolean
+  /** ISO time an admin last reset this user's password; they must choose a new one at next sign-in. */
+  passwordResetAt?: string
 }
 
 export interface ActivityLogEntry {

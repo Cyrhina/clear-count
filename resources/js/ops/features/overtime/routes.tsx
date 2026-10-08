@@ -73,9 +73,9 @@ function daysAgo(n: number): Date {
 function MetricCard({ label, value, hint, icon }: { label: string; value: string; hint: string; icon: LucideIcon }) {
   return (
     // Same corner placement as the dashboard KPI cards (MetricCard).
-    <Card watermark={icon} watermarkClassName="-right-3 -top-3 size-20" className="overflow-hidden p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-2 font-display text-2xl font-semibold tracking-tight">{value}</p>
+    <Card watermark={icon} watermarkClassName="-right-3 -top-3 size-20" className="overflow-hidden p-4 sm:p-5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</p>
+      <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </Card>
   )
@@ -184,9 +184,10 @@ export function OvertimePage() {
         title="Overtime & Night Differential"
         description="Manage, track, and approve employee overtime and night shift differential requests."
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" icon={<Download className="size-4" />} onClick={handleExport}>
-              Export Summary
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+            <Button variant="secondary" icon={<Download className="size-4" />} onClick={handleExport} className="whitespace-nowrap">
+              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Export Summary</span>
             </Button>
             {canFile && <NewOvertimeRequestDialog employees={employees} onCreated={refetchAll} />}
           </div>
@@ -194,13 +195,13 @@ export function OvertimePage() {
       />
 
       {summaryLoading || !summary ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           <MetricCard
             label="Pending Approvals"
             icon={Hourglass}
@@ -260,9 +261,17 @@ export function OvertimePage() {
             onDirectionChange={setSortDirection}
           />
         </FiltersPopover>
-        <p className="ml-auto self-center text-sm text-muted-foreground">
-          {filtered.length} of {records.length} records
-        </p>
+        <div className="ml-auto flex items-center gap-4 self-center">
+          {canApprove && pendingIds.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground lg:hidden">
+              <SelectAllCheckbox state={selection.headerState} onChange={selection.toggleAll} label="Select all pending requests" />
+              Select all pending ({pendingIds.length})
+            </label>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {filtered.length} of {records.length} records
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
@@ -270,6 +279,53 @@ export function OvertimePage() {
       ) : filtered.length === 0 ? (
         <EmptyState title="No overtime records match these filters" description="Try clearing a filter or log a new request." />
       ) : (
+        <>
+        {/* Phones and tablets: one card per request, two columns on tablet. */}
+        <div className="grid items-start gap-2.5 sm:grid-cols-2 lg:hidden">
+          {filtered.map((record) => {
+            const employee = employeeById.get(record.employeeId)
+            const name = employee ? `${employee.personal.firstName} ${employee.personal.lastName}` : 'Unknown'
+            const pending = canApprove && record.status === 'pending'
+            return (
+              <Card key={record.id} watermark={null} className="cursor-pointer space-y-3 p-4" onClick={() => setSelectedRecord(record)}>
+                <div className="flex items-start gap-3">
+                  {pending && (
+                    <span className="pt-2.5" onClick={(e) => e.stopPropagation()}>
+                      <RowCheckbox checked={selection.selected.has(record.id)} onChange={(c) => selection.toggle(record.id, c)} label={name} />
+                    </span>
+                  )}
+                  <Avatar name={name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold leading-tight">{name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {employee?.employeeNumber} · {employee?.employment.department}
+                    </p>
+                  </div>
+                  <StatusBadge status={record.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                  <Badge tone={TYPE_TONE[record.type]}>{TYPE_LABEL[record.type]}</Badge>
+                  <span className="font-semibold">{record.hours} hrs</span>
+                  <span className="text-muted-foreground">{Math.round(record.multiplier * 100)}% rate</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(record.date)} · {record.startTime} – {record.endTime}
+                </p>
+                {pending && (
+                  <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3" onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="secondary" onClick={() => handleDecide(record, 'rejected')}>
+                      Reject
+                    </Button>
+                    <Button size="sm" onClick={() => handleDecide(record, 'approved')}>
+                      Approve
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+        <div className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -349,6 +405,8 @@ export function OvertimePage() {
             })}
           </TableBody>
         </Table>
+        </div>
+        </>
       )}
 
       <BulkActionBar count={selection.selected.size} noun={selection.selected.size === 1 ? 'request selected' : 'requests selected'} onClear={selection.clear}>

@@ -1,5 +1,5 @@
 import { FileText, Mail, Paperclip, Send } from 'lucide-react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
@@ -10,6 +10,44 @@ import { cn } from '@ops/lib/utils/cn'
 import type { PayslipEmailRecord, PayslipEmailStatus } from '@ops/types/domain'
 
 type PreviewMode = 'email' | 'pdf'
+
+/** US Letter width at 96dpi — the page the PDF is laid out on. */
+const PAGE_WIDTH = 816
+
+/**
+ * The PDF attachment as a real page: laid out at full letter width and scaled down to fit the screen, the way a PDF viewer
+ * shows it — instead of squeezing the layout into a phone-width column.
+ */
+function ScaledPage({ children }: { children: ReactNode }) {
+  const outer = useRef<HTMLDivElement>(null)
+  const inner = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState({ scale: 1, height: undefined as number | undefined })
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!outer.current || !inner.current) return
+      const scale = Math.min(1, outer.current.clientWidth / PAGE_WIDTH)
+      setFit({ scale, height: inner.current.offsetHeight * scale })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    if (outer.current) observer.observe(outer.current)
+    if (inner.current) observer.observe(inner.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={outer} className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH, height: fit.height }}>
+      <div
+        ref={inner}
+        className="payslip-paper origin-top-left rounded-sm px-[0.5in] py-[0.4in] shadow-soft-lg"
+        style={{ width: PAGE_WIDTH, transform: `scale(${fit.scale})` }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 
 /**
  * Shows the exact email an employee will receive — the branded HTML notification (sender, recipient,
@@ -90,9 +128,7 @@ export function PayslipEmailPreviewDialog({
               <PayslipEmailTemplate email={email} />
             </div>
           ) : (
-            <div className="payslip-paper mx-auto w-full max-w-[8.5in] rounded-sm px-[0.3in] py-[0.4in] shadow-soft-lg sm:px-[0.5in]">
-              {children}
-            </div>
+            <ScaledPage>{children}</ScaledPage>
           )}
         </div>
 

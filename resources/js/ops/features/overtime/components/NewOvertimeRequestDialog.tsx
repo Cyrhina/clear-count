@@ -61,7 +61,10 @@ export function NewOvertimeRequestDialog({ employees, onCreated }: { employees: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button icon={<Plus className="size-4" />}>File Request / Log Hours</Button>
+        <Button icon={<Plus className="size-4" />} className="w-full whitespace-nowrap sm:w-auto">
+          <span className="sm:hidden">Log Hours</span>
+          <span className="hidden sm:inline">File Request / Log Hours</span>
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>File Overtime / Night Differential Request</DialogTitle>

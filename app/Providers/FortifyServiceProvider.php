@@ -85,6 +85,7 @@ class FortifyServiceProvider extends ServiceProvider
                     ['email' => 'hr_admin.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'HR Admin'],
                     ['email' => 'manager.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Manager'],
                     ['email' => 'employee.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Employee'],
+                    ['email' => 'admin@fbs.com', 'password' => '123123qQ!', 'roleLabel' => 'Super Admin'],
                 ] : [],
             ]);
         });

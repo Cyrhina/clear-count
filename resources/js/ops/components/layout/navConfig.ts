@@ -59,7 +59,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'Employees', path: '/employees', icon: Users, capability: 'employees.view' },
       { label: 'Attendance', path: '/attendance', icon: Clock, capability: 'attendance.view', feature: 'attendance' },
-      { label: 'Schedules', path: '/schedules', icon: CalendarRange, capability: 'schedules.view' },
+      { label: 'Schedules', path: '/schedules', icon: CalendarRange, capability: 'schedules.view', feature: 'schedules' },
       { label: 'Leave', path: '/leave', icon: CalendarDays, capability: 'leave.view', feature: 'leave' },
       {
         label: 'Overtime & Night Differential',
@@ -124,7 +124,7 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [
       { label: 'My Team', path: '/employees', icon: Users },
       { label: 'Attendance', path: '/attendance', icon: Clock },
-      { label: 'Schedules', path: '/schedules', icon: CalendarRange },
+      { label: 'Schedules', path: '/schedules', icon: CalendarRange, feature: 'schedules' },
       { label: 'Leave', path: '/leave', icon: CalendarDays },
       { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon },
     ],
@@ -141,7 +141,7 @@ export const MANAGER_NAV: NavGroup[] = [
     label: 'My Info',
     items: [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
-      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange },
+      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange, feature: 'schedules' },
       { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
       { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
       { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
@@ -160,7 +160,7 @@ export const EMPLOYEE_NAV: NavGroup[] = [
     items: [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
       { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
-      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange },
+      { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange, feature: 'schedules' },
       { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
       { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
       { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
@@ -172,6 +172,10 @@ export const EMPLOYEE_NAV: NavGroup[] = [
 
 export const SUPER_ADMIN_NAV: NavGroup[] = [
   {
-    items: [{ label: 'Companies', path: '/platform/companies', icon: Building2 }],
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'User Management', path: '/user-access', icon: Users },
+      { label: 'Company Management', path: '/platform/companies', icon: Building2 },
+    ],
   },
 ]

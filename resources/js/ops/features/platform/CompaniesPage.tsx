@@ -2,6 +2,7 @@ import { Building2 } from 'lucide-react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
 import { Card } from '@ops/components/ui/Card'
+import { PLAN_DETAILS } from '@ops/lib/plans'
 import { db } from '@ops/mock-data'
 
 export function CompaniesPage() {
@@ -20,7 +21,7 @@ export function CompaniesPage() {
                 <Card.Title>{company.name}</Card.Title>
               </div>
               <Badge tone="brand" className="capitalize">
-                {company.planTier}
+                {PLAN_DETAILS[company.planTier].label}
               </Badge>
             </Card.Header>
             <Card.Body className="space-y-1 pt-3 text-sm text-muted-foreground">

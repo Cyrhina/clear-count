@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlainCards } from '@ops/components/ui/PlainCards'
+import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { BenefitsView } from '@ops/features/loans-deductions/components/BenefitsView'
 import { DeductionsView } from '@ops/features/loans-deductions/components/DeductionsView'
@@ -66,7 +67,11 @@ export function LoansDeductionsPage() {
         />
 
         <Tabs value={section.value} onValueChange={(value) => go(value)}>
-          <TabsList>
+          {/* Phones: dropdowns instead of two rows of tabs. */}
+          <div className="grid gap-3 sm:hidden">
+            <Select value={section.value} onValueChange={(value) => go(value)} aria-label="Section" options={SECTIONS.map((s) => ({ value: s.value, label: s.label }))} />
+          </div>
+          <TabsList className="hidden sm:flex">
             {SECTIONS.map((s) => (
               <TabsTrigger key={s.value} value={s.value}>
                 {s.label}
@@ -77,7 +82,15 @@ export function LoansDeductionsPage() {
           {SECTIONS.map((s) => (
             <TabsContent key={s.value} value={s.value} className="pt-4">
               <Tabs value={sub} onValueChange={(value) => go(s.value, value)}>
-                <TabsList>
+                {/* Phones and tablets: the sub-sections are a dropdown; the three main sections stay tabs from tablet up. */}
+                <Select
+                  className="lg:hidden"
+                  value={sub}
+                  onValueChange={(value) => go(s.value, value)}
+                  aria-label={`${s.label} section`}
+                  options={s.subs.map((item) => ({ value: item.value, label: item.label }))}
+                />
+                <TabsList className="hidden lg:flex">
                   {s.subs.map((item) => (
                     <TabsTrigger key={item.value} value={item.value}>
                       {item.label}
@@ -85,7 +98,7 @@ export function LoansDeductionsPage() {
                   ))}
                 </TabsList>
 
-                <div className="pt-5">
+                <div className="pt-4 lg:pt-5">
                   {s.value === 'benefits' && (
                     <>
                       <TabsContent value="hmo">

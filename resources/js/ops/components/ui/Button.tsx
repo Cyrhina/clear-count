@@ -23,11 +23,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean
   isLoading?: boolean
   icon?: ReactNode
+  /** Phones and tablets (below lg): hide the label and show just the icon (the label stays available to screen readers). */
+  iconOnlyOnMobile?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant = 'primary', size = 'md', asChild, isLoading, icon, disabled, children, ...props },
+    { className, variant = 'primary', size = 'md', asChild, isLoading, icon, iconOnlyOnMobile, disabled, children, ...props },
     ref,
   ) => {
     const sharedClassName = cn(
@@ -37,6 +39,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'active:scale-[0.98]',
       VARIANT_CLASSES[variant],
       SIZE_CLASSES[size],
+      iconOnlyOnMobile && icon && 'relative max-lg:w-8 max-lg:gap-0 max-lg:px-0',
       className,
     )
 
@@ -53,7 +56,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button ref={ref} className={sharedClassName} disabled={disabled || isLoading} {...props}>
         {isLoading ? <Loader2 className="size-4 animate-spin" /> : icon}
-        {children}
+        {iconOnlyOnMobile && icon ? <span className="max-lg:sr-only">{children}</span> : children}
       </button>
     )
   },

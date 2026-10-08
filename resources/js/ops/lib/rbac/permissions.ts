@@ -113,8 +113,8 @@ const ALL_ADMIN_CAPS: Capability[] = [
 export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
   super_admin: [...ALL_ADMIN_CAPS, 'platform.admin'],
   company_admin: ALL_ADMIN_CAPS,
-  // People and time: records, attendance, schedules, leave, overtime, structure and announcements. No pay rates,
-  // payroll, bank details or separations — those stay with payroll and the Company Admin.
+  // People and time: records (with pay details view), attendance, schedules, leave, overtime, benefits, bonuses, branches and
+  // announcements. No pay-rate edits, payroll processing, bank details or separations — those stay with payroll and the Company Admin.
   hr_admin: [
     'dashboard.view',
     'profile.view',

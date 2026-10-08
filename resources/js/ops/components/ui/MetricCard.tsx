@@ -15,6 +15,8 @@ export interface MetricCardProps {
   tone?: MetricCardTone
   footer?: { label: string; to?: string }
   className?: string
+  /** Tighter padding and type on phones — for pages that show four cards in a 2×2 grid. */
+  compact?: boolean
 }
 
 const TONE_CLASSES: Record<MetricCardTone, { watermark: string; footerText: string; accentBorder: string; tint: string }> = {
@@ -25,13 +27,13 @@ const TONE_CLASSES: Record<MetricCardTone, { watermark: string; footerText: stri
   default: { watermark: 'text-muted-foreground/10', footerText: 'text-foreground', accentBorder: 'border-t-border', tint: 'bg-muted/30' },
 }
 
-export function MetricCard({ label, value, hint, icon: Icon, tone = 'default', footer, className }: MetricCardProps) {
+export function MetricCard({ label, value, hint, icon: Icon, tone = 'default', footer, className, compact }: MetricCardProps) {
   const t = TONE_CLASSES[tone]
   return (
     <Card data-slot="metric-card" data-tone={tone} watermark={null} className={cn('relative flex h-full flex-col overflow-hidden border-t-2 p-0', t.accentBorder, t.tint, className)}>
       {Icon && <Icon className={cn('pointer-events-none absolute -right-3 -top-3 size-20', t.watermark)} aria-hidden="true" />}
-      <div className="relative flex flex-1 flex-col gap-2 p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className={cn('relative flex flex-1 flex-col gap-2 p-5', compact && 'max-sm:gap-1.5 max-sm:p-3.5')}>
+        <p className={cn('text-xs font-medium uppercase tracking-wide text-muted-foreground', compact && 'max-sm:text-[11px]')}>{label}</p>
         <p className="break-words font-display text-lg font-semibold leading-tight tracking-tight sm:text-xl lg:text-2xl">{value}</p>
         {hint && <p className="line-clamp-2 text-xs text-muted-foreground">{hint}</p>}
       </div>

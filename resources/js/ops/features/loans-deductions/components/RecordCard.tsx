@@ -38,6 +38,8 @@ export interface RecordCardProps {
   cancelConsequence: string
   canManage: boolean
   dimmed?: boolean
+  /** Phones and tablets: show View / Pause / Cancel as icons on one line. */
+  compactActions?: boolean
 }
 
 const PAUSABLE = new Set(['active', 'paused', 'suspended'])
@@ -49,7 +51,7 @@ const CANCELLABLE = new Set(['active', 'paused', 'suspended'])
  * the same header and figures, and the same View / Edit / Pause / Cancel actions along the bottom.
  */
 export function RecordCard(props: RecordCardProps) {
-  const { title, subtitle, status, headline, headlineHint, progress, lines, note, noteIcon, onView, edit, onPause, onResume, onCancel, lockedReason, cancelName, cancelConsequence, canManage, dimmed } = props
+  const { title, subtitle, status, headline, headlineHint, progress, lines, note, noteIcon, onView, edit, onPause, onResume, onCancel, lockedReason, cancelName, cancelConsequence, canManage, dimmed, compactActions } = props
   const [confirming, setConfirming] = useState(false)
 
   const resumable = RESUMABLE.has(status)
@@ -94,21 +96,21 @@ export function RecordCard(props: RecordCardProps) {
         )}
 
         <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
-          <div className="mt-4 flex flex-wrap items-center gap-1 border-t border-border pt-3">
-            <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} onClick={onView}>
+          <div className="mt-4 flex items-center gap-1 border-t border-border pt-3 lg:flex-wrap">
+            <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} iconOnlyOnMobile={compactActions} onClick={onView}>
               View
             </Button>
             {edit}
             {resumable ? (
-              <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} disabled={!canPause} title={reason} onClick={onResume}>
+              <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} iconOnlyOnMobile={compactActions} disabled={!canPause} title={reason} onClick={onResume}>
                 Resume
               </Button>
             ) : (
-              <Button size="sm" variant="ghost" icon={<Pause className="size-3.5" />} disabled={!canPause} title={reason} onClick={onPause}>
+              <Button size="sm" variant="ghost" icon={<Pause className="size-3.5" />} iconOnlyOnMobile={compactActions} disabled={!canPause} title={reason} onClick={onPause}>
                 Pause
               </Button>
             )}
-            <Button size="sm" variant="ghost" icon={<Ban className="size-3.5" />} disabled={!canCancel} title={reason} onClick={() => setConfirming(true)}>
+            <Button size="sm" variant="ghost" icon={<Ban className="size-3.5" />} iconOnlyOnMobile={compactActions} disabled={!canCancel} title={reason} onClick={() => setConfirming(true)}>
               Cancel
             </Button>
           </div>
