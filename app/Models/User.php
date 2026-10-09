@@ -20,6 +20,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int|null $branch_id
  * @property int|null $employee_id
  * @property bool $is_active
+ * @property Carbon|null $invited_at
+ * @property Carbon|null $last_login_at
  * @property string $first_name
  * @property string $last_name
  * @property-read string $name
@@ -53,6 +55,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'invited_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 

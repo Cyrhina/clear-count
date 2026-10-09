@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\OpsController;
+use App\Http\Controllers\PermissionMapController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Home goes to login; signed-in users are bounced on to their landing page by Fortify's guest middleware.
@@ -57,6 +60,30 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::middleware('permission:employees.edit')->group(function () {
         Route::post('employees', [EmployeeController::class, 'store'])->name('employees.store');
         Route::put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+    });
+
+    // Activity Log tab (read-only).
+    Route::prefix('api/activity-logs')->name('activity-logs.')->middleware('permission:users.manage')->group(function () {
+        Route::get('/', [ActivityLogController::class, 'index'])->name('index');
+        Route::get('filters', [ActivityLogController::class, 'filters'])->name('filters');
+        Route::get('{activityLog}', [ActivityLogController::class, 'show'])->name('show');
+    });
+
+    // Permission Map tab (read-only).
+    Route::prefix('api/permission-map')->name('permission-map.')->middleware('permission:users.manage')->group(function () {
+        Route::get('/', [PermissionMapController::class, 'index'])->name('index');
+        Route::get('capabilities', [PermissionMapController::class, 'capabilities'])->name('capabilities');
+        Route::get('{role}', [PermissionMapController::class, 'show'])->name('show');
+    });
+
+    // Users tab of User & Access Management (JSON; the `api/` prefix also makes errors render as JSON).
+    Route::prefix('api/users')->name('users.')->middleware('permission:users.manage')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::patch('{user}/role', [UserController::class, 'updateRole'])->name('role');
+        Route::patch('{user}/status', [UserController::class, 'toggleStatus'])->name('status');
+        Route::post('{user}/invite', [UserController::class, 'resendInvite'])->name('invite');
+        Route::post('{user}/reset-access', [UserController::class, 'resetAccess'])->name('reset-access');
     });
 });
 

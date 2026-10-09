@@ -16,7 +16,7 @@ class EmployeeController extends Controller
     public function store(StoreEmployeeRequest $request): RedirectResponse
     {
         $employee = Employee::create($request->validated());
-        ActivityLogger::log('Employee created', $employee->name);
+        ActivityLogger::log(module: 'Employees', action: 'Added', title: 'Employee', description: $employee->name, subject: $employee);
 
         return to_route('employees.show', ['id' => $employee->id]);
     }
@@ -24,7 +24,7 @@ class EmployeeController extends Controller
     public function update(UpdateEmployeeRequest $request, Employee $employee): RedirectResponse
     {
         $employee->update($request->validated());
-        ActivityLogger::log('Employee updated', $employee->name);
+        ActivityLogger::log(module: 'Employees', action: 'Updated', title: 'Employee', description: $employee->name, subject: $employee);
 
         return back();
     }

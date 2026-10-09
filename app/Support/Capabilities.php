@@ -28,13 +28,13 @@ final class Capabilities
     public const ROLE_PERMISSIONS = [
         'super_admin' => [...self::ADMIN, 'platform.admin'],
         'company_admin' => self::ADMIN,
-        // People, time, benefits and loans; views payroll results. No payroll processing, bank details or separations.
+        // People, time, benefits and loans; no Payroll Runs access. No payroll processing, bank details or separations.
         'hr_admin' => [
             'dashboard.view', 'profile.view', 'employees.view', 'employees.pay.view', 'employees.edit', 'employees.government.edit',
             'attendance.view', 'attendance.adjust', 'attendance.approve', 'attendance.import', 'schedules.view', 'schedules.manage',
             'overtime.view', 'overtime.log', 'overtime.approve',
             'leave.view', 'leave.request', 'leave.approve', 'leave.manage_types', 'compensation_approvals.manage',
-            'payroll.view', 'payslips.view', 'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage', 'thirteenth_month.view',
+            'payslips.view', 'loans.view', 'loans.manage', 'bonuses.view', 'bonuses.manage', 'thirteenth_month.view',
             'reports.view', 'reports.workforce.view', 'approvals.view',
             'notifications.view', 'notifications.send', 'branches.manage',
         ],
