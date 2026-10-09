@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DemoSeeder extends Seeder
@@ -35,5 +36,9 @@ class DemoSeeder extends Seeder
                 'employee_id' => $employeeId,
             ]);
         }
+
+        // The accounts listed on the login page (UserSeeder) belong to the demo company too: without a company
+        // they would see no users, no company profile and no activity log. The super admin stays company-less.
+        User::whereIn('email', UserSeeder::DEMO_LOGIN_EMAILS)->update(['company_id' => $company->id, 'branch_id' => $head->id]);
     }
 }

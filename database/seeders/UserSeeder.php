@@ -9,6 +9,16 @@ class UserSeeder extends Seeder
 {
     public const DEFAULT_PASSWORD = '123123qQ!';
 
+    /** The company accounts shown on the login page (everyone this seeder creates except the super admin). */
+    public const DEMO_LOGIN_EMAILS = [
+        'company_admin.consignado@frontlinebusiness.com.ph',
+        'hr_admin.consignado@frontlinebusiness.com.ph',
+        'payroll_admin.consignado@frontlinebusiness.com.ph',
+        'manager.consignado@frontlinebusiness.com.ph',
+        'employee.consignado@frontlinebusiness.com.ph',
+        'emmanuel.manalo@frontlinebusiness.com.ph',
+    ];
+
     public function run(): void
     {
         // Standalone accounts; DemoSeeder reuses createUser() for company-scoped ones.

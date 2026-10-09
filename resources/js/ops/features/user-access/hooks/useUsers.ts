@@ -1,31 +1,43 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getActivityLog, getUsers } from '@ops/lib/services/userService'
-import type { ActivityLogEntry, SessionUser } from '@ops/types/domain'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { listAccessUsers, listPermissionRoles, type AccessUser, type PermissionRole } from '@ops/lib/services/userAccessService'
 
-export function useUsers() {
-  const { user } = useSession()
-  const [users, setUsers] = useState<SessionUser[] | null>(null)
+/** The company's users from the API. `error` is set (and `users` empty) if the request failed. */
+export function useAccessUsers() {
+  const [users, setUsers] = useState<AccessUser[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(() => {
-    getUsers(user).then(setUsers)
-  }, [user])
+    listAccessUsers()
+      .then((list) => {
+        setUsers(list)
+        setError(null)
+      })
+      .catch((e) => {
+        setUsers([])
+        setError(apiErrorMessage(e))
+      })
+  }, [])
 
   useEffect(() => {
-    setUsers(null)
     refetch()
   }, [refetch])
 
-  return { users: users ?? [], isLoading: users === null, refetch }
+  return { users: users ?? [], isLoading: users === null, error, refetch }
 }
 
-export function useActivityLog() {
-  const { user } = useSession()
-  const [log, setLog] = useState<ActivityLogEntry[]>([])
+export function usePermissionRoles() {
+  const [roles, setRoles] = useState<PermissionRole[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getActivityLog(user).then(setLog)
-  }, [user])
+    listPermissionRoles()
+      .then(setRoles)
+      .catch((e) => {
+        setRoles([])
+        setError(apiErrorMessage(e))
+      })
+  }, [])
 
-  return log
+  return { roles: roles ?? [], isLoading: roles === null, error }
 }

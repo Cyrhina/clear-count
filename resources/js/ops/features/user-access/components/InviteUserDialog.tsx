@@ -9,11 +9,12 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { inviteUser } from '@ops/lib/services/userService'
+import { ApiError, apiErrorMessage } from '@ops/lib/api/http'
+import { inviteAccessUser } from '@ops/lib/services/userAccessService'
 
 const schema = z.object({
-  name: z.string().min(1, 'Required'),
+  firstName: z.string().trim().min(1, 'Required'),
+  lastName: z.string().trim().min(1, 'Required'),
   email: z.string().email('Enter a valid email'),
   role: z.enum(['company_admin', 'hr_admin', 'payroll_admin', 'manager', 'employee']),
 })
@@ -28,9 +29,11 @@ const ROLE_OPTIONS = [
   { value: 'employee', label: 'Employee' },
 ]
 
+// API field name -> form field, so a server-side "email already taken" shows under the email box.
+const API_FIELDS: Record<string, keyof FormValues> = { first_name: 'firstName', last_name: 'lastName', email: 'email', role: 'role' }
+
 export function InviteUserDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -38,12 +41,30 @@ export function InviteUserDialog({ onCreated }: { onCreated: () => void }) {
     handleSubmit,
     control,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { role: 'employee' } })
 
   async function onSubmit(values: FormValues) {
-    await inviteUser(user, values)
-    notify({ title: 'User invited', description: `${values.name} can now sign in as ${values.role.replace('_', ' ')}.`, tone: 'success' })
+    try {
+      await inviteAccessUser(values)
+    } catch (e) {
+      // Show each server-side validation message under its field; anything else as a toast.
+      if (e instanceof ApiError && e.status === 422) {
+        let placed = false
+        for (const [field, messages] of Object.entries(e.errors)) {
+          const target = API_FIELDS[field]
+          if (target) {
+            setError(target, { message: messages[0] })
+            placed = true
+          }
+        }
+        if (placed) return
+      }
+      notify({ title: 'Could not send the invite', description: apiErrorMessage(e), tone: 'danger' })
+      return
+    }
+    notify({ title: 'Invite sent', description: `${values.firstName} ${values.lastName} will get an email to create a password.`, tone: 'success' })
     reset()
     setOpen(false)
     onCreated()
@@ -56,16 +77,19 @@ export function InviteUserDialog({ onCreated }: { onCreated: () => void }) {
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Invite User</DialogTitle>
-        <DialogDescription>Grant access with a role scoped to what they need.</DialogDescription>
+        <DialogDescription>They get an email with a link to create their own password. Grant a role scoped to what they need.</DialogDescription>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-5 grid grid-cols-2 gap-4">
-          <FormField label="Full name" required error={errors.name?.message} className="col-span-2">
-            <Input {...register('name')} placeholder="Jane Dela Cruz" />
+          <FormField label="First name" required error={errors.firstName?.message}>
+            <Input {...register('firstName')} placeholder="Jane" />
+          </FormField>
+          <FormField label="Last name" required error={errors.lastName?.message}>
+            <Input {...register('lastName')} placeholder="Dela Cruz" />
           </FormField>
           <FormField label="Email" required error={errors.email?.message} className="col-span-2">
             <Input type="email" {...register('email')} placeholder="jane.delacruz@company.com" />
           </FormField>
-          <FormField label="Role" required className="col-span-2">
+          <FormField label="Role" required error={errors.role?.message} className="col-span-2">
             <Controller
               control={control}
               name="role"

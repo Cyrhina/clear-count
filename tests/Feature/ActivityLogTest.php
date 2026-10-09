@@ -120,3 +120,13 @@ test('user management actions are written to the activity log', function () {
 
     $this->assertDatabaseHas('activity_logs', ['company_id' => $this->company->id, 'module' => 'User Access', 'action' => 'Invited', 'title' => 'User invitation']);
 });
+
+test('filters by action and lists the actions that exist', function () {
+    logFor($this->company, $this->admin, ['action' => 'Approved', 'title' => 'One']);
+    logFor($this->company, $this->admin, ['action' => 'Viewed', 'title' => 'Two']);
+
+    $titles = collect($this->actingAs($this->admin)->getJson('/api/activity-logs?action=Approved')->assertOk()->json('data'))->pluck('title')->all();
+    expect($titles)->toBe(['One']);
+
+    $this->actingAs($this->admin)->getJson('/api/activity-logs/filters')->assertJsonPath('data.actions', ['Approved', 'Viewed']);
+});

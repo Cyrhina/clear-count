@@ -1,33 +1,22 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import { ArrowUpDown, BarChart3, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Database, Download, FileText, ListFilter, ShieldCheck, Users, X, type LucideIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { BarChart3, Building2, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Database, FileText, ListFilter, ShieldCheck, Users, X, type LucideIcon } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
+import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { useToast } from '@ops/components/ui/Toast'
-import { useActivityLog } from '@ops/features/user-access/hooks/useUsers'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { getActivityFilterOptions, listActivity, type ActivityFilterOptions, type ActivityItem, type ActivityPage } from '@ops/lib/services/userAccessService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
-import type { ActivityLogEntry, Role } from '@ops/types/domain'
 
 const PAGE_SIZE = 10
 
-const ROLE_LABEL: Record<Role, string> = {
-  super_admin: 'Super Admin',
-  company_admin: 'Company Admin',
-  hr_admin: 'HR Admin',
-  payroll_admin: 'Payroll Admin',
-  manager: 'Manager',
-  employee: 'Employee',
-}
-
-type Module = NonNullable<ActivityLogEntry['module']>
-
-const MODULES: Record<Module, { icon: LucideIcon; tile: string }> = {
+const MODULES: Record<string, { icon: LucideIcon; tile: string }> = {
   Payroll: { icon: FileText, tile: 'bg-success/10 text-success' },
   Employees: { icon: Users, tile: 'bg-chart-blue/10 text-chart-blue' },
   Attendance: { icon: CalendarCheck2, tile: 'bg-success/10 text-success' },
@@ -35,7 +24,9 @@ const MODULES: Record<Module, { icon: LucideIcon; tile: string }> = {
   Reports: { icon: BarChart3, tile: 'bg-chart-violet/10 text-chart-violet' },
   'Loans & Deductions': { icon: Database, tile: 'bg-accent/10 text-accent' },
   'User Access': { icon: ShieldCheck, tile: 'bg-primary/10 text-primary' },
+  'Company Settings': { icon: Building2, tile: 'bg-chart-blue/10 text-chart-blue' },
 }
+const DEFAULT_MODULE = { icon: Database, tile: 'bg-muted text-muted-foreground' }
 
 const KIND_TONE: Record<string, string> = {
   Exported: 'bg-success/10 text-success',
@@ -47,44 +38,30 @@ const KIND_TONE: Record<string, string> = {
   Updated: 'bg-chart-violet/10 text-chart-violet',
   Generated: 'bg-chart-violet/10 text-chart-violet',
   Invited: 'bg-primary/10 text-primary',
+  Sent: 'bg-primary/10 text-primary',
   Deactivated: 'bg-danger/10 text-danger',
+  Deleted: 'bg-danger/10 text-danger',
   Viewed: 'bg-muted text-muted-foreground',
 }
 
 const DATE_RANGES = [
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-  { value: 'all', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: '7_days', label: 'Last 7 days' },
+  { value: '30_days', label: 'Last 30 days' },
 ]
 
-type SortKey = 'timestamp' | 'actor' | 'module' | 'kind'
-
-const moduleOf = (e: ActivityLogEntry): Module => e.module ?? 'User Access'
-const kindOf = (e: ActivityLogEntry) => e.kind ?? 'Updated'
-const titleOf = (e: ActivityLogEntry) => e.title ?? e.action
-const subtitleOf = (e: ActivityLogEntry) => e.subtitle ?? e.details ?? ''
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+type Range = 'today' | '7_days' | '30_days'
 
 function KindPill({ kind, className }: { kind: string; className?: string }) {
   return <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', KIND_TONE[kind] ?? 'bg-muted text-muted-foreground', className)}>{kind}</span>
 }
 
-function ModuleTile({ module, size = 'md' }: { module: Module; size?: 'md' | 'lg' }) {
-  const { icon: Icon, tile } = MODULES[module]
+function ModuleTile({ module, size = 'md' }: { module: string | null; size?: 'md' | 'lg' }) {
+  const { icon: Icon, tile } = (module && MODULES[module]) || DEFAULT_MODULE
   return (
     <span className={cn('inline-flex shrink-0 items-center justify-center rounded-lg', tile, size === 'lg' ? 'size-11' : 'size-8')}>
       <Icon className={size === 'lg' ? 'size-5' : 'size-4'} />
     </span>
-  )
-}
-
-function SortHead({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className={cn('inline-flex items-center gap-1 font-semibold', active && 'text-foreground')}>
-      {label}
-      <ArrowUpDown className="size-3 opacity-60" />
-    </button>
   )
 }
 
@@ -110,9 +87,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
-function DetailsPanel({ entry, filters, onClose }: { entry: ActivityLogEntry; filters: { label: string; value: string }[]; onClose: () => void }) {
-  const { notify } = useToast()
-  const module = moduleOf(entry)
+function DetailsPanel({ entry, filters, onClose }: { entry: ActivityItem; filters: { label: string; value: string }[]; onClose: () => void }) {
   return (
     <Card className="h-fit p-5">
       <div className="flex items-start justify-between gap-3">
@@ -123,12 +98,12 @@ function DetailsPanel({ entry, filters, onClose }: { entry: ActivityLogEntry; fi
       </div>
 
       <div className="mt-4 flex items-start gap-3 border-b border-border pb-4">
-        <ModuleTile module={module} size="lg" />
+        <ModuleTile module={entry.module} size="lg" />
         <div className="min-w-0">
-          <p className="font-display text-base font-semibold leading-tight">{kindOf(entry)}</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">{titleOf(entry)}</p>
+          <p className="font-display text-base font-semibold leading-tight">{entry.action}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{entry.title}</p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {formatDate(entry.timestamp)} • {timeOf(entry.timestamp)}
+            {entry.formattedDate} • {entry.formattedTime}
           </p>
         </div>
       </div>
@@ -136,38 +111,24 @@ function DetailsPanel({ entry, filters, onClose }: { entry: ActivityLogEntry; fi
       <div className="mt-4 space-y-4 text-sm">
         <DetailRow label="User">
           <div className="flex items-center gap-2.5">
-            <Avatar name={entry.actor} size="sm" />
+            <Avatar name={entry.user.name} size="sm" />
             <div>
-              <p className="text-sm font-semibold leading-tight">{entry.actor}</p>
-              {entry.actorRole && <p className="text-xs text-muted-foreground">{ROLE_LABEL[entry.actorRole]}</p>}
+              <p className="text-sm font-semibold leading-tight">{entry.user.name}</p>
+              {entry.user.role && <p className="text-xs text-muted-foreground">{entry.user.role}</p>}
             </div>
           </div>
         </DetailRow>
         <DetailRow label="Module">
           <div className="flex items-center gap-2.5">
-            <ModuleTile module={module} />
-            <p className="font-semibold">{module}</p>
+            <ModuleTile module={entry.module} />
+            <p className="font-semibold">{entry.module ?? '—'}</p>
           </div>
         </DetailRow>
         <DetailRow label="Action">
-          <KindPill kind={kindOf(entry)} />
+          <KindPill kind={entry.action} />
         </DetailRow>
-        {entry.file && (
-          <DetailRow label="File Details">
-            <div className="flex items-center gap-2.5">
-              <span className="inline-flex size-8 items-center justify-center rounded-lg bg-success/10 text-success">
-                <FileText className="size-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold leading-tight">{entry.file.name}</p>
-                <p className="text-xs text-muted-foreground">{entry.file.size}</p>
-              </div>
-            </div>
-          </DetailRow>
-        )}
         <DetailRow label="Description">
-          <p className="leading-relaxed">{entry.action}</p>
-          {subtitleOf(entry) && subtitleOf(entry) !== entry.action && <p className="text-xs text-muted-foreground">{subtitleOf(entry)}</p>}
+          <p className="leading-relaxed">{entry.description || entry.title}</p>
         </DetailRow>
       </div>
 
@@ -182,80 +143,90 @@ function DetailsPanel({ entry, filters, onClose }: { entry: ActivityLogEntry; fi
           ))}
         </dl>
       </div>
-
-      {entry.file && (
-        <Button className="mt-4 w-full" icon={<Download className="size-4" />} onClick={() => notify({ title: 'Download not available', description: 'The original file isn’t kept in this demo.', tone: 'default' })}>
-          Download File
-        </Button>
-      )}
     </Card>
   )
 }
 
-/** Audit trail of account and system activity: filter by date, module, user and action; click a row for its details. */
+/** Audit trail of account and system activity, read from the API: filter by date, module, user and action; click a row for its details. */
 export function ActivityLogPanel() {
-  const log = useActivityLog()
-  const [range, setRange] = useState('30')
+  const [options, setOptions] = useState<ActivityFilterOptions>({ modules: [], actions: [], users: [] })
+  const [range, setRange] = useState<Range>('30_days')
   const [module, setModule] = useState('all')
-  const [actor, setActor] = useState('all')
+  const [userId, setUserId] = useState('all')
   const [action, setAction] = useState('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('timestamp')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [data, setData] = useState<ActivityPage | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const customRange = from !== '' || to !== ''
-  const actors = useMemo(() => [...new Set(log.map((e) => e.actor))].sort(), [log])
-  const kinds = useMemo(() => [...new Set(log.map(kindOf))].sort(), [log])
-  const modules = useMemo(() => [...new Set(log.map(moduleOf))].sort(), [log])
+  // A custom range needs both ends; with only one set the preset range stays in force.
+  const customRange = from !== '' && to !== ''
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    const cutoff = range === 'all' ? null : new Date(Date.now() - Number(range) * 86_400_000).toISOString()
-    const rows = log.filter((e) => {
-      if (customRange) {
-        const day = e.timestamp.slice(0, 10)
-        if ((from && day < from) || (to && day > to)) return false
-      } else if (cutoff && e.timestamp < cutoff) return false
-      if (module !== 'all' && moduleOf(e) !== module) return false
-      if (actor !== 'all' && e.actor !== actor) return false
-      if (action !== 'all' && kindOf(e) !== action) return false
-      if (q && !`${titleOf(e)} ${subtitleOf(e)} ${e.action} ${e.actor}`.toLowerCase().includes(q)) return false
-      return true
+  useEffect(() => {
+    getActivityFilterOptions().then(setOptions).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  useEffect(() => {
+    let cancelled = false
+    listActivity({
+      dateRange: customRange ? 'custom' : range,
+      startDate: from,
+      endDate: to,
+      module: module === 'all' ? undefined : module,
+      action: action === 'all' ? undefined : action,
+      userId: userId === 'all' ? undefined : Number(userId),
+      search: debouncedSearch,
+      page,
+      perPage: PAGE_SIZE,
     })
-    const value = (e: ActivityLogEntry) => (sortKey === 'timestamp' ? e.timestamp : sortKey === 'actor' ? e.actor : sortKey === 'module' ? moduleOf(e) : kindOf(e))
-    return rows.sort((a, b) => (sortDir === 'asc' ? 1 : -1) * value(a).localeCompare(value(b)))
-  }, [log, range, customRange, from, to, module, actor, action, search, sortKey, sortDir])
-
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const current = Math.min(page, pages)
-  const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
-  const selected = filtered.find((e) => e.id === selectedId) ?? null
-  const extraFilters = [action !== 'all', search.trim() !== '', customRange].filter(Boolean).length
-
-  const resetPage = () => setPage(1)
-  const sortBy = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortKey(key)
-      setSortDir(key === 'timestamp' ? 'desc' : 'asc')
+      .then((result) => {
+        if (cancelled) return
+        setData(result)
+        setError(null)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setData(null)
+        setError(apiErrorMessage(e))
+      })
+    return () => {
+      cancelled = true
     }
+  }, [customRange, range, from, to, module, action, userId, debouncedSearch, page])
+
+  const selected = data?.items.find((e) => e.id === selectedId) ?? null
+  const extraFilters = [action !== 'all', search.trim() !== '', customRange].filter(Boolean).length
+  const anyFilter = module !== 'all' || userId !== 'all' || extraFilters > 0 || range !== '30_days'
+
+  const filter = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v)
+    setPage(1)
   }
 
-  const rangeLabel = customRange ? `${from ? formatDate(from) : 'Start'} – ${to ? formatDate(to) : 'Today'}` : (DATE_RANGES.find((r) => r.value === range)?.label ?? '')
-  const relatedFilters = [
-    { label: 'Date Range', value: rangeLabel },
-    { label: 'Module', value: module === 'all' ? 'All Modules' : module },
-    { label: 'User', value: actor === 'all' ? 'All Users' : actor },
-    { label: 'Action', value: action === 'all' ? 'All Actions' : action },
-  ]
+  const rangeLabel = customRange ? `${formatDate(from)} – ${formatDate(to)}` : (DATE_RANGES.find((r) => r.value === range)?.label ?? '')
+  const relatedFilters = useMemo(
+    () => [
+      { label: 'Date Range', value: rangeLabel },
+      { label: 'Module', value: module === 'all' ? 'All Modules' : module },
+      { label: 'User', value: userId === 'all' ? 'All Users' : (options.users.find((u) => String(u.id) === userId)?.name ?? userId) },
+      { label: 'Action', value: action === 'all' ? 'All Actions' : action },
+    ],
+    [rangeLabel, module, userId, action, options.users],
+  )
 
-  if (log.length === 0) {
-    return <EmptyState icon={ShieldCheck} title="No activity yet" description="Role changes, exports and other account activity will be logged here." />
-  }
+  if (error) return <EmptyState icon={ShieldCheck} title="Could not load the activity log" description={error} />
+  if (data === null) return <Skeleton className="h-72" />
+
+  const noActivityAtAll = data.total === 0 && !anyFilter
 
   return (
     <div className={cn('grid gap-4', selected && 'lg:grid-cols-[minmax(0,1fr)_21rem]')}>
@@ -265,36 +236,20 @@ export function ActivityLogPanel() {
             <Select
               value={customRange ? 'custom' : range}
               onValueChange={(v) => {
-                setRange(v)
+                setRange(v as Range)
                 setFrom('')
                 setTo('')
-                resetPage()
+                setPage(1)
               }}
               aria-label="Date range"
               options={customRange ? [{ value: 'custom', label: rangeLabel }, ...DATE_RANGES] : DATE_RANGES}
             />
           </div>
           <div className="w-44">
-            <Select
-              value={module}
-              onValueChange={(v) => {
-                setModule(v)
-                resetPage()
-              }}
-              aria-label="Module"
-              options={[{ value: 'all', label: 'All Modules' }, ...modules.map((m) => ({ value: m, label: m }))]}
-            />
+            <Select value={module} onValueChange={filter(setModule)} aria-label="Module" options={[{ value: 'all', label: 'All Modules' }, ...options.modules.map((m) => ({ value: m, label: m }))]} />
           </div>
           <div className="w-44">
-            <Select
-              value={actor}
-              onValueChange={(v) => {
-                setActor(v)
-                resetPage()
-              }}
-              aria-label="User"
-              options={[{ value: 'all', label: 'All Users' }, ...actors.map((a) => ({ value: a, label: a }))]}
-            />
+            <Select value={userId} onValueChange={filter(setUserId)} aria-label="User" options={[{ value: 'all', label: 'All Users' }, ...options.users.map((u) => ({ value: String(u.id), label: u.name }))]} />
           </div>
           <PopoverPrimitive.Root>
             <PopoverPrimitive.Trigger asChild>
@@ -311,33 +266,26 @@ export function ActivityLogPanel() {
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value)
-                      resetPage()
+                      setPage(1)
                     }}
-                    placeholder="Details, file or user…"
+                    placeholder="Details or user…"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-muted-foreground">Action</label>
-                  <Select
-                    value={action}
-                    onValueChange={(v) => {
-                      setAction(v)
-                      resetPage()
-                    }}
-                    aria-label="Action"
-                    options={[{ value: 'all', label: 'All Actions' }, ...kinds.map((k) => ({ value: k, label: k }))]}
-                  />
+                  <Select value={action} onValueChange={filter(setAction)} aria-label="Action" options={[{ value: 'all', label: 'All Actions' }, ...options.actions.map((k) => ({ value: k, label: k }))]} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-muted-foreground">From</label>
-                    <Input type="date" value={from} max={to || undefined} onChange={(e) => (setFrom(e.target.value), resetPage())} />
+                    <Input type="date" value={from} max={to || undefined} onChange={(e) => (setFrom(e.target.value), setPage(1))} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-muted-foreground">To</label>
-                    <Input type="date" value={to} min={from || undefined} onChange={(e) => (setTo(e.target.value), resetPage())} />
+                    <Input type="date" value={to} min={from || undefined} onChange={(e) => (setTo(e.target.value), setPage(1))} />
                   </div>
                 </div>
+                <p className="text-[11px] text-muted-foreground">A custom range applies once both dates are set.</p>
                 {extraFilters > 0 && (
                   <div className="flex justify-end border-t border-border pt-3">
                     <Button
@@ -349,7 +297,7 @@ export function ActivityLogPanel() {
                         setSearch('')
                         setFrom('')
                         setTo('')
-                        resetPage()
+                        setPage(1)
                       }}
                     >
                       Clear
@@ -361,7 +309,11 @@ export function ActivityLogPanel() {
           </PopoverPrimitive.Root>
         </div>
 
-        {filtered.length === 0 ? (
+        {noActivityAtAll ? (
+          <div className="mt-4">
+            <EmptyState icon={ShieldCheck} title="No activity yet" description="Role changes, invites and other account activity will be logged here." />
+          </div>
+        ) : data.total === 0 ? (
           <div className="mt-4">
             <EmptyState icon={ShieldCheck} title="No activity matches these filters" description="Try a wider date range or clear a filter." />
           </div>
@@ -371,76 +323,61 @@ export function ActivityLogPanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
-                      <SortHead label="Date & Time" active={sortKey === 'timestamp'} onClick={() => sortBy('timestamp')} />
-                    </TableHead>
-                    <TableHead>
-                      <SortHead label="User" active={sortKey === 'actor'} onClick={() => sortBy('actor')} />
-                    </TableHead>
-                    <TableHead>
-                      <SortHead label="Module" active={sortKey === 'module'} onClick={() => sortBy('module')} />
-                    </TableHead>
-                    <TableHead>
-                      <SortHead label="Action" active={sortKey === 'kind'} onClick={() => sortBy('kind')} />
-                    </TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Module</TableHead>
+                    <TableHead>Action</TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead className="w-8" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visible.map((entry) => {
-                    const m = moduleOf(entry)
-                    return (
-                      <TableRow
-                        key={entry.id}
-                        className={cn('cursor-pointer', entry.id === selected?.id && 'bg-primary/5')}
-                        onClick={() => setSelectedId(entry.id === selected?.id ? null : entry.id)}
-                      >
-                        <TableCell className="whitespace-nowrap">
-                          <p className="text-sm font-medium leading-tight">{formatDate(entry.timestamp)}</p>
-                          <p className="text-xs text-muted-foreground">{timeOf(entry.timestamp)}</p>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <Avatar name={entry.actor} size="sm" />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium leading-tight">{entry.actor}</p>
-                              {entry.actorRole && <p className="truncate text-xs text-muted-foreground">{ROLE_LABEL[entry.actorRole]}</p>}
-                            </div>
+                  {data.items.map((entry) => (
+                    <TableRow key={entry.id} className={cn('cursor-pointer', entry.id === selected?.id && 'bg-primary/5')} onClick={() => setSelectedId(entry.id === selected?.id ? null : entry.id)}>
+                      <TableCell className="whitespace-nowrap">
+                        <p className="text-sm font-medium leading-tight">{entry.formattedDate}</p>
+                        <p className="text-xs text-muted-foreground">{entry.formattedTime}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={entry.user.name} size="sm" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium leading-tight">{entry.user.name}</p>
+                            {entry.user.role && <p className="truncate text-xs text-muted-foreground">{entry.user.role}</p>}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <ModuleTile module={m} />
-                            <span className="whitespace-nowrap text-sm">{m}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <KindPill kind={kindOf(entry)} />
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm font-medium leading-tight">{titleOf(entry)}</p>
-                          {subtitleOf(entry) && subtitleOf(entry) !== titleOf(entry) && <p className="text-xs text-muted-foreground">{subtitleOf(entry)}</p>}
-                        </TableCell>
-                        <TableCell>
-                          <ChevronRight className="size-4 text-muted-foreground" />
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <ModuleTile module={entry.module} />
+                          <span className="whitespace-nowrap text-sm">{entry.module ?? '—'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <KindPill kind={entry.action} />
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm font-medium leading-tight">{entry.title}</p>
+                        {entry.description && entry.description !== entry.title && <p className="text-xs text-muted-foreground">{entry.description}</p>}
+                      </TableCell>
+                      <TableCell>
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Showing {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, filtered.length)} of {filtered.length} activities
+                Showing {data.from}–{data.to} of {data.total} activities
               </p>
               <nav className="flex items-center gap-1" aria-label="Pagination">
-                <button type="button" aria-label="Previous page" disabled={current === 1} onClick={() => setPage(current - 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-40">
+                <button type="button" aria-label="Previous page" disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-40">
                   <ChevronLeft className="size-4" />
                 </button>
-                {pageList(current, pages).map((p, i) =>
+                {pageList(page, data.lastPage).map((p, i) =>
                   p === '…' ? (
                     <span key={`gap-${i}`} className="px-1 text-xs text-muted-foreground">
                       …
@@ -450,14 +387,14 @@ export function ActivityLogPanel() {
                       key={p}
                       type="button"
                       onClick={() => setPage(p)}
-                      aria-current={p === current ? 'page' : undefined}
-                      className={cn('size-8 rounded-full text-xs font-medium', p === current ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
+                      aria-current={p === page ? 'page' : undefined}
+                      className={cn('size-8 rounded-full text-xs font-medium', p === page ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
                     >
                       {p}
                     </button>
                   ),
                 )}
-                <button type="button" aria-label="Next page" disabled={current === pages} onClick={() => setPage(current + 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-40">
+                <button type="button" aria-label="Next page" disabled={page === data.lastPage} onClick={() => setPage(page + 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-40">
                   <ChevronRight className="size-4" />
                 </button>
               </nav>

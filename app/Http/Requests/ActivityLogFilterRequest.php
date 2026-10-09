@@ -28,6 +28,7 @@ class ActivityLogFilterRequest extends FormRequest
             'start_date' => ['required_if:date_range,custom', 'nullable', 'date'],
             'end_date' => ['required_if:date_range,custom', 'nullable', 'date', 'after_or_equal:start_date'],
             'module' => ['nullable', 'string', 'max:50'],
+            'action' => ['nullable', 'string', 'max:50'],
             // Only users of the same company can be filtered on (super admins: any).
             'user_id' => ['nullable', Rule::exists('users', 'id')->when(! $this->user()->hasRole('super_admin'), fn ($rule) => $rule->where('company_id', $companyId))],
             'search' => ['nullable', 'string', 'max:100'],

@@ -25,6 +25,7 @@ class ActivityLogController extends Controller
             ->with('user.roles')
             ->between($from, $to)
             ->when($request->input('module'), fn ($q, string $module) => $q->where('module', $module))
+            ->when($request->input('action'), fn ($q, string $action) => $q->where('action', $action))
             ->when($request->input('user_id'), fn ($q, $id) => $q->where('user_id', $id))
             ->search($request->input('search'))
             ->orderByDesc('created_at')
@@ -53,6 +54,8 @@ class ActivityLogController extends Controller
             ->get(['id', 'first_name', 'last_name'])
             ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name]);
 
-        return response()->json(['data' => ['modules' => $modules, 'users' => $users]]);
+        $actions = ActivityLog::query()->distinct()->orderBy('action')->pluck('action');
+
+        return response()->json(['data' => ['modules' => $modules, 'actions' => $actions, 'users' => $users]]);
     }
 }
