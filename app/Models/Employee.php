@@ -40,6 +40,11 @@ class Employee extends Model
         });
     }
 
+    public function payrollGroup(): BelongsTo
+    {
+        return $this->belongsTo(PayrollGroup::class);
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
