@@ -33,8 +33,6 @@ abstract class HolidayRequest extends FormRequest
             // Branches this holiday applies to; only the company's own branches are accepted.
             'branch_ids' => ['nullable', 'array', 'max:200'],
             'branch_ids.*' => ['integer', 'distinct', Rule::exists('branches', 'id')->where('company_id', $this->user()->company_id)],
-            // Optional: defaults to the type's rate (2.00 regular, 1.30 special non-working, 3.00 double).
-            'pay_rate_multiplier' => ['nullable', 'numeric', 'min:1', 'max:5'],
             'description' => ['nullable', 'string', 'max:1000'],
             // Explicitly allow a second holiday on a date that is already taken.
             'allow_overlap' => ['sometimes', 'boolean'],
@@ -66,14 +64,13 @@ abstract class HolidayRequest extends FormRequest
         }];
     }
 
-    /** What the controller stores: the type's default multiplier filled in, and no branch list on national holidays. @return array<string, mixed> */
+    /** What the controller stores: no branch list on national holidays. @return array<string, mixed> */
     public function holidayData(): array
     {
         $data = $this->safe()->except('allow_overlap');
         $scope = HolidayScope::from($data['scope'] ?? 'national');
         $data['scope'] = $scope->value;
         $data['branch_ids'] = $scope === HolidayScope::NATIONAL ? null : array_map('intval', $data['branch_ids'] ?? []);
-        $data['pay_rate_multiplier'] ??= HolidayType::from($data['type'])->defaultMultiplier();
 
         return $data;
     }

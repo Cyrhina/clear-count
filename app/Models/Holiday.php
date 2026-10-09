@@ -22,11 +22,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property HolidayType $type
  * @property HolidayScope $scope
  * @property list<int>|null $branch_ids
- * @property float $pay_rate_multiplier
  * @property string|null $description
  * @property bool $is_default
  */
-#[Fillable(['company_id', 'name', 'date', 'type', 'scope', 'branch_ids', 'pay_rate_multiplier', 'description', 'is_default'])]
+#[Fillable(['company_id', 'name', 'date', 'type', 'scope', 'branch_ids', 'description', 'is_default'])]
 class Holiday extends Model
 {
     use SoftDeletes;
@@ -38,7 +37,6 @@ class Holiday extends Model
             'type' => HolidayType::class,
             'scope' => HolidayScope::class,
             'branch_ids' => 'array',
-            'pay_rate_multiplier' => 'float',
             'is_default' => 'boolean',
         ];
     }

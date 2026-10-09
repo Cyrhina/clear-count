@@ -76,7 +76,7 @@ final class PhilippineHolidays
         foreach (self::forYear($year) as $h) {
             Holiday::withTrashed()->systemDefaults()->firstOrCreate(
                 ['date' => $h['date'], 'name' => $h['name']],
-                ['type' => $h['type'], 'scope' => 'national', 'pay_rate_multiplier' => $h['type']->defaultMultiplier(), 'description' => $h['description'], 'is_default' => true],
+                ['type' => $h['type'], 'scope' => 'national', 'description' => $h['description'], 'is_default' => true],
             );
         }
 

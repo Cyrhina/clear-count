@@ -19,14 +19,17 @@ enum HolidayType: string
         };
     }
 
-    /** Pay as a multiple of the daily rate when the employee works that day (DOLE holiday pay rules). */
-    public function defaultMultiplier(): float
+    /**
+     * Which row of Payroll Settings > Overtime & Holiday Rates pays this type when worked. The rates themselves live
+     * there (one place, edited by the company); a holiday only says what type of day it is. Null: an ordinary day.
+     */
+    public function rateKey(): ?string
     {
         return match ($this) {
-            self::REGULAR => 2.00,              // 100% additional
-            self::SPECIAL_NON_WORKING => 1.30,  // 30% additional
-            self::SPECIAL_WORKING => 1.00,      // ordinary day: tracked for attendance only
-            self::DOUBLE_HOLIDAY => 3.00,       // two regular holidays on one date
+            self::REGULAR => 'regular_holiday_worked',
+            self::SPECIAL_NON_WORKING => 'special_holiday_worked',
+            self::SPECIAL_WORKING => null,
+            self::DOUBLE_HOLIDAY => 'double_holiday_worked',
         };
     }
 }

@@ -42,14 +42,19 @@ test('two regular holidays on one date become a double holiday', function () {
 
     expect($apr9['name'])->toBe('Maundy Thursday / Araw ng Kagitingan')
         ->and($apr9['type'])->toBe(HolidayType::DOUBLE_HOLIDAY)
-        ->and($apr9['type']->defaultMultiplier())->toBe(3.0);
+;
 });
 
-test('type labels and multipliers', function () {
-    expect(HolidayType::REGULAR->defaultMultiplier())->toBe(2.0)
-        ->and(HolidayType::SPECIAL_NON_WORKING->defaultMultiplier())->toBe(1.3)
-        ->and(HolidayType::SPECIAL_WORKING->defaultMultiplier())->toBe(1.0)
+test('each type points at its row in Overtime & Holiday Rates; a special working day is an ordinary day', function () {
+    expect(HolidayType::REGULAR->rateKey())->toBe('regular_holiday_worked')
+        ->and(HolidayType::SPECIAL_NON_WORKING->rateKey())->toBe('special_holiday_worked')
+        ->and(HolidayType::DOUBLE_HOLIDAY->rateKey())->toBe('double_holiday_worked')
+        ->and(HolidayType::SPECIAL_WORKING->rateKey())->toBeNull()
         ->and(HolidayType::REGULAR->label())->toBe('Regular Holiday');
+
+    // Every key a holiday type points at exists in the default rates table.
+    $keys = collect(App\Support\PayrollDefaults::OVERTIME_RATES)->pluck(0);
+    expect($keys)->toContain('regular_holiday_worked', 'special_holiday_worked', 'double_holiday_worked');
 });
 
 test('the seeder fills the shared system calendar once, however often it runs', function () {
@@ -69,18 +74,17 @@ test('create, list by year in date order, with the resource shape', function () 
 
     expect($created)->toMatchArray([
         'name' => 'A', 'date' => '2026-02-01', 'formatted_date' => 'Feb 1, 2026', 'type' => 'regular', 'type_label' => 'Regular Holiday',
-        'multiplier' => 2, 'scope' => 'national', 'is_custom' => true,
+        'rate_key' => 'regular_holiday_worked', 'scope' => 'national', 'is_custom' => true,
     ]);
 
     $list = $this->actingAs($this->admin)->getJson('/api/holidays?year=2026')->assertOk();
     expect(collect($list->json('data'))->pluck('name')->all())->toBe(['A', 'B'])->and($list->json('meta.year'))->toBe(2026);
 });
 
-test('multiplier defaults to the type and can be overridden', function () {
-    $special = $this->actingAs($this->admin)->postJson('/api/holidays', holidayPayload())->json('data.multiplier');
-    $custom = $this->actingAs($this->admin)->postJson('/api/holidays', holidayPayload(['date' => '2026-03-15', 'pay_rate_multiplier' => 1.5]))->json('data.multiplier');
+test('holidays carry a type but no rate of their own', function () {
+    $data = $this->actingAs($this->admin)->postJson('/api/holidays', holidayPayload(['pay_rate_multiplier' => 9]))->assertCreated()->json('data');
 
-    expect($special)->toBe(1.3)->and($custom)->toBe(1.5);
+    expect($data)->not->toHaveKeys(['multiplier', 'pay_rate_multiplier'])->and($data['rate_key'])->toBe('special_holiday_worked');
 });
 
 test('validation: required fields, date format, type, branch rules', function () {
@@ -121,7 +125,7 @@ test('update keeps its own date, marks the holiday as custom, and delete hides i
 
 test('import defaults adds the calendar to the company, and never touches other companies', function () {
     $other = Company::factory()->create();
-    Holiday::create(['company_id' => $other->id, 'name' => 'Theirs', 'date' => '2026-01-01', 'type' => 'regular', 'scope' => 'national', 'pay_rate_multiplier' => 2]);
+    Holiday::create(['company_id' => $other->id, 'name' => 'Theirs', 'date' => '2026-01-01', 'type' => 'regular', 'scope' => 'national']);
 
     $response = $this->actingAs($this->admin)->postJson('/api/holidays/import-defaults', ['year' => 2026])->assertOk();
 
@@ -147,8 +151,8 @@ test('import missing skips taken dates; reset restores untouched defaults but ke
 });
 
 test('other companies cannot read, edit or delete a holiday; scopes work', function () {
-    $mine = Holiday::create(['company_id' => $this->company->id, 'name' => 'Mine', 'date' => now()->addDays(10), 'type' => 'regular', 'scope' => 'national', 'pay_rate_multiplier' => 2]);
-    Holiday::create(['company_id' => $this->company->id, 'name' => 'Past', 'date' => now()->subDays(10), 'type' => 'regular', 'scope' => 'national', 'pay_rate_multiplier' => 2]);
+    $mine = Holiday::create(['company_id' => $this->company->id, 'name' => 'Mine', 'date' => now()->addDays(10), 'type' => 'regular', 'scope' => 'national']);
+    Holiday::create(['company_id' => $this->company->id, 'name' => 'Past', 'date' => now()->subDays(10), 'type' => 'regular', 'scope' => 'national']);
 
     $stranger = User::factory()->create(['company_id' => Company::factory()->create()->id])->assignRole('company_admin');
     $this->actingAs($stranger)->putJson("/api/holidays/{$mine->id}", holidayPayload())->assertNotFound();

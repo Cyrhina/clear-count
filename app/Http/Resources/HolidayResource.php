@@ -21,7 +21,8 @@ class HolidayResource extends JsonResource
             'year' => $this->year,
             'type' => $this->type->value,
             'type_label' => $this->type->label(),
-            'multiplier' => $this->pay_rate_multiplier,
+            // Which Overtime & Holiday Rates row pays this holiday when worked (null = ordinary day). The rate itself is set there.
+            'rate_key' => $this->type->rateKey(),
             'scope' => $this->scope->value,
             'scope_label' => $this->scope->label(),
             'branch_ids' => $this->branch_ids ?? [],

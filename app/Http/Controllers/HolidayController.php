@@ -106,7 +106,6 @@ class HolidayController extends Controller
                     'date' => $default->date,
                     'type' => $default->type,
                     'scope' => $default->scope,
-                    'pay_rate_multiplier' => $default->pay_rate_multiplier,
                     'description' => $default->description,
                     'is_default' => true,
                 ]);
