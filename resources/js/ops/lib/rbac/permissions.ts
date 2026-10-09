@@ -136,7 +136,6 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
     'leave.approve',
     'leave.manage_types',
     'compensation_approvals.manage',
-    'payroll.view',
     'payslips.view',
     'loans.view',
     'loans.manage',

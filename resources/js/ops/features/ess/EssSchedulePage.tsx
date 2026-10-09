@@ -1,10 +1,16 @@
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
+import { Card } from '@ops/components/ui/Card'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { RequestWfhDialog } from '@ops/features/ess/components/RequestWfhDialog'
+import { WfhArrangementCards } from '@ops/features/ess/components/WfhArrangementCards'
+import { useSession } from '@ops/hooks/useSession'
+import { cancelWfh, getWfhArrangements } from '@ops/lib/services/wfhService'
+import type { WfhArrangement } from '@ops/types/domain'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { dayMonth, dayShort, fromDateKey, monthDays, rangeLabel, shiftAnchor, shiftRangeLabel, todayKey, viewRange, weekDays, type RosterView } from '@ops/features/schedules/dateUtil'
 import { useRoster, type DayState } from '@ops/features/schedules/hooks/useRoster'
@@ -35,6 +41,13 @@ function EssScheduleContent() {
   const range = viewRange(anchor, view)
   const roster = useRoster(range.from, range.to)
   const today = todayKey()
+  const { user } = useSession()
+  const [wfh, setWfh] = useState<WfhArrangement[]>([])
+  const employeeId = employee?.id
+  const loadWfh = useCallback(() => {
+    if (employeeId) getWfhArrangements(user).then((l) => setWfh(l.filter((a) => a.employeeId === employeeId)))
+  }, [user, employeeId])
+  useEffect(loadWfh, [loadWfh])
 
   if (loadingEmployee || roster.isLoading) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
@@ -71,7 +84,7 @@ function EssScheduleContent() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My Schedule" description="Your shifts, rest days and approved leave. Your manager or HR sets your schedule." />
+      <PageHeader title="My Schedule" description="Your shifts, rest days and approved leave. Your manager or HR sets your schedule." actions={<RequestWfhDialog onRequested={loadWfh} />} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center rounded-lg border border-border bg-card">
@@ -180,6 +193,17 @@ function EssScheduleContent() {
           })}
         </div>
       )}
+
+      <Card className="p-5">
+        <Card.Title>My WFH</Card.Title>
+        <div className="mt-3">
+          {wfh.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No WFH requests yet.</p>
+          ) : (
+            <WfhArrangementCards items={wfh} onWithdraw={(a) => cancelWfh(user, [a.id]).then(loadWfh)} />
+          )}
+        </div>
+      </Card>
     </div>
   )
 }

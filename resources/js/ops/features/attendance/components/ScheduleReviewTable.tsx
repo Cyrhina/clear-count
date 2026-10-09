@@ -1,5 +1,5 @@
-import { AlertTriangle, CalendarOff, Info, Plane } from 'lucide-react'
-import { useState } from 'react'
+import { AlertTriangle, CalendarOff, Info, Pencil, Plane } from 'lucide-react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Checkbox } from '@ops/components/ui/Checkbox'
@@ -31,6 +31,11 @@ export function ScheduleReviewTable({
   onToggle,
   onOverride,
   hasLeave,
+  lateNote,
+  editingKey,
+  onEdit,
+  renderEditor,
+  isEdited,
 }: {
   rows: ScheduleReviewRow[]
   schedules: Schedule[]
@@ -38,6 +43,13 @@ export function ScheduleReviewTable({
   onToggle: (key: string, include: boolean) => void
   onOverride: (key: string, scheduleId: string) => void
   hasLeave: (key: string) => boolean
+  /** "Late #3 · counting since …" for a late row. */
+  lateNote?: (row: ScheduleReviewRow) => string | undefined
+  /** Row being edited inline, and what to render under it. */
+  editingKey?: string | null
+  onEdit?: (key: string) => void
+  renderEditor?: (row: ScheduleReviewRow) => ReactNode
+  isEdited?: (key: string) => boolean
 }) {
   const [onlyReview, setOnlyReview] = useState(false)
   const flagged = rows.filter((r) => r.needsReview && r.applicable)
@@ -75,7 +87,8 @@ export function ScheduleReviewTable({
           {visible.map((row) => {
             const included = isIncluded(row)
             return (
-              <TableRow key={row.key} className={cn(!included && 'opacity-70')}>
+              <Fragment key={row.key}>
+              <TableRow className={cn(!included && 'opacity-70')}>
                 <TableCell className="align-top">
                   <Checkbox checked={included} disabled={!row.applicable} onCheckedChange={(v) => onToggle(row.key, v === true)} aria-label={`Include ${row.record.employeeName} on ${row.record.date}`} />
                 </TableCell>
@@ -97,13 +110,28 @@ export function ScheduleReviewTable({
                   {row.scheduleSource === 'roster' && <p className="mt-0.5 text-[11px] text-muted-foreground">From the Schedules roster</p>}
                 </TableCell>
                 <TableCell className="whitespace-nowrap align-top tabular-nums">
-                  {row.timeIn ?? '—'} – {row.timeOut ?? '—'}
+                  {row.record.breakOut || row.record.breakIn ? (
+                    <>
+                      <p>AM {row.timeIn ?? '—'} – {row.record.breakOut ?? '—'}</p>
+                      <p>PM {row.record.breakIn ?? '—'} – {row.timeOut ?? '—'}</p>
+                    </>
+                  ) : (
+                    <p>
+                      {row.timeIn ?? '—'} – {row.timeOut ?? '—'}
+                    </p>
+                  )}
                   {row.record.punchCount > 0 && <p className="text-xs text-muted-foreground">{row.record.punchCount} punch{row.record.punchCount === 1 ? '' : 'es'}</p>}
+                  {onEdit && (
+                    <Button type="button" size="sm" variant="ghost" className="-ml-2 mt-0.5 h-7" icon={<Pencil className="size-3" />} onClick={() => onEdit(row.key)}>
+                      Edit
+                    </Button>
+                  )}
                 </TableCell>
                 <TableCell className="whitespace-normal align-top">
                   <div className="flex flex-wrap items-center gap-1">
                     {row.isRestDay ? <Badge tone="warning">Rest day</Badge> : <Badge tone={STATUS_TONE[row.status]} className="capitalize">{row.status}</Badge>}
                     {row.needsReview && <Badge tone="danger">Needs review</Badge>}
+                    {isEdited?.(row.key) && <Badge tone="brand">Edited</Badge>}
                     {hasLeave(row.key) && (
                       <Badge tone="brand" className="gap-1">
                         <Plane className="size-3" />
@@ -117,9 +145,16 @@ export function ScheduleReviewTable({
                       {d.message}
                     </p>
                   ))}
+                  {lateNote?.(row) && <p className="mt-1 text-[11px] font-medium text-warning">{lateNote(row)}</p>}
                   {row.discrepancies.length === 0 && <p className="mt-1 text-[11px] text-muted-foreground">Matches the schedule</p>}
                 </TableCell>
               </TableRow>
+              {editingKey === row.key && renderEditor && (
+                <TableRow>
+                  <TableCell colSpan={6}>{renderEditor(row)}</TableCell>
+                </TableRow>
+              )}
+              </Fragment>
             )
           })}
         </TableBody>

@@ -91,7 +91,6 @@ export function HrDashboard() {
           hint={`Next cut-off: ${metrics.nextCutoffLabel}`}
           icon={Wallet}
           tone="primary"
-          footer={{ label: 'View Payroll', to: '/payroll' }}
         />
       </div>
 

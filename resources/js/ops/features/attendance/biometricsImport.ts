@@ -40,6 +40,8 @@ export const FORMAT_MAPPING: Record<BiometricsFormat, string> = {
 
 /** Header row of the standard CSV template used by every non-ZKTeco device or system. */
 export const STANDARD_TEMPLATE_HEADERS = ['Employee ID', 'Date', 'Time In', 'Time Out']
+/** Optional extra columns of the standard template: lunch / break out and back in. */
+export const STANDARD_TEMPLATE_OPTIONAL_HEADERS = ['Break Out', 'Break In']
 
 export type PunchState = 'check_in' | 'check_out' | 'break_out' | 'break_in' | 'ot_in' | 'ot_out'
 
@@ -99,6 +101,9 @@ export interface DailyImportRecord {
   /** HH:MM (seconds dropped — attendance stores minutes). */
   timeIn: string | null
   timeOut: string | null
+  /** Lunch / break out and back in (HH:MM). */
+  breakOut: string | null
+  breakIn: string | null
   punchCount: number
   verifyModes: string[]
   deviceIds: string[]
@@ -139,7 +144,7 @@ export interface BiometricsParseResult {
   columns?: { headers: string[]; sample: string[]; mapping: ColumnMapping; mappedManually: boolean }
   records: DailyImportRecord[]
   issues: ImportIssue[]
-  stats: { lines: number; punches: number; duplicates: number; invalid: number; unmapped: number }
+  stats: { lines: number; punches: number; duplicates: number; invalid: number; unmapped: number; /** Punch lines of known employees left out because they are not in the selected department / branch. */ outOfScope: number }
 }
 
 // ---------------------------------------------------------------- text helpers
@@ -326,15 +331,21 @@ export function parseBiometricsFile(
   text: string,
   employees: Employee[],
   existingRecords: AttendanceRecord[],
-  options: { mapping?: ColumnMapping; /** Non-ZKTeco sources: only the FBS standard CSV template is accepted. */ template?: boolean } = {},
+  options: { mapping?: ColumnMapping; /** Only these employees are read; punches of anyone else in the file are skipped without an error. */ allowedEmployeeIds?: Set<string>; /** Non-ZKTeco sources: only the FBS standard CSV template is accepted. */ template?: boolean } = {},
 ): BiometricsParseResult {
   const lines = text.replace(/^﻿/, '').split(/\r?\n/)
   const nonEmpty = lines.map((raw, i) => ({ raw, line: i + 1 })).filter((l) => l.raw.trim().length > 0)
-  const empty: BiometricsParseResult = { records: [], issues: [], stats: { lines: 0, punches: 0, duplicates: 0, invalid: 0, unmapped: 0 } }
+  const empty: BiometricsParseResult = { records: [], issues: [], stats: { lines: 0, punches: 0, duplicates: 0, invalid: 0, unmapped: 0, outOfScope: 0 } }
   if (nonEmpty.length === 0) return { ...empty, headerError: 'The file is empty.' }
 
   const matcher = buildEmployeeMatcher(employees)
   const issues: ImportIssue[] = []
+  let outOfScope = 0
+  const inScope = (e: Employee) => {
+    if (!options.allowedEmployeeIds || options.allowedEmployeeIds.has(e.id)) return true
+    outOfScope++
+    return false
+  }
   const first = nonEmpty[0].raw
 
   // Headerless attlog: first line starts with a user ID followed by a date-time.
@@ -349,7 +360,7 @@ export function parseBiometricsFile(
   let format: BiometricsFormat
   let resultColumns: BiometricsParseResult['columns']
   let punches: ParsedPunch[] = []
-  const dailyRows: { line: number; raw: string; employee: Employee; deviceUserId: string; date: string; timeIn: string; timeOut: string | null; verify: string }[] = []
+  const dailyRows: { line: number; raw: string; employee: Employee; deviceUserId: string; date: string; timeIn: string; timeOut: string | null; breakOut: string | null; breakIn: string | null; verify: string }[] = []
 
   const addPunch = (line: number, raw: string, userIdRaw: string, ts: { date: string; time: string } | null, tsRaw: string, stateRaw: string | undefined, verifyRaw: string | undefined, deviceRaw: string | undefined) => {
     const userId = userIdRaw.trim()
@@ -360,6 +371,7 @@ export function parseBiometricsFile(
     if (state === 'invalid') return issues.push({ line, raw, message: `Unknown In/Out state "${stateRaw?.trim()}"`, severity: 'error' })
     const { employee, error } = matcher.match(userId)
     if (!employee) return issues.push({ line, raw, message: error ?? 'Unmapped User ID', severity: 'error' })
+    if (!inScope(employee)) return
     if (employee.employment.status === 'archived') return issues.push({ line, raw, message: `${employee.employeeNumber} ${fullName(employee)} is archived`, severity: 'error' })
     punches.push({
       line,
@@ -401,6 +413,8 @@ export function parseBiometricsFile(
 
     const timeInCol = findColumn(header, ['time in', 'timein', 'in time'])
     const timeOutCol = findColumn(header, ['time out', 'timeout', 'out time'])
+    const breakOutCol = findColumn(header, ['break out', 'breakout', 'lunch out', 'lunch start'])
+    const breakInCol = findColumn(header, ['break in', 'breakin', 'lunch in', 'lunch end'])
 
     if (options.template && (timeInCol === -1 || timeOutCol === -1 || findColumn(header, ALIASES.userId) === -1 || findColumn(header, ALIASES.date) === -1)) {
       return {
@@ -446,7 +460,17 @@ export function parseBiometricsFile(
           issues.push({ line, raw, message: error ?? 'Unmapped Employee ID', severity: 'error' })
           continue
         }
-        dailyRows.push({ line, raw, employee, deviceUserId: userId.trim(), date, timeIn, timeOut, verify: parseVerify(cells[logTypeCol]) })
+        if (!inScope(employee)) continue
+        const optionalTime = (col: number, label: string) => {
+          const text = col === -1 ? '' : (cells[col] ?? '').trim()
+          if (!text) return null
+          const parsed = parseTimePart(text)
+          if (!parsed) issues.push({ line, raw, message: `Malformed ${label} "${text}" — ignored`, severity: 'warning' })
+          return parsed
+        }
+        const breakOut = optionalTime(breakOutCol, 'Break Out')
+        const breakIn = optionalTime(breakInCol, 'Break In')
+        dailyRows.push({ line, raw, employee, deviceUserId: userId.trim(), date, timeIn, timeOut, breakOut, breakIn, verify: parseVerify(cells[logTypeCol]) })
       }
     } else {
       let mapping: ColumnMapping
@@ -545,6 +569,8 @@ export function parseBiometricsFile(
         date: row.date,
         timeIn: hhmm(row.timeIn),
         timeOut: hhmm(row.timeOut),
+        breakOut: hhmm(row.breakOut),
+        breakIn: hhmm(row.breakIn),
         punchCount: row.timeOut ? 2 : 1,
         verifyModes: row.verify ? [row.verify] : [],
         deviceIds: [],
@@ -583,6 +609,20 @@ export function parseBiometricsFile(
       if (breaks) notes.push(`${breaks} break punch${breaks === 1 ? '' : 'es'}`)
       if (!sorted.some((p) => p.state)) notes.push('In/Out state not recorded — first and last punch used')
 
+      // Lunch / break: the recorded Break-Out / Break-In punches; with no states, four punches mean in, lunch out, lunch in, out.
+      let breakOutP = sorted.find((p) => p.state === 'break_out')
+      let breakInP = [...sorted].reverse().find((p) => p.state === 'break_in')
+      if (!breakOutP && !breakInP && sorted.length === 4 && !sorted.some((p) => p.state)) {
+        breakOutP = sorted[1]
+        breakInP = sorted[2]
+        notes.push('Lunch break read from punches 2 and 3')
+      }
+      if (breakOutP && breakInP && breakInP.time <= breakOutP.time) {
+        notes.push('Break-in is not after break-out — lunch break ignored')
+        breakOutP = undefined
+        breakInP = undefined
+      }
+
       const p0 = sorted[0]
       records.push({
         key,
@@ -593,6 +633,8 @@ export function parseBiometricsFile(
         date: p0.date,
         timeIn: hhmm(firstIn?.time ?? null),
         timeOut: hhmm(lastOut?.time ?? null),
+        breakOut: hhmm(breakOutP?.time ?? null),
+        breakIn: hhmm(breakInP?.time ?? null),
         punchCount: sorted.length,
         verifyModes: [...new Set(sorted.map((p) => p.verifyMode).filter(Boolean))],
         deviceIds: [...new Set(sorted.map((p) => p.deviceId).filter(Boolean))],
@@ -625,6 +667,7 @@ export function parseBiometricsFile(
       duplicates,
       invalid: errors.length,
       unmapped: errors.filter((i) => /isn't mapped|matches more than one/.test(i.message)).length,
+      outOfScope,
     },
   }
 }
@@ -651,18 +694,21 @@ interface SamplePunch {
   verify: string
 }
 
-/** Two days of punches for six employees — on time, late, undertime, breaks, a missed check-out — plus deliberate bad lines. */
-function samplePunches(employees: Employee[], date: string): { punches: SamplePunch[]; bad: string[] } {
+/**
+ * Two days of punches for six employees: AM in, AM out (break-out), PM in (break-in), PM out — on time, late, undertime and overtime.
+ * Every line is valid; `biometricsSamples.test.mts` parses the sample files to keep it that way.
+ */
+function samplePunches(employees: Employee[], date: string): { punches: SamplePunch[] } {
   const active = employees.filter((e) => e.employment.status === 'active').slice(0, 6)
   const days = [previousDay(date), date]
   const patterns: [string, string][][] = [
-    // [time, state] per employee
+    // [time, state] per employee: 0 check-in, 2 break-out, 3 break-in, 1 check-out, 4/5 overtime in/out
     [['08:52:14', '0'], ['12:01:40', '2'], ['12:58:03', '3'], ['18:04:22', '1']],
-    [['09:21:37', '0'], ['18:12:09', '1']],
-    [['08:47:51', '0'], ['16:31:18', '1']],
-    [['08:58:06', '0'], ['08:58:31', '0'], ['18:00:44', '1']], // double tap at check-in
-    [['09:03:12', '0']], // forgot to check out
-    [['08:55:29', '0'], ['18:30:02', '1'], ['19:00:15', '4'], ['21:02:47', '5']], // overtime
+    [['09:21:37', '0'], ['12:10:09', '2'], ['13:25:41', '3'], ['18:12:09', '1']], // late, long lunch
+    [['08:47:51', '0'], ['12:00:18', '2'], ['13:00:30', '3'], ['16:31:18', '1']], // undertime
+    [['08:58:06', '0'], ['12:03:44', '2'], ['13:02:10', '3'], ['18:00:44', '1']],
+    [['09:03:12', '0'], ['12:05:00', '2'], ['13:04:52', '3'], ['18:02:30', '1']],
+    [['08:55:29', '0'], ['12:00:05', '2'], ['13:00:11', '3'], ['18:30:02', '1'], ['19:00:15', '4'], ['21:02:47', '5']], // overtime
   ]
   const verifyModes = ['1', '15', '1', '4', '1', '15']
   const punches: SamplePunch[] = []
@@ -672,19 +718,14 @@ function samplePunches(employees: Employee[], date: string): { punches: SamplePu
       pattern.forEach(([time, state]) => punches.push({ pin: devicePinFor(e), date: day, time, device: '1', state, verify: verifyModes[i] }))
     }),
   )
-  return { punches, bad: ['9999', '2026-13-45 25:61:00', `${devicePinFor(active[0] ?? employees[0])}`] }
+  return { punches }
 }
 
 /** USB attlog (.dat): `<PIN>\t<YYYY-MM-DD HH:MM:SS>\t<Device>\t<State>\t<Verify>\t<WorkCode>` with right-aligned PINs. */
 export function buildSampleAttlog(employees: Employee[], date: string): string {
-  const { punches, bad } = samplePunches(employees, date)
+  const { punches } = samplePunches(employees, date)
   const line = (pin: string, ts: string, device: string, state: string, verify: string) => `${pin.padStart(9, ' ')}\t${ts}\t${device}\t${state}\t${verify}\t0`
   const out = punches.map((p) => line(p.pin, `${p.date} ${p.time}`, p.device, p.state, p.verify))
-  // Deliberate problems for the validation demo: unmapped PIN, malformed timestamp, missing timestamp, exact duplicate.
-  out.push(line(bad[0], `${date} 08:59:58`, '1', '0', '1'))
-  out.push(line(bad[2], bad[1], '1', '0', '1'))
-  out.push(`${bad[2].padStart(9, ' ')}\t\t1\t1\t1\t0`)
-  if (punches[0]) out.push(line(punches[0].pin, `${punches[0].date} ${punches[0].time}`, punches[0].device, punches[0].state, punches[0].verify))
   return out.join('\r\n') + '\r\n'
 }
 
@@ -695,13 +736,13 @@ export function buildSampleAttlog(employees: Employee[], date: string): string {
  */
 export function buildStandardTemplateCsv(employees: Employee[], date: string): string[][] {
   const active = employees.filter((e) => e.employment.status === 'active').slice(0, 4)
-  const times: [string, string][] = [['08:52', '18:04'], ['09:21', '18:12'], ['08:47', '16:31'], ['09:03', '']]
-  return [STANDARD_TEMPLATE_HEADERS, ...active.map((e, i) => [e.employeeNumber, date, times[i][0], times[i][1]])]
+  const times: [string, string, string, string][] = [['08:52', '18:04', '12:03', '13:01'], ['09:21', '18:12', '12:10', '13:25'], ['08:47', '16:31', '12:00', '13:00'], ['09:03', '', '', '']]
+  return [[...STANDARD_TEMPLATE_HEADERS, ...STANDARD_TEMPLATE_OPTIONAL_HEADERS], ...active.map((e, i) => [e.employeeNumber, date, ...times[i]])]
 }
 
 /** CSV in the device/software export shape: User ID, Name, Timestamp, Verification Mode, In/Out State, Device ID. */
 export function buildSampleZkCsv(employees: Employee[], date: string): string[][] {
-  const { punches, bad } = samplePunches(employees, date)
+  const { punches } = samplePunches(employees, date)
   const byPin = new Map(employees.map((e) => [devicePinFor(e), e]))
   const VERIFY: Record<string, string> = { '1': 'Fingerprint', '15': 'Face', '4': 'Card' }
   const STATE: Record<string, string> = { '0': 'Check-In', '1': 'Check-Out', '2': 'Break-Out', '3': 'Break-In', '4': 'OT-In', '5': 'OT-Out' }
@@ -709,8 +750,5 @@ export function buildSampleZkCsv(employees: Employee[], date: string): string[][
     const e = byPin.get(p.pin)
     return [p.pin, e ? fullName(e) : '', `${p.date} ${p.time}`, VERIFY[p.verify] ?? p.verify, STATE[p.state] ?? p.state, p.device]
   })
-  rows.push([bad[0], 'Unknown', `${date} 08:59:58`, 'Fingerprint', 'Check-In', '1'])
-  rows.push([bad[2], '', bad[1], 'Fingerprint', 'Check-In', '1'])
-  rows.push(['', '', `${date} 09:10:00`, 'Face', 'Check-In', '1'])
   return [['User ID', 'Name', 'Timestamp', 'Verification Mode', 'In/Out State', 'Device ID'], ...rows]
 }

@@ -26,6 +26,8 @@ import { EditCompensationForm } from '@ops/features/employees/components/edit/Ed
 import { EditEmploymentInfoForm } from '@ops/features/employees/components/edit/EditEmploymentInfoForm'
 import { EditGovernmentInfoForm } from '@ops/features/employees/components/edit/EditGovernmentInfoForm'
 import { EditPersonalInfoForm } from '@ops/features/employees/components/edit/EditPersonalInfoForm'
+import { ApplyWfhDialog } from '@ops/features/attendance/components/ApplyWfhDialog'
+import { WfhArrangementCards } from '@ops/features/ess/components/WfhArrangementCards'
 import { useEmployee } from '@ops/features/employees/hooks/useEmployee'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -36,9 +38,10 @@ import { useSession } from '@ops/hooks/useSession'
 import { categoryLabel, findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, estimatedEquivalentFor, formatBaseRate, rateFieldLabel } from '@ops/lib/payroll/payRate'
 import { setEmployeePayrollGroup } from '@ops/lib/services/payrollSettingsService'
+import { getWfhArrangements } from '@ops/lib/services/wfhService'
 import { getUsers, resetUserPassword } from '@ops/lib/services/userService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { EmploymentStatus, SessionUser } from '@ops/types/domain'
+import type { EmploymentStatus, SessionUser, WfhArrangement } from '@ops/types/domain'
 
 const FREQUENCY_LABEL: Record<string, string> = {
   weekly: 'Weekly',
@@ -83,6 +86,10 @@ function EmployeeProfileContent() {
   const { groups, compensationTypes, refetch: refetchPayrollGroups } = usePayrollGroups()
   const { user } = useSession()
   const { notify } = useToast()
+  const [wfh, setWfh] = useState<WfhArrangement[]>([])
+  useEffect(() => {
+    if (id) getWfhArrangements(user).then((l) => setWfh(l.filter((a) => a.employeeId === id)))
+  }, [user, id])
   const navigate = useNavigate()
   const [statusDialog, setStatusDialog] = useState<EmploymentStatus | null>(null)
   const [separateOpen, setSeparateOpen] = useState(false)
@@ -98,6 +105,7 @@ function EmployeeProfileContent() {
   const canSeparate = usePermission('employees.separate')
   const canViewPay = usePermission('employees.pay.view')
   const canViewAttendance = usePermission('attendance.view')
+  const canAdjustAttendance = usePermission('attendance.adjust')
   const canManageUsers = usePermission('users.manage')
   // The sign-in account linked to this employee, if they have one — only then is there a password to reset.
   const [account, setAccount] = useState<SessionUser | null>(null)
@@ -296,6 +304,15 @@ function EmployeeProfileContent() {
                 <Field label="Status" value={employee.employment.status} />
               </div>
             )}
+          </Card>
+          <Card className="mt-5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Card.Title>Work arrangement</Card.Title>
+              {canAdjustAttendance && <ApplyWfhDialog employeeIds={[employee.id]} />}
+            </div>
+            <div className="mt-3">
+              {wfh.length === 0 ? <p className="text-sm text-muted-foreground">No WFH arrangement — onsite</p> : <WfhArrangementCards items={wfh} showTimes />}
+            </div>
           </Card>
         </TabsContent>
 

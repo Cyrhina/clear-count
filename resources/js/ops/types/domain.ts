@@ -440,7 +440,45 @@ export interface AttendanceRecord {
   date: string
   timeIn: string | null
   timeOut: string | null
+  /** Lunch / break out and back in (HH:MM) — optional, set by biometrics import or an edit. */
+  breakOut?: string | null
+  breakIn?: string | null
   status: AttendanceStatus
+  /** Where the day was worked. Unset = onsite. */
+  workType?: 'onsite' | 'wfh' | 'field'
+  /** True when the system filled the times in from a WFH arrangement (no punches). Real punches replace it. */
+  autoRecorded?: boolean
+  /** The WFH arrangement that produced an auto-recorded day. */
+  wfhId?: string
+}
+
+/** standing = a repeating pattern (e.g. every Mon/Wed); temporary = specific dates (e.g. this week only). */
+export type WfhKind = 'standing' | 'temporary'
+/** default = the schedule's own times are recorded; custom = fixed times given here; self_log = nothing is auto-recorded, the day is logged by hand. */
+export type WfhTimes = 'default' | 'custom' | 'self_log'
+export type WfhStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export interface WfhArrangement {
+  id: string
+  companyId: string
+  employeeId: string
+  kind: WfhKind
+  /** YYYY-MM-DD */
+  dateFrom: string
+  /** Last day; null = open-ended (standing only). */
+  dateTo: string | null
+  /** 0 = Sunday … 6 = Saturday. Empty = every working day in the range. */
+  daysOfWeek: number[]
+  times: WfhTimes
+  /** HH:MM, only for times = custom. */
+  custom?: { timeIn: string; breakOut: string; breakIn: string; timeOut: string }
+  reason: string
+  status: WfhStatus
+  requestedBy: string
+  decidedBy?: string
+  createdAt: string
+  /** Arrangements made together (bulk apply) share a batch id. */
+  batchId?: string
 }
 
 export interface AttendanceAdjustment {

@@ -22,6 +22,8 @@ export type DiscrepancyCode =
   | 'long_shift'
   | 'overnight'
   | 'leave_conflict'
+  | 'long_break'
+  | 'break_incomplete'
 
 /** info: expected and applied as-is (late, undertime, overtime). review: a person should confirm it first. */
 export type DiscrepancySeverity = 'info' | 'review'
@@ -62,10 +64,11 @@ export interface MissingPunchRow {
   scheduleSource: ScheduleSource
 }
 
-/** Narrows a schedule-based import to a date range, a department and/or one schedule. */
+/** Narrows a schedule-based import to a date range, a branch, a department and/or one schedule. */
 export interface ImportScope {
   from: string
   to: string
+  branchId?: string
   department?: string
   scheduleId?: string
 }
@@ -141,15 +144,19 @@ export function buildScheduleReview(input: {
   scope?: ImportScope
   /** True when the employee has approved leave on that date — lets the no-punch check cover days the file doesn't mention. */
   onLeave?: (employeeId: string, date: string) => boolean
+  /** True when the day is an approved WFH day — it has no punches by design, so it is not a "no punch" day. */
+  isWfh?: (employeeId: string, date: string) => boolean
 }): ScheduleReview {
-  const { records: allRecords, employees, schedules, leave, overrides, roster, scope, onLeave } = input
+  const { records: allRecords, employees, schedules, leave, overrides, roster, scope, onLeave, isWfh } = input
   const resolve = (employeeId: string, key: string) => resolveSchedule(employeeId, schedules, overrides?.get(key), roster?.get(key))
 
   const departmentOf = new Map(employees.map((e) => [e.id, e.employment.department]))
+  const branchOf = new Map(employees.map((e) => [e.id, e.branchId]))
   // Scope is judged on the roster/assigned schedule — never on a reviewer's override, or a row would vanish the moment it is changed.
   const inScope = (employeeId: string, date: string) => {
     if (!scope) return true
     if (date < scope.from || date > scope.to) return false
+    if (scope.branchId && branchOf.get(employeeId) !== scope.branchId) return false
     if (scope.department && departmentOf.get(employeeId) !== scope.department) return false
     if (scope.scheduleId && resolveSchedule(employeeId, schedules, undefined, roster?.get(`${employeeId}|${date}`)).schedule?.id !== scope.scheduleId) return false
     return true
@@ -229,6 +236,11 @@ export function buildScheduleReview(input: {
       if (outM !== null && outM - inM > MAX_SHIFT_MINUTES) add('long_shift', 'review', `${Math.round((outM - inM) / 60)}-hour shift — check for a missed tap`)
     } else if (!timeOut) add('missing_out', 'review', 'No time-out recorded')
 
+    if (record.breakOut && record.breakIn && schedule?.breakMinutes) {
+      const taken = toMinutes(record.breakIn) - toMinutes(record.breakOut)
+      if (taken > schedule.breakMinutes) add('long_break', 'info', `Lunch break ${taken} min (${record.breakOut}–${record.breakIn}) — ${schedule.breakMinutes} min allowed`)
+    } else if (!!record.breakOut !== !!record.breakIn) add('break_incomplete', 'info', record.breakOut ? 'Lunch out recorded but no lunch in' : 'Lunch in recorded but no lunch out')
+
     const leaveResolution = leave.byKey.get(record.key)
     if (leaveResolution?.review) add('leave_conflict', 'review', leaveResolution.review)
 
@@ -267,7 +279,7 @@ export function buildScheduleReview(input: {
         const { schedule, source, rest } = resolveSchedule(employee.id, schedules, undefined, roster?.get(key))
         if (!schedule || (source === 'default' && !inFile.has(employee.id))) continue
         if (!inScope(employee.id, date)) continue
-        if (present.has(key) || leaveKeys.has(key) || onLeave?.(employee.id, date) || (rest ?? isRestDayFor(schedule, date))) continue
+        if (present.has(key) || leaveKeys.has(key) || onLeave?.(employee.id, date) || isWfh?.(employee.id, date) || (rest ?? isRestDayFor(schedule, date))) continue
         missing.push({ key, employee, date, schedule, scheduleSource: source })
       }
     }

@@ -1,4 +1,7 @@
+import { roleHasCapability } from '@ops/lib/rbac/permissions'
+import { statusForPunch } from '@ops/lib/attendance/status'
 import { getEmployees } from '@ops/lib/services/employeeService'
+import { materializeWfhRecords, scheduleOn } from '@ops/lib/services/wfhService'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveRequest, SessionUser } from '@ops/types/domain'
@@ -13,17 +16,20 @@ export async function getSchedules(session: SessionUser) {
 }
 
 export async function getAttendanceForDate(session: SessionUser, date: string): Promise<AttendanceRecord[]> {
+  materializeWfhRecords()
   const employeeIds = await scopedEmployeeIds(session)
   return db.attendanceRecords.filter((r) => r.companyId === session.companyId && r.date === date && employeeIds.has(r.employeeId))
 }
 
 /** Every attendance record in scope, unfiltered by date — used to derive Daily/Hourly Basic Pay for a Payroll Run. */
 export async function getAttendanceRecords(session: SessionUser): Promise<AttendanceRecord[]> {
+  materializeWfhRecords()
   const employeeIds = await scopedEmployeeIds(session)
   return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
 }
 
 export async function getAttendanceForEmployee(session: SessionUser, employeeId: string): Promise<AttendanceRecord[]> {
+  materializeWfhRecords()
   const employeeIds = await scopedEmployeeIds(session)
   if (!employeeIds.has(employeeId)) return []
   return db.attendanceRecords
@@ -74,21 +80,14 @@ export interface BiometricsPunch {
   date: string
   timeIn: string
   timeOut: string | null
+  breakOut?: string | null
+  breakIn?: string | null
   /** Schedule-based import: the schedule the punch was reviewed against and the status that review settled on. */
   scheduleId?: string
   status?: AttendanceRecord['status']
 }
 
-function toMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number)
-  return h * 60 + m
-}
-
-function statusForPunch(timeIn: string, timeOut: string | null, startTime: string, endTime: string, graceMinutes: number): AttendanceRecord['status'] {
-  if (toMinutes(timeIn) > toMinutes(startTime) + graceMinutes) return 'late'
-  if (timeOut && toMinutes(timeOut) < toMinutes(endTime)) return 'undertime'
-  return 'present'
-}
+export { statusForPunch }
 
 /** Applies punches parsed from an uploaded biometrics CSV — updates the matching day's record or creates one. */
 export async function applyBiometricsPunches(session: SessionUser, punches: BiometricsPunch[]): Promise<number> {
@@ -113,6 +112,13 @@ export async function applyBiometricsPunches(session: SessionUser, punches: Biom
     if (existing) {
       existing.timeIn = punch.timeIn
       existing.timeOut = punch.timeOut
+      existing.breakOut = punch.breakOut ?? null
+      existing.breakIn = punch.breakIn ?? null
+      if (existing.autoRecorded) {
+        existing.autoRecorded = false
+        existing.workType = undefined
+        existing.wfhId = undefined
+      }
       existing.status = status
       if (punch.scheduleId) existing.scheduleId = punch.scheduleId
     } else {
@@ -124,6 +130,8 @@ export async function applyBiometricsPunches(session: SessionUser, punches: Biom
         date: punch.date,
         timeIn: punch.timeIn,
         timeOut: punch.timeOut,
+        breakOut: punch.breakOut ?? null,
+        breakIn: punch.breakIn ?? null,
         status,
       })
     }
@@ -262,4 +270,91 @@ export async function decideAttendanceAdjustments(session: SessionUser, adjustme
     decided += 1
   }
   return decided
+}
+
+export interface LogAttendanceInput {
+  employeeIds: string[]
+  dateFrom: string
+  dateTo: string
+  workType: NonNullable<AttendanceRecord['workType']>
+  timeIn: string
+  /** AM out and PM in (lunch) — optional. */
+  breakOut?: string
+  breakIn?: string
+  timeOut: string
+  reason: string
+  /** Replace a day that already has a record. Auto-recorded WFH days are always replaced. */
+  overwrite?: boolean
+}
+
+export interface LogAttendanceResult {
+  created: number
+  updated: number
+  /** Days left alone: rest days, holidays, or an existing record when not overwriting. */
+  skipped: number
+}
+
+/** Logs attendance by hand — for WFH, field work, or a day the biometrics missed. One record per employee per working day in the range. */
+export async function logAttendance(session: SessionUser, input: LogAttendanceInput): Promise<LogAttendanceResult> {
+  if (!roleHasCapability(session.role, 'attendance.adjust')) throw new Error('You cannot log attendance for others.')
+  if (!input.reason.trim()) throw new Error('Add a reason.')
+  if (!input.timeIn) throw new Error('Enter the AM in time.')
+  if (input.dateTo < input.dateFrom) throw new Error('The end date is before the start date.')
+  const allowed = new Map((await getEmployees(session)).map((e) => [e.id, e]))
+  const result: LogAttendanceResult = { created: 0, updated: 0, skipped: 0 }
+  const next = (date: string) => {
+    const d = new Date(`${date}T00:00:00`)
+    d.setDate(d.getDate() + 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  for (const employeeId of input.employeeIds) {
+    const employee = allowed.get(employeeId)
+    if (!employee) continue
+    for (let date = input.dateFrom; date <= input.dateTo; date = next(date)) {
+      const { schedule, rest } = scheduleOn(employee, date)
+      const holiday = db.holidays.some((h) => h.companyId === session.companyId && h.date === date)
+      if (!schedule || rest || holiday) {
+        result.skipped++
+        continue
+      }
+      const existing = db.attendanceRecords.find((r) => r.companyId === session.companyId && r.employeeId === employeeId && r.date === date)
+      if (existing && !existing.autoRecorded && !input.overwrite) {
+        result.skipped++
+        continue
+      }
+      const status = statusForPunch(input.timeIn, input.timeOut || null, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
+      const fields = {
+        scheduleId: schedule.id,
+        timeIn: input.timeIn,
+        timeOut: input.timeOut || null,
+        breakOut: input.breakOut || null,
+        breakIn: input.breakIn || null,
+        status,
+        workType: input.workType,
+        autoRecorded: false,
+        wfhId: undefined,
+      }
+      if (existing) {
+        Object.assign(existing, fields)
+        result.updated++
+      } else {
+        db.attendanceRecords.push({ id: `${employeeId}_att_${date}_manual`, companyId: session.companyId, employeeId, date, ...fields })
+        result.created++
+      }
+    }
+  }
+  db.activityLog.unshift({
+    id: crypto.randomUUID(),
+    companyId: session.companyId,
+    timestamp: new Date().toISOString(),
+    actor: session.name,
+    actorRole: session.role,
+    action: `Logged ${input.workType.toUpperCase()} attendance for ${input.employeeIds.length} employee${input.employeeIds.length === 1 ? '' : 's'} (${input.dateFrom}${input.dateTo !== input.dateFrom ? ` to ${input.dateTo}` : ''})`,
+    details: input.reason.trim(),
+    module: 'Attendance',
+    kind: 'Added',
+    title: 'Logged attendance',
+  })
+  return result
 }

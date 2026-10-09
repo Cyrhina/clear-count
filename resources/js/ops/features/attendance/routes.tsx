@@ -9,13 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tab
 import type { SortDirection } from '@ops/components/ui/FiltersPopover'
 import { AttendanceFilterBar } from '@ops/features/attendance/components/AttendanceFilterBar'
 import { AdjustmentsList } from '@ops/features/attendance/components/AdjustmentsList'
+import { AttendancePeriodView } from '@ops/features/attendance/components/AttendancePeriodView'
 import { DailyAttendanceTable } from '@ops/features/attendance/components/DailyAttendanceTable'
 import { FileAdjustmentDialog } from '@ops/features/attendance/components/FileAdjustmentDialog'
 import { MiniCalendarPicker } from '@ops/features/attendance/components/MiniCalendarPicker'
 import { GROUP_OPTIONS, getEmployeeGroup } from '@ops/features/attendance/groupUtil'
+import { ApplyWfhDialog } from '@ops/features/attendance/components/ApplyWfhDialog'
+import { LogAttendanceDialog } from '@ops/features/attendance/components/LogAttendanceDialog'
 import { ImportBiometricsDialog } from '@ops/features/attendance/components/ImportBiometricsDialog'
-import { useApprovedLeavesForDate, useAttendanceAdjustments, useDailyAttendance, useDateStatusSets } from '@ops/features/attendance/hooks/useAttendance'
+import { useApprovedLeavesForDate, useAttendanceAdjustments, useDailyAttendance, useDateStatusSets, useLateDates } from '@ops/features/attendance/hooks/useAttendance'
 import { approvedLeaveOn, resolveLeaveStatus, type LeaveResolution } from '@ops/features/attendance/leaveStatus'
+import { WfhPanel } from '@ops/features/attendance/components/WfhPanel'
 import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { useHighlightTarget } from '@ops/hooks/useHighlightTarget'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -64,6 +68,7 @@ export function AttendancePage() {
   const [date, setDate] = useState(todayKey)
   const [activeTab, setActiveTab] = useState(highlightTab ?? 'daily')
   const { records: punchRecords, schedules, isLoading: isLoadingAttendance, refetch: refetchAttendance } = useDailyAttendance(date)
+  const lateDates = useLateDates(punchRecords)
   const { leaves, refetch: refetchLeaves } = useApprovedLeavesForDate(date)
   const { onLeaveIds, pendingAdjustmentIds } = useDateStatusSets(date)
   const { adjustments, isLoading: isLoadingAdjustments, refetch } = useAttendanceAdjustments()
@@ -206,20 +211,22 @@ export function AttendancePage() {
         departmentOptions={departmentOptions}
         status={status}
         onStatusChange={setStatus}
-        statusOptions={activeTab === 'daily' ? DAILY_STATUS_OPTIONS : ADJUSTMENT_STATUS_OPTIONS}
-        sortBy={activeTab === 'daily' ? dailySortBy : adjustmentSortBy}
-        onSortByChange={activeTab === 'daily' ? setDailySortBy : setAdjustmentSortBy}
-        sortOptions={activeTab === 'daily' ? DAILY_SORT_OPTIONS : ADJUSTMENT_SORT_OPTIONS}
-        sortDirection={activeTab === 'daily' ? dailySortDirection : adjustmentSortDirection}
-        onSortDirectionChange={activeTab === 'daily' ? setDailySortDirection : setAdjustmentSortDirection}
+        statusOptions={activeTab !== 'adjustments' ? DAILY_STATUS_OPTIONS : ADJUSTMENT_STATUS_OPTIONS}
+        sortBy={activeTab !== 'adjustments' ? dailySortBy : adjustmentSortBy}
+        onSortByChange={activeTab !== 'adjustments' ? setDailySortBy : setAdjustmentSortBy}
+        sortOptions={activeTab !== 'adjustments' ? DAILY_SORT_OPTIONS : ADJUSTMENT_SORT_OPTIONS}
+        sortDirection={activeTab !== 'adjustments' ? dailySortDirection : adjustmentSortDirection}
+        onSortDirectionChange={activeTab !== 'adjustments' ? setDailySortDirection : setAdjustmentSortDirection}
         hasActiveFilters={hasActiveFilters}
         onClear={clearFilters}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <Select className="-mb-2 lg:hidden" value={activeTab} onValueChange={setActiveTab} aria-label="Attendance section" options={[{ value: 'daily', label: 'Daily Attendance' }, { value: 'adjustments', label: 'Adjustments' }]} />
+        <Select className="-mb-2 lg:hidden" value={activeTab} onValueChange={setActiveTab} aria-label="Attendance section" options={[{ value: 'daily', label: 'Daily Attendance' }, { value: 'period', label: 'Weekly & Monthly' }, { value: 'wfh', label: 'WFH' }, { value: 'adjustments', label: 'Adjustments' }]} />
         <TabsList className="hidden lg:flex">
           <TabsTrigger value="daily">Daily Attendance</TabsTrigger>
+          <TabsTrigger value="period">Weekly & Monthly</TabsTrigger>
+          <TabsTrigger value="wfh">WFH</TabsTrigger>
           <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
         </TabsList>
 
@@ -235,7 +242,11 @@ export function AttendancePage() {
                 </Button>
               )}
             </div>
-            {canImport && <ImportBiometricsDialog date={date} onImported={refetchDaily} />}
+            <div className="flex flex-wrap gap-2">
+              {canAdjust && <LogAttendanceDialog onLogged={refetchDaily} />}
+              {canAdjust && <ApplyWfhDialog onApplied={refetchDaily} />}
+              {canImport && <ImportBiometricsDialog date={date} onImported={refetchDaily} />}
+            </div>
           </div>
           {isLoadingAttendance ? (
             <Skeleton className="h-72" />
@@ -244,12 +255,21 @@ export function AttendancePage() {
               records={filteredRecords}
               employees={employees}
               leaveResolutions={leaveResolutions}
+              lateDates={lateDates}
               onAdjustmentCreated={() => {
                 refetch()
                 refetchDaily()
               }}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="period">
+          <AttendancePeriodView employees={employees.filter((e) => e.employment.status === 'active' && matchesCommonFilters(e))} />
+        </TabsContent>
+
+        <TabsContent value="wfh">
+          <WfhPanel />
         </TabsContent>
 
         <TabsContent value="adjustments">

@@ -1,4 +1,4 @@
-import { AlertTriangle, Plane } from 'lucide-react'
+import { AlertTriangle, Home, Plane } from 'lucide-react'
 import { useState } from 'react'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
@@ -6,7 +6,9 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { AdjustmentRequestDialog } from '@ops/features/attendance/components/AdjustmentRequestDialog'
+import { lateOrdinal } from '@ops/features/attendance/lateCycle'
 import type { LeaveResolution } from '@ops/features/attendance/leaveStatus'
+import { formatDate } from '@ops/lib/utils/format'
 import { usePermission } from '@ops/hooks/usePermission'
 import type { AttendanceRecord, Employee } from '@ops/types/domain'
 
@@ -14,12 +16,15 @@ export function DailyAttendanceTable({
   records,
   employees,
   leaveResolutions,
+  lateDates,
   onAdjustmentCreated,
 }: {
   records: AttendanceRecord[]
   employees: Employee[]
   /** Approved-leave status per employee for this date (overrides Absent). */
   leaveResolutions?: Map<string, LeaveResolution>
+  /** Late dates per employee, for the "Late #n" count. */
+  lateDates?: Map<string, string[]>
   onAdjustmentCreated: () => void
 }) {
   const canAdjust = usePermission('attendance.adjust')
@@ -29,6 +34,28 @@ export function DailyAttendanceTable({
 
   if (records.length === 0) {
     return <EmptyState title="No attendance recorded for this date" description="Try a different date or check back tomorrow." />
+  }
+
+  // Where the day was worked, when it was not onsite.
+  function workTypeBadge(record: AttendanceRecord) {
+    if (record.workType !== 'wfh' && record.workType !== 'field') return null
+    return (
+      <Badge tone="brand" className="gap-1 whitespace-nowrap">
+        <Home className="size-3" />
+        {record.workType === 'wfh' ? 'WFH' : 'Field'}
+        {record.autoRecorded && ' · auto'}
+      </Badge>
+    )
+  }
+
+  // "Late #3" — which late this is in the employee's current cycle (a cycle starts on their first late and lasts a year).
+  function lateNote(record: AttendanceRecord) {
+    const o = record.status === 'late' ? lateOrdinal(lateDates?.get(record.employeeId), record.date) : undefined
+    return o ? (
+      <p className="text-[11px] font-medium text-warning" title={`Counting since ${formatDate(o.cycle.start)}, resets after ${formatDate(o.cycle.end)}`}>
+        Late #{o.n} this cycle
+      </p>
+    ) : null
   }
 
   // Status for one record: the approved-leave resolution when there is one, otherwise the recorded attendance status.
@@ -49,7 +76,11 @@ export function DailyAttendanceTable({
         )}
       </div>
     ) : (
-      <StatusBadge status={record.status} />
+      <div className="space-y-0.5">
+        <StatusBadge status={record.status} />
+        {workTypeBadge(record)}
+        {lateNote(record)}
+      </div>
     )
   }
 
@@ -79,7 +110,10 @@ export function DailyAttendanceTable({
                       {leave.label}
                     </Badge>
                   ) : (
-                    <StatusBadge status={record.status} />
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge status={record.status} />
+                      {workTypeBadge(record)}
+                    </div>
                   )}
                 </div>
               </div>
@@ -97,11 +131,19 @@ export function DailyAttendanceTable({
               )}
               <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 text-sm">
                 <div>
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Time In</dt>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">AM In</dt>
                   <dd className="tabular-nums">{record.timeIn ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Time Out</dt>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">AM Out</dt>
+                  <dd className="tabular-nums">{record.breakOut ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">PM In</dt>
+                  <dd className="tabular-nums">{record.breakIn ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">PM Out</dt>
                   <dd className="tabular-nums">{record.timeOut ?? '—'}</dd>
                 </div>
               </dl>
@@ -120,8 +162,10 @@ export function DailyAttendanceTable({
         <TableHeader>
           <TableRow>
             <TableHead>Employee</TableHead>
-            <TableHead>Time In</TableHead>
-            <TableHead>Time Out</TableHead>
+            <TableHead>AM In</TableHead>
+            <TableHead>AM Out</TableHead>
+            <TableHead>PM In</TableHead>
+            <TableHead>PM Out</TableHead>
             <TableHead>Status</TableHead>
             {canAdjust && <TableHead />}
           </TableRow>
@@ -141,8 +185,10 @@ export function DailyAttendanceTable({
                   </p>
                   <p className="text-xs text-muted-foreground">{employee.employeeNumber}</p>
                 </TableCell>
-                <TableCell>{record.timeIn ?? '—'}</TableCell>
-                <TableCell>{record.timeOut ?? '—'}</TableCell>
+                <TableCell className="tabular-nums">{record.timeIn ?? '—'}</TableCell>
+                <TableCell className="tabular-nums">{record.breakOut ?? '—'}</TableCell>
+                <TableCell className="tabular-nums">{record.breakIn ?? '—'}</TableCell>
+                <TableCell className="tabular-nums">{record.timeOut ?? '—'}</TableCell>
                 <TableCell>
                   {statusBlock(record, leave)}
                 </TableCell>

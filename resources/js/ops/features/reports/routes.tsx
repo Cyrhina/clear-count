@@ -34,6 +34,8 @@ import {
 } from '@ops/features/reports/components/BasicReports'
 import { CustomReportBuilder } from '@ops/features/reports/components/CustomReportBuilder'
 import { ReportCategorySection, type ReportCategory } from '@ops/features/reports/components/shared'
+import { LateAbsenceReport } from '@ops/features/reports/components/LateAbsenceReport'
+import { PayStatutoryLoansReport } from '@ops/features/reports/components/PayStatutoryLoansReport'
 import { HoursWorkedReport, OutputSummaryReport } from '@ops/features/reports/components/TeamReports'
 import { BonusReport, PayrollHistoryReport, ThirteenthMonthPayReport } from '@ops/features/reports/components/PayrollRecordReports'
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
@@ -47,6 +49,7 @@ const BASIC_CATEGORIES: ReportCategory[] = [
     reports: [
       { id: 'employee-master-list', label: 'Employee Master List', description: 'Full profile and demographic export.' },
       { id: 'employee-compensation', label: 'Employee Compensation Report', description: 'Breakdown of basic rates, allowances, and pay frequency.' },
+      { id: 'pay-statutory-loans', label: 'Employee Pay, Statutory & Loans', description: 'Basic pay, employee and employer SSS / PhilHealth / Pag-IBIG contributions, and government loans per employee.' },
     ],
   },
   {
@@ -54,6 +57,7 @@ const BASIC_CATEGORIES: ReportCategory[] = [
     reports: [
       { id: 'hours-worked', label: 'Hours Worked', description: 'Regular hours, submitted hours, and approved OT / night differential per employee.' },
       { id: 'output-summary', label: 'Output Summary', description: 'Output submitted, approved and pending per employee.' },
+      { id: 'late-absence', label: 'Late & Absence Report', description: 'Who was late or absent, on which dates, and how many times.' },
     ],
   },
   {
@@ -148,6 +152,8 @@ function renderBasicReport(id: string) {
       return <EmployeeMasterListReport />
     case 'employee-compensation':
       return <EmployeeCompensationReport />
+    case 'pay-statutory-loans':
+      return <PayStatutoryLoansReport />
     case 'payroll-register':
       return <PayrollRegisterReport />
     case 'payroll-summary':
@@ -164,6 +170,8 @@ function renderBasicReport(id: string) {
       return <HoursWorkedReport />
     case 'output-summary':
       return <OutputSummaryReport />
+    case 'late-absence':
+      return <LateAbsenceReport />
     case 'payslip-report':
       return <PayslipReportView />
     case 'overtime-report':
@@ -243,8 +251,8 @@ function renderAdvancedReport(id: string) {
  * output), workforce reports (`reports.workforce.view` — employee, benefits, statutory and tax reports), and everything else
  * (`reports.payroll.view` — payroll, accounting and cost reports).
  */
-const TEAM_REPORT_IDS = new Set(['hours-worked', 'output-summary', 'overtime-report', 'attendance-absenteeism', 'leave-utilization'])
-const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'benefits-report', 'sss-contribution', 'philhealth-contribution', 'pagibig-contribution', 'consolidated-statutory', 'tax-monitoring', 'taxable-compensation', 'thirteenth-month-benefits', 'de-minimis-benefits', 'withholding-tax-summary', 'bir-1601c', 'bir-2316', 'headcount-analysis'])
+const TEAM_REPORT_IDS = new Set(['hours-worked', 'output-summary', 'overtime-report', 'attendance-absenteeism', 'late-absence', 'leave-utilization'])
+const WORKFORCE_REPORT_IDS = new Set(['employee-master-list', 'employee-compensation', 'pay-statutory-loans', 'benefits-report', 'sss-contribution', 'philhealth-contribution', 'pagibig-contribution', 'consolidated-statutory', 'tax-monitoring', 'taxable-compensation', 'thirteenth-month-benefits', 'de-minimis-benefits', 'withholding-tax-summary', 'bir-1601c', 'bir-2316', 'headcount-analysis'])
 
 type ReportTier = 'payroll' | 'workforce' | 'team'
 

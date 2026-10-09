@@ -1,5 +1,5 @@
-import { AlertCircle, AlertTriangle, CalendarClock, CheckCircle2, Columns3, Copy, Cpu, Download, FileSpreadsheet, FileWarning, FlaskConical, Info, ListChecks, Plane, Upload, UploadCloud } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, AlertTriangle, CalendarClock, CheckCircle2, Columns3, Copy, Cpu, Download, FileSpreadsheet, FileWarning, FlaskConical, Info, ListChecks, Pencil, Plane, Plus, Upload, UploadCloud } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
@@ -22,20 +22,24 @@ import {
   STANDARD_TEMPLATE_HEADERS,
 } from '@ops/features/attendance/biometricsImport'
 import { ColumnMappingForm } from '@ops/features/attendance/components/ColumnMappingForm'
+import { PunchEditor, type PunchTimes } from '@ops/features/attendance/components/PunchEditor'
 import { annotateImportWithLeaves, type ImportLeaveContext } from '@ops/features/attendance/leaveStatus'
 import { approvedLeaveOn } from '@ops/features/attendance/leaveStatus'
+import { lateDatesByEmployee, lateOrdinal } from '@ops/features/attendance/lateCycle'
 import { buildScheduleReview, type ImportScope, type ScheduleReviewRow } from '@ops/features/attendance/scheduleReview'
 import { addDays, startOfWeek, todayKey } from '@ops/features/schedules/dateUtil'
 import { ScheduleReviewTable } from '@ops/features/attendance/components/ScheduleReviewTable'
 import { downloadCsv, toCsv } from '@ops/features/reports/components/shared'
 import { useSession } from '@ops/hooks/useSession'
-import { applyBiometricsPunches, getApprovedLeavesInRange, getAttendanceRecords, getSchedules } from '@ops/lib/services/attendanceService'
+import { useTenant } from '@ops/hooks/useTenant'
+import { applyBiometricsPunches, getApprovedLeavesInRange, getAttendanceRecords, getSchedules, statusForPunch } from '@ops/lib/services/attendanceService'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { getRosterMap } from '@ops/lib/services/scheduleService'
+import { getWfhDayLookup } from '@ops/lib/services/wfhService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
 import { xlsxToCsv } from '@ops/lib/utils/xlsxRead'
-import type { Employee, Schedule } from '@ops/types/domain'
+import type { AttendanceRecord, Employee, Schedule } from '@ops/types/domain'
 
 interface Preview {
   sourceName: string
@@ -43,8 +47,12 @@ interface Preview {
   leave: ImportLeaveContext
   employees: Employee[]
   schedules: Schedule[]
+  /** Attendance already on record — the late counts build on it. */
+  existing: AttendanceRecord[]
   /** The Schedules roster for the file's dates (`employeeId|date` → template id, null = rest day). */
   roster: Map<string, string | null>
+  /** Approved WFH days (`employeeId|date`) — not "no punch" days. */
+  wfhDays: Set<string>
   /** Approved leave across the whole scope, so days the file doesn't mention still know who is on leave. */
   leaves: Awaited<ReturnType<typeof getApprovedLeavesInRange>>
   /** What the schedule-based import was narrowed to (undefined for a standard import). */
@@ -123,42 +131,118 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   const [methodChosen, setMethodChosen] = useState(false)
   const [scopeFrom, setScopeFrom] = useState(() => startOfWeek(todayKey()))
   const [scopeTo, setScopeTo] = useState(() => addDays(startOfWeek(todayKey()), 6))
+  const [scopeBranch, setScopeBranch] = useState('all')
   const [scopeDepartment, setScopeDepartment] = useState('all')
   const [scopeScheduleId, setScopeScheduleId] = useState('all')
-  const [scopeMeta, setScopeMeta] = useState<{ departments: string[]; schedules: Schedule[] }>({ departments: [], schedules: [] })
+  const [scopeMeta, setScopeMeta] = useState<{ employees: Employee[]; schedules: Schedule[] }>({ employees: [], schedules: [] })
   const [device, setDevice] = useState<DeviceType>('zkteco')
   const [overrides, setOverrides] = useState<Map<string, string>>(new Map())
   const [decisions, setDecisions] = useState<Map<string, boolean>>(new Map())
+  // Corrections made in the preview (times per `employee|date`), days added by hand, and the row being edited.
+  const [edits, setEdits] = useState<Map<string, PunchTimes>>(new Map())
+  const [manual, setManual] = useState<Map<string, DailyImportRecord>>(new Map())
+  const [editingKey, setEditingKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useSession()
   const { notify } = useToast()
+  const { branches } = useTenant()
 
   useEffect(() => {
     if (!open || mode !== 'schedule') return
     Promise.all([getEmployees(user), getSchedules(user)]).then(([employees, schedules]) =>
-      setScopeMeta({ departments: [...new Set(employees.filter((e) => e.employment.status === 'active').map((e) => e.employment.department))].sort(), schedules }),
+      setScopeMeta({ employees: employees.filter((e) => e.employment.status === 'active'), schedules }),
     )
   }, [open, mode, user])
 
+  // Who the import is limited to: the active employees of the chosen branch / department. The file is only read for them.
+  const scopedEmployees = scopeMeta.employees.filter((e) => (scopeBranch === 'all' || e.branchId === scopeBranch) && (scopeDepartment === 'all' || e.employment.department === scopeDepartment))
+  const isNarrowed = scopeBranch !== 'all' || scopeDepartment !== 'all'
+  const departmentOptions = [...new Set(scopeMeta.employees.filter((e) => scopeBranch === 'all' || e.branchId === scopeBranch).map((e) => e.employment.department))].sort()
   const scopeInvalid = mode === 'schedule' && (!scopeFrom || !scopeTo || scopeTo < scopeFrom)
   const currentScope: ImportScope | undefined =
     mode === 'schedule'
-      ? { from: scopeFrom, to: scopeTo, department: scopeDepartment === 'all' ? undefined : scopeDepartment, scheduleId: scopeScheduleId === 'all' ? undefined : scopeScheduleId }
+      ? { from: scopeFrom, to: scopeTo, branchId: scopeBranch === 'all' ? undefined : scopeBranch, department: scopeDepartment === 'all' ? undefined : scopeDepartment, scheduleId: scopeScheduleId === 'all' ? undefined : scopeScheduleId }
       : undefined
+
+  // The file's daily records with the corrections applied, plus days added by hand.
+  const records = useMemo(() => {
+    if (!preview) return []
+    const existingByKey = new Map(preview.existing.map((r) => [`${r.employeeId}|${r.date}`, r]))
+    const patch = (r: DailyImportRecord): DailyImportRecord => {
+      const e = edits.get(r.key)
+      if (!e) return r
+      const previous = existingByKey.get(r.key)
+      return {
+        ...r,
+        timeIn: e.timeIn || null,
+        timeOut: e.timeOut || null,
+        breakOut: e.breakOut || null,
+        breakIn: e.breakIn || null,
+        action: e.timeIn ? (previous ? 'update' : 'create') : 'skip',
+        previous: previous ? { timeIn: previous.timeIn, timeOut: previous.timeOut } : r.previous,
+        notes: [...r.notes.filter((n) => !/^(No check-out|Only check-out|Check-out is earlier|No time-out)/.test(n)), manual.has(r.key) ? 'Added by hand' : 'Edited here'],
+      }
+    }
+    return [...preview.result.records.map(patch), ...[...manual.values()].map(patch)]
+  }, [preview, edits, manual])
 
   const review = useMemo(
     () =>
       preview && mode === 'schedule'
-        ? buildScheduleReview({ records: preview.result.records, employees: preview.employees, schedules: preview.schedules, leave: preview.leave, overrides, roster: preview.roster, scope: preview.scope, onLeave: (employeeId, date) => !!approvedLeaveOn(preview.leaves, employeeId, date) })
+        ? buildScheduleReview({ records, employees: preview.employees, schedules: preview.schedules, leave: preview.leave, overrides, roster: preview.roster, scope: preview.scope, onLeave: (employeeId, date) => !!approvedLeaveOn(preview.leaves, employeeId, date), isWfh: (employeeId, date) => preview.wfhDays.has(`${employeeId}|${date}`) })
         : null,
-    [preview, mode, overrides],
+    [preview, mode, overrides, records],
   )
   // Rows that need review stay out until approved; everything else is in unless the reviewer unticks it.
   const isIncluded = (row: ScheduleReviewRow) => row.applicable && (decisions.get(row.key) ?? !row.needsReview)
 
+  // Late dates per employee: what is already on record, with this import's rows replacing the same days.
+  // Standard import has no review step, so its status comes from the employee's schedule the same way applying it will.
+  const standardStatus = (r: DailyImportRecord): 'present' | 'late' | 'undertime' | 'absent' => {
+    const schedule = preview?.schedules.find((s) => s.assignedEmployeeIds?.includes(r.employeeId)) ?? preview?.schedules[0]
+    return schedule && r.timeIn ? statusForPunch(r.timeIn, r.timeOut, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0) : 'present'
+  }
+  const lateInfo = useMemo(() => {
+    if (!preview) return undefined
+    const incoming = review
+      ? review.rows.filter((r) => r.applicable && (decisions.get(r.key) ?? !r.needsReview)).map((r) => ({ employeeId: r.record.employeeId, date: r.record.date, status: r.isRestDay ? 'present' : r.status }))
+      : records.filter((r) => (r.action === 'create' || r.action === 'update') && r.timeIn).map((r) => ({ employeeId: r.employeeId, date: r.date, status: standardStatus(r) }))
+    const replaced = new Set(incoming.map((r) => `${r.employeeId}|${r.date}`))
+    const dates = lateDatesByEmployee([...preview.existing.filter((r) => !replaced.has(`${r.employeeId}|${r.date}`)), ...incoming])
+    const late = incoming.filter((r) => r.status === 'late')
+    const repeat = late.filter((r) => (lateOrdinal(dates.get(r.employeeId), r.date)?.n ?? 1) > 1).length
+    return { dates, late: late.length, repeat }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, review, decisions, records])
+  const lateNoteFor = (employeeId: string, date: string, status: string) => {
+    const o = status === 'late' ? lateOrdinal(lateInfo?.dates.get(employeeId), date) : undefined
+    return o ? `Late #${o.n} · counting since ${formatDate(o.cycle.start)}, resets after ${formatDate(o.cycle.end)}` : undefined
+  }
+  const lateNote = (row: ScheduleReviewRow) => (row.isRestDay ? undefined : lateNoteFor(row.record.employeeId, row.record.date, row.status))
+
+  const timesOf = (r: { timeIn: string | null; timeOut: string | null; breakOut: string | null; breakIn: string | null }): PunchTimes => ({ timeIn: r.timeIn ?? '', timeOut: r.timeOut ?? '', breakOut: r.breakOut ?? '', breakIn: r.breakIn ?? '' })
+  const saveEdit = (key: string, times: PunchTimes) => {
+    setEdits((m) => new Map(m).set(key, times))
+    setEditingKey(null)
+  }
+  const resetEdit = (key: string) => {
+    setEdits((m) => {
+      const next = new Map(m)
+      next.delete(key)
+      return next
+    })
+    setEditingKey(null)
+  }
+  const editorFor = (r: DailyImportRecord) => (
+    <PunchEditor key={r.key} initial={timesOf(r)} onSave={(t) => saveEdit(r.key, t)} onCancel={() => setEditingKey(null)} onReset={edits.has(r.key) && !manual.has(r.key) ? () => resetEdit(r.key) : undefined} />
+  )
+
   function reset() {
     setOverrides(new Map())
     setDecisions(new Map())
+    setEdits(new Map())
+    setManual(new Map())
+    setEditingKey(null)
     setMethodChosen(false)
     setMode('standard')
     setFile(null)
@@ -178,7 +262,11 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   async function showPreview(sourceName: string, text: string, mapping?: ColumnMapping) {
     setSource({ name: sourceName, text })
     const [employees, existing, schedules] = await Promise.all([getEmployees(user), getAttendanceRecords(user), getSchedules(user)])
-    const result = parseBiometricsFile(text, employees, existing, { mapping, template: device === 'other' })
+    const result = parseBiometricsFile(text, employees, existing, {
+      mapping,
+      template: device === 'other',
+      allowedEmployeeIds: mode === 'schedule' && isNarrowed ? new Set(scopedEmployees.map((e) => e.id)) : undefined,
+    })
     if (result.headerError) {
       setParseError(result.headerError)
       // Unrecognised headers: let the admin map the columns by hand.
@@ -198,12 +286,16 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     const leaves = spanFrom ? await getApprovedLeavesInRange(user, spanFrom, spanTo) : []
     const leave = annotateImportWithLeaves(result.records, leaves, employees, schedules)
     const roster = spanFrom ? await getRosterMap(user, spanFrom, spanTo) : new Map<string, string | null>()
+    const wfhDays = spanFrom ? await getWfhDayLookup(user, spanFrom, spanTo) : new Set<string>()
     setParseError(null)
     setMappingDraft(null)
     setOverrides(new Map())
     setDecisions(new Map())
+    setEdits(new Map())
+    setManual(new Map())
+    setEditingKey(null)
     setTab(result.records.length === 0 ? 'issues' : mode === 'schedule' ? 'schedule' : 'records')
-    setPreview({ sourceName, result, leave, employees, schedules, roster, leaves, scope: currentScope })
+    setPreview({ sourceName, result, leave, employees, schedules, existing, roster, wfhDays, leaves, scope: currentScope })
   }
 
   function applyMapping(mapping: ColumnMapping) {
@@ -260,10 +352,10 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     if (!preview) return
     setIsProcessing(true)
     const punches = review
-      ? review.rows.filter(isIncluded).map((r) => ({ employeeId: r.record.employeeId, date: r.record.date, timeIn: r.timeIn!, timeOut: r.timeOut, scheduleId: r.schedule?.id, status: r.status }))
-      : preview.result.records
+      ? review.rows.filter(isIncluded).map((r) => ({ employeeId: r.record.employeeId, date: r.record.date, timeIn: r.timeIn!, timeOut: r.timeOut, breakOut: r.record.breakOut, breakIn: r.record.breakIn, scheduleId: r.schedule?.id, status: r.status }))
+      : records
           .filter((r) => (r.action === 'create' || r.action === 'update') && r.timeIn)
-          .map((r) => ({ employeeId: r.employeeId, date: r.date, timeIn: r.timeIn!, timeOut: r.timeOut }))
+          .map((r) => ({ employeeId: r.employeeId, date: r.date, timeIn: r.timeIn!, timeOut: r.timeOut, breakOut: r.breakOut, breakIn: r.breakIn }))
     const count = await applyBiometricsPunches(user, punches)
     setIsProcessing(false)
     const errors = preview.result.issues.filter((i) => i.severity === 'error').length
@@ -291,14 +383,14 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   }
 
   const result = preview?.result
-  const applicable = review ? review.rows.filter(isIncluded).length : (result?.records.filter((r) => r.action === 'create' || r.action === 'update').length ?? 0)
+  const applicable = review ? review.rows.filter(isIncluded).length : records.filter((r) => r.action === 'create' || r.action === 'update').length
   const reviewFlagged = review?.rows.filter((r) => r.needsReview && r.applicable) ?? []
   const pendingReview = reviewFlagged.filter((r) => !isIncluded(r)).length
   const adjustments = review?.rows.filter((r) => !r.needsReview && r.discrepancies.length > 0).length ?? 0
-  const unchanged = result?.records.filter((r) => r.action === 'unchanged').length ?? 0
+  const unchanged = records.filter((r) => r.action === 'unchanged').length
   const errorCount = result?.issues.filter((i) => i.severity === 'error').length ?? 0
   const warningCount = result?.issues.filter((i) => i.severity === 'warning').length ?? 0
-  const dates = result ? [...new Set(result.records.map((r) => r.date))].sort() : []
+  const dates = result ? [...new Set(records.map((r) => r.date))].sort() : []
   const onLeaveCount = preview ? preview.leave.byKey.size + preview.leave.leaveOnly.length : 0
   const reviewCount = preview ? [...preview.leave.byKey.values(), ...preview.leave.leaveOnly.map((l) => l.resolution)].filter((r) => r.review).length : 0
 
@@ -348,6 +440,12 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                   {pendingReview} need{pendingReview === 1 ? 's' : ''} your review before they can be applied
                 </span>
               )}
+              {lateInfo && lateInfo.late > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 font-medium text-warning">
+                  <AlertTriangle className="size-3.5" />
+                  {lateInfo.late} late{lateInfo.repeat > 0 && ` · ${lateInfo.repeat} not their first this cycle`}
+                </span>
+              )}
               {review && adjustments > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 font-medium text-warning">
                   <CalendarClock className="size-3.5" />
@@ -385,6 +483,12 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                   {review.excluded} day{review.excluded === 1 ? '' : 's'} outside the selected range, department or schedule left out
                 </span>
               )}
+              {result.stats.outOfScope > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">
+                  <Info className="size-3.5" />
+                  {result.stats.outOfScope} punch line{result.stats.outOfScope === 1 ? '' : 's'} of other employees ignored (outside the selected branch / department)
+                </span>
+              )}
               {warningCount > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 font-medium text-warning">
                   <AlertTriangle className="size-3.5" />
@@ -402,7 +506,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                           { value: 'schedule', label: `Schedule Review (${review.rows.length})` },
                           { value: 'missing', label: `No Punch (${review.missing.length})` },
                         ]
-                      : [{ value: 'records', label: `Daily Records (${result.records.length})` }]),
+                      : [{ value: 'records', label: `Daily Records (${records.length})` }]),
                     { value: 'leave', label: `On Leave (${onLeaveCount})` },
                     { value: 'issues', label: `Issues (${result.issues.length})` },
                   ] as { value: PreviewTab; label: string }[]
@@ -435,6 +539,11 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
               {tab === 'schedule' && review ? (
                 <ScheduleReviewTable
                   rows={review.rows}
+                  lateNote={lateNote}
+                  editingKey={editingKey}
+                  onEdit={setEditingKey}
+                  isEdited={(key) => edits.has(key)}
+                  renderEditor={(row) => editorFor(row.record)}
                   schedules={preview.schedules}
                   isIncluded={isIncluded}
                   onToggle={(key, include) => setDecisions((d) => new Map(d).set(key, include))}
@@ -462,11 +571,13 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                           <TableHead>Employee</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Expected schedule</TableHead>
+                          <TableHead />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {review.missing.map((m) => (
-                          <TableRow key={m.key}>
+                          <Fragment key={m.key}>
+                          <TableRow>
                             <TableCell>
                               <p className="font-medium">
                                 {m.employee.personal.firstName} {m.employee.personal.lastName}
@@ -478,14 +589,52 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                               {m.schedule.name} · {m.schedule.startTime}–{m.schedule.endTime}
                               {m.scheduleSource === 'default' && ' (default)'}
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button type="button" size="sm" variant="secondary" icon={<Plus className="size-3.5" />} onClick={() => setEditingKey(m.key)}>
+                                Add times
+                              </Button>
+                            </TableCell>
                           </TableRow>
+                          {editingKey === m.key && (
+                            <TableRow>
+                              <TableCell colSpan={4}>
+                                <PunchEditor
+                                  key={m.key}
+                                  initial={{ timeIn: '', timeOut: '', breakOut: '', breakIn: '' }}
+                                  onCancel={() => setEditingKey(null)}
+                                  onSave={(t) => {
+                                    const record: DailyImportRecord = {
+                                      key: m.key,
+                                      employeeId: m.employee.id,
+                                      employeeNumber: m.employee.employeeNumber,
+                                      deviceUserId: '—',
+                                      employeeName: `${m.employee.personal.firstName} ${m.employee.personal.lastName}`,
+                                      date: m.date,
+                                      timeIn: null,
+                                      timeOut: null,
+                                      breakOut: null,
+                                      breakIn: null,
+                                      punchCount: 0,
+                                      verifyModes: [],
+                                      deviceIds: [],
+                                      notes: [],
+                                      action: 'skip',
+                                    }
+                                    setManual((mm) => new Map(mm).set(m.key, record))
+                                    saveEdit(m.key, t)
+                                  }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          </Fragment>
                         ))}
                       </TableBody>
                     </Table>
                   </>
                 )
               ) : tab === 'records' ? (
-                result.records.length === 0 ? (
+                records.length === 0 ? (
                   <p className="px-4 py-8 text-center text-sm text-muted-foreground">No valid punches to import — see Issues.</p>
                 ) : (
                   <Table className="whitespace-nowrap">
@@ -493,8 +642,10 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                       <TableRow>
                         <TableHead>Device ID → Employee</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Time In</TableHead>
-                        <TableHead>Time Out</TableHead>
+                        <TableHead>AM In</TableHead>
+                        <TableHead>AM Out</TableHead>
+                        <TableHead>PM In</TableHead>
+                        <TableHead>PM Out</TableHead>
                         <TableHead>Punches</TableHead>
                         <TableHead>Verify</TableHead>
                         <TableHead>Device</TableHead>
@@ -502,8 +653,9 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {result.records.map((r) => (
-                        <TableRow key={r.key}>
+                      {records.map((r) => (
+                        <Fragment key={r.key}>
+                        <TableRow>
                           <TableCell>
                             <p className="font-medium">{r.employeeName}</p>
                             <p className="text-xs text-muted-foreground">
@@ -512,6 +664,8 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                           </TableCell>
                           <TableCell>{formatDate(r.date)}</TableCell>
                           <TableCell className="tabular-nums">{r.timeIn ?? '—'}</TableCell>
+                          <TableCell className="tabular-nums">{r.breakOut ?? '—'}</TableCell>
+                          <TableCell className="tabular-nums">{r.breakIn ?? '—'}</TableCell>
                           <TableCell className="tabular-nums">{r.timeOut ?? '—'}</TableCell>
                           <TableCell className="tabular-nums">{r.punchCount}</TableCell>
                           <TableCell className="text-muted-foreground">{r.verifyModes.join(', ') || '—'}</TableCell>
@@ -528,9 +682,26 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                                 {n}
                               </p>
                             ))}
+                            {(r.action === 'create' || r.action === 'update') && r.timeIn && standardStatus(r) !== 'present' && (
+                              <Badge tone="warning" className="mt-1 capitalize">
+                                {standardStatus(r)}
+                              </Badge>
+                            )}
+                            {(r.action === 'create' || r.action === 'update') && lateNoteFor(r.employeeId, r.date, standardStatus(r)) && (
+                              <p className="mt-0.5 max-w-56 text-[11px] font-medium text-warning">{lateNoteFor(r.employeeId, r.date, standardStatus(r))}</p>
+                            )}
                             {preview.leave.byKey.get(r.key) && <LeaveNote resolution={preview.leave.byKey.get(r.key)!} />}
+                            <Button type="button" size="sm" variant="ghost" className="-ml-2 mt-0.5 h-7" icon={<Pencil className="size-3" />} onClick={() => setEditingKey(r.key)}>
+                              Edit
+                            </Button>
                           </TableCell>
                         </TableRow>
+                        {editingKey === r.key && (
+                          <TableRow>
+                            <TableCell colSpan={10}>{editorFor(r)}</TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       ))}
                     </TableBody>
                   </Table>
@@ -673,12 +844,23 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                   <FormField label="Date range — to" required error={scopeInvalid ? 'End date is before the start date' : undefined}>
                     <Input type="date" value={scopeTo} min={scopeFrom} onChange={(e) => setScopeTo(e.target.value)} />
                   </FormField>
+                  <FormField label="Branch">
+                    <Select
+                      value={scopeBranch}
+                      onValueChange={(v) => {
+                        setScopeBranch(v)
+                        setScopeDepartment('all')
+                      }}
+                      aria-label="Branch"
+                      options={[{ value: 'all', label: 'All branches' }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
+                    />
+                  </FormField>
                   <FormField label="Department">
                     <Select
                       value={scopeDepartment}
                       onValueChange={setScopeDepartment}
                       aria-label="Department"
-                      options={[{ value: 'all', label: 'All departments' }, ...scopeMeta.departments.map((d) => ({ value: d, label: d }))]}
+                      options={[{ value: 'all', label: 'All departments' }, ...departmentOptions.map((d) => ({ value: d, label: d }))]}
                     />
                   </FormField>
                   <FormField label="Schedule">
@@ -690,6 +872,18 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                     />
                   </FormField>
                 </div>
+                {isNarrowed && (
+                  <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs">
+                    <p className="font-medium text-foreground">
+                      Reading {scopedEmployees.length} employee{scopedEmployees.length === 1 ? '' : 's'} only — punches of anyone else in the file are ignored.
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      {scopedEmployees.length === 0
+                        ? 'Nobody matches this branch / department.'
+                        : `${scopedEmployees.slice(0, 12).map((e) => e.employeeNumber).join(', ')}${scopedEmployees.length > 12 ? ` and ${scopedEmployees.length - 12} more` : ''}`}
+                    </p>
+                  </div>
+                )}
                 <p className="mt-3 text-xs text-muted-foreground">
                   The system matches <span className="font-medium text-foreground">employee + date + assigned schedule + biometric record</span>, then shows a review screen. Schedules come from the Schedules roster.
                 </p>
@@ -764,6 +958,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
                     <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
                       <li>Employee ID as in the employee list (e.g. FR-0006)</li>
                       <li>Date as YYYY-MM-DD, times as HH:MM in 24-hour format</li>
+                      <li>Optional columns <span className="font-medium text-foreground">Break Out</span> and <span className="font-medium text-foreground">Break In</span> (HH:MM) are the AM time out and PM time in</li>
                       <li>Time Out may be left blank; for an overnight shift, a Time Out earlier than Time In means it ended the next day</li>
                     </ul>
                     <div className="mt-3">
@@ -809,7 +1004,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
               </Button>
               {/* While mapping columns, the form's own "Apply Mapping & Preview" is the next step. */}
               {!mappingDraft && (
-                <Button type="button" onClick={handleImport} isLoading={isProcessing} disabled={!file || scopeInvalid}>
+                <Button type="button" onClick={handleImport} isLoading={isProcessing} disabled={!file || scopeInvalid || (mode === 'schedule' && isNarrowed && scopedEmployees.length === 0)}>
                   Import & Preview
                 </Button>
               )}

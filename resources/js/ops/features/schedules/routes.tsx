@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { useSession } from '@ops/hooks/useSession'
+import { usePermission } from '@ops/hooks/usePermission'
+import { ApplyWfhDialog } from '@ops/features/attendance/components/ApplyWfhDialog'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Select } from '@ops/components/ui/Select'
@@ -29,9 +31,10 @@ function SchedulesContent() {
   const { user } = useSession()
   const [tab, setTab] = useState('roster')
   const teamOnly = Boolean(user.branchId)
+  const canAdjust = usePermission('attendance.adjust')
   return (
     <PlainCards>
-      <PageHeader title="Schedules" description={teamOnly ? "Plan your team's shifts and rest days, and see who is working, resting or on leave." : "View and manage every employee's schedule — shifts, rest days and flexible hours — and choose who supervises each team."} />
+      <PageHeader actions={canAdjust ? <ApplyWfhDialog /> : undefined} title="Schedules" description={teamOnly ? "Plan your team's shifts and rest days, and see who is working, resting or on leave." : "View and manage every employee's schedule — shifts, rest days and flexible hours — and choose who supervises each team."} />
       <Tabs value={tab} onValueChange={setTab}>
         {/* Phones: a dropdown instead of a row of tabs. */}
         <Select className="lg:hidden" value={tab} onValueChange={setTab} aria-label="Schedules section" options={TAB_OPTIONS} />

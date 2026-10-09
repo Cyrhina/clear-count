@@ -4,10 +4,12 @@ import {
   getAttendanceAdjustments,
   getApprovedLeavesInRange,
   getAttendanceForDate,
+  getAttendanceRecords,
   getEmployeeIdsOnLeaveForDate,
   getEmployeeIdsWithPendingAdjustmentForDate,
   getSchedules,
 } from '@ops/lib/services/attendanceService'
+import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import type { ApprovedLeave } from '@ops/features/attendance/leaveStatus'
 import type { AttendanceAdjustment, AttendanceRecord, Schedule } from '@ops/types/domain'
 
@@ -77,4 +79,14 @@ export function useApprovedLeavesForDate(date: string) {
   }, [refetch])
 
   return { leaves, refetch }
+}
+
+/** Late dates per employee across all attendance on record — feeds the "Late #n" count. Refreshes when `refreshKey` changes (e.g. after an import). */
+export function useLateDates(refreshKey: unknown) {
+  const { user } = useSession()
+  const [lateDates, setLateDates] = useState<Map<string, string[]>>(new Map())
+  useEffect(() => {
+    getAttendanceRecords(user).then((records) => setLateDates(lateDatesByEmployee(records)))
+  }, [user, refreshKey])
+  return lateDates
 }
