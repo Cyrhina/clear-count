@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 class UpdateCompanyInfoRequest extends FormRequest
@@ -85,15 +84,9 @@ class UpdateCompanyInfoRequest extends FormRequest
     {
         return [
             'file',
-            'mimes:png,jpg,jpeg,svg',
+            // Raster formats only: unlike SVG they cannot carry script, and logos are served from our own origin.
+            'mimes:png,jpg,jpeg,webp',
             'max:2048',
-            // An SVG is XML that can carry script, and logos are served from our own origin. Refuse any that does.
-            function (string $attribute, mixed $value, \Closure $fail): void {
-                if ($value instanceof UploadedFile && strtolower($value->getClientOriginalExtension()) === 'svg'
-                    && preg_match('/<\s*(script|foreignObject|iframe|object|embed)\b|\son\w+\s*=|javascript:|<!ENTITY/i', (string) file_get_contents($value->getRealPath()))) {
-                    $fail('This SVG contains scripts or external content and cannot be used. Export it as a plain SVG or PNG.');
-                }
-            },
         ];
     }
 

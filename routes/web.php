@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\CompanyInfoController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\OpsController;
 use App\Http\Controllers\PayrollGroupController;
 use App\Http\Controllers\PayrollSettingsController;
@@ -99,6 +100,15 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::delete('work-schedules/{workSchedule}', [PayrollSettingsController::class, 'destroyWorkSchedule'])->name('work-schedules.destroy');
     });
 
+    // Holidays tab of Company & Payroll Settings.
+    Route::prefix('api/holidays')->name('holidays.')->middleware('permission:settings.company.edit')->group(function () {
+        Route::get('/', [HolidayController::class, 'index'])->name('index');
+        Route::post('/', [HolidayController::class, 'store'])->name('store');
+        Route::post('import-defaults', [HolidayController::class, 'bulkImportDefaults'])->name('import-defaults');
+        Route::put('{holiday}', [HolidayController::class, 'update'])->name('update');
+        Route::delete('{holiday}', [HolidayController::class, 'destroy'])->name('destroy');
+    });
+
     // Company Info tab of Company & Payroll Settings. POST is accepted too because PHP does not parse multipart bodies on PUT.
     Route::prefix('api/company-info')->name('company-info.')->middleware('permission:settings.company.edit')->group(function () {
         Route::get('/', [CompanyInfoController::class, 'show'])->name('show');
@@ -127,8 +137,8 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::post('/', [UserController::class, 'store'])->name('store');
         Route::patch('{user}/role', [UserController::class, 'updateRole'])->name('role');
         Route::patch('{user}/status', [UserController::class, 'toggleStatus'])->name('status');
-        Route::post('{user}/invite', [UserController::class, 'resendInvite'])->name('invite');
-        Route::post('{user}/reset-access', [UserController::class, 'resetAccess'])->name('reset-access');
+        Route::post('{user}/invite', [UserController::class, 'resendInvite'])->middleware('throttle:user-mail')->name('invite');
+        Route::post('{user}/reset-access', [UserController::class, 'resetAccess'])->middleware('throttle:user-mail')->name('reset-access');
     });
 });
 

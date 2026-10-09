@@ -108,13 +108,16 @@ test('uploading a logo stores it and replaces the old file', function () {
     Storage::disk('public')->assertExists($secondPath);
 });
 
-test('logo validation: type, size and unsafe svg', function () {
+test('logo validation: png, jpg and webp only, up to 2 MB', function () {
     $post = fn ($file) => $this->actingAs($this->admin)->post('/api/company-info/logo', ['logo' => $file], ['Accept' => 'application/json']);
+    $webp = base64_decode('UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==');
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
 
     $post(UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf'))->assertUnprocessable();
     $post(png('big.png', 3 * 1024 * 1024))->assertUnprocessable();
-    $post(UploadedFile::fake()->createWithContent('evil.svg', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'))->assertUnprocessable();
-    $post(UploadedFile::fake()->createWithContent('ok.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>'))->assertOk();
+    $post(UploadedFile::fake()->createWithContent('logo.svg', $svg))->assertUnprocessable()->assertJsonValidationErrors('logo'); // SVG can carry script
+    $post(UploadedFile::fake()->createWithContent('logo.webp', $webp))->assertOk();
+    expect($this->company->fresh()->logo_path)->toEndWith('.webp');
 });
 
 test('removing the logo deletes the file', function () {

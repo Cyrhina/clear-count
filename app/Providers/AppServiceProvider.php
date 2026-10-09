@@ -2,14 +2,20 @@
 
 namespace App\Providers;
 
-use Carbon\CarbonImmutable;
+use App\Models\Holiday;
 use App\Support\MailLink;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -29,6 +35,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // {holiday} resolves only inside the signed-in user's own company, so another company's id is a plain 404.
+        Route::bind('holiday', fn (string $id) => Holiday::activeForCompany((int) auth()->user()?->company_id)->findOrFail($id));
+
+        // Invite / reset-access emails: at most 3 per person per 10 minutes (so one user's inbox cannot be spammed),
+        // and 20 per minute per admin overall. Over the limit the API answers 429 with a Retry-After header.
+        RateLimiter::for('user-mail', function (Request $request) {
+            $target = $request->route('user');
+            $targetId = $target instanceof Model ? $target->getKey() : $target;
+
+            return [
+                Limit::perMinutes(10, 3)->by('user-mail:target:'.$targetId),
+                Limit::perMinute(20)->by('user-mail:actor:'.$request->user()?->id),
+            ];
+        });
 
         // Feeds the "Last login" column and tells pending invites apart from active users.
         Event::listen(Login::class, fn (Login $event) => $event->user->forceFill(['last_login_at' => now()])->saveQuietly());

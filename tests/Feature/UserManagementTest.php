@@ -196,3 +196,24 @@ test('capabilities are grouped by area and every seeded permission has display m
 test('permission map needs users.manage', function () {
     $this->actingAs(makeUser($this->company, 'hr_admin'))->getJson('/api/permission-map')->assertForbidden();
 });
+
+test('the invitation is queued, not sent while the request waits', function () {
+    expect((new UserInvitation('t', 'Employee')) instanceof Illuminate\Contracts\Queue\ShouldQueue)->toBeTrue();
+});
+
+test('invite and reset-access are throttled per target user', function () {
+    Notification::fake();
+    $target = makeUser($this->company, 'employee', ['invited_at' => now()]);
+    $other = makeUser($this->company, 'employee', ['invited_at' => now()]);
+
+    foreach (range(1, 3) as $i) {
+        $this->actingAs($this->admin)->postJson("/api/users/{$target->id}/invite")->assertOk();
+    }
+
+    // A fourth email to the same person within 10 minutes is refused, whichever of the two endpoints it comes through...
+    $this->actingAs($this->admin)->postJson("/api/users/{$target->id}/invite")->assertStatus(429)->assertHeader('Retry-After');
+    $this->actingAs($this->admin)->postJson("/api/users/{$target->id}/reset-access")->assertStatus(429);
+
+    // ...but someone else's inbox is unaffected.
+    $this->actingAs($this->admin)->postJson("/api/users/{$other->id}/invite")->assertOk();
+});
