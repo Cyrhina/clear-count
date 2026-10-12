@@ -105,12 +105,11 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Settings',
     items: [
       { label: 'Company & Payroll Settings', path: '/company-settings', icon: Settings, plainCards: true, capability: 'settings.company.edit' },
-      // Not plan-gated: Branches stays unlocked on every tier while the Company Admin portal is used for demos/testing.
-      { label: 'Branches', path: '/branches', icon: Building2, plainCards: true, capability: 'branches.manage' },
+      { label: 'Branches', path: '/branches', icon: Building2, plainCards: true, capability: 'branches.manage', feature: 'multi_branch' },
       { label: 'Users & Access', path: '/user-access', icon: ShieldCheck, plainCards: true, capability: 'users.manage' },
       { label: 'Onboarding', path: '/onboarding', icon: CalendarClock, plainCards: true, capability: 'onboarding.manage' },
       { label: 'Subscription & Plan', path: '/subscription', icon: Gauge, plainCards: true, capability: 'subscription.manage' },
-      { label: 'Integrations & API', path: '/integrations', icon: Plug, capability: 'integrations.manage' },
+      { label: 'Integrations & API', path: '/integrations', icon: Plug, capability: 'integrations.manage' }, // only its API & Webhooks tab is plan-gated
     ],
   },
 ]
@@ -123,15 +122,15 @@ export const MANAGER_NAV: NavGroup[] = [
     label: 'My Team',
     items: [
       { label: 'My Team', path: '/employees', icon: Users },
-      { label: 'Attendance', path: '/attendance', icon: Clock },
+      { label: 'Attendance', path: '/attendance', icon: Clock, feature: 'attendance' },
       { label: 'Schedules', path: '/schedules', icon: CalendarRange, feature: 'schedules' },
-      { label: 'Leave', path: '/leave', icon: CalendarDays },
-      { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon },
+      { label: 'Leave', path: '/leave', icon: CalendarDays, feature: 'leave' },
+      { label: 'Overtime & Night Differential', path: '/overtime', icon: Moon, feature: 'overtime_night_diff' },
     ],
   },
   {
     label: 'Approvals',
-    items: [{ label: 'Approvals', path: '/approvals', icon: ClipboardCheck }],
+    items: [{ label: 'Approvals', path: '/approvals', icon: ClipboardCheck, feature: 'approvals' }],
   },
   {
     label: 'Analytics and Reports',
@@ -142,10 +141,10 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
       { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange, feature: 'schedules' },
-      { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
+      { label: 'My Attendance', path: '/ess/attendance', icon: Clock, feature: 'attendance' },
       { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
-      { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
-      { label: 'My Leave', path: '/ess/leave', icon: CalendarDays },
+      { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer, feature: 'overtime_night_diff' },
+      { label: 'My Leave', path: '/ess/leave', icon: CalendarDays, feature: 'leave' },
       { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
     ],
   },
@@ -161,11 +160,11 @@ export const EMPLOYEE_NAV: NavGroup[] = [
       { label: 'My Profile', path: '/ess/profile', icon: UserCircle },
       { label: 'My Payslips', path: '/ess/payslips', icon: ReceiptText },
       { label: 'My Schedule', path: '/ess/schedule', icon: CalendarRange, feature: 'schedules' },
-      { label: 'My Attendance', path: '/ess/attendance', icon: Clock },
+      { label: 'My Attendance', path: '/ess/attendance', icon: Clock, feature: 'attendance' },
       { label: 'My Work & Output', path: '/ess/work-output', icon: ClipboardList },
-      { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer },
-      { label: 'My Leave', path: '/ess/leave', icon: CalendarDays },
-      { label: 'My Loans & Deductions', path: '/ess/loans', icon: CreditCard },
+      { label: 'My OT & Night Diff', path: '/ess/overtime', icon: Timer, feature: 'overtime_night_diff' },
+      { label: 'My Leave', path: '/ess/leave', icon: CalendarDays, feature: 'leave' },
+      { label: 'My Loans & Deductions', path: '/ess/loans', icon: CreditCard, feature: 'loans_deductions' },
     ],
   },
 ]

@@ -5,7 +5,9 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@ops/lib/utils/cn'
 
 const VARIANT_CLASSES = {
-  primary: 'bg-primary text-primary-foreground hover:opacity-90 shadow-soft',
+  // Gradient built from the brand colour (a lighter tint into a deeper shade of the same hue), so company themes follow.
+  primary:
+    'bg-primary bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_80%,#fff),color-mix(in_srgb,var(--primary)_55%,#000))] dark:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_78%,#fff),color-mix(in_srgb,var(--primary)_62%,#000))] text-primary-foreground hover:opacity-90 shadow-soft',
   secondary: 'bg-card text-foreground border border-border hover:bg-muted',
   ghost: 'text-foreground hover:bg-muted',
   destructive: 'bg-danger text-danger-foreground hover:opacity-90 shadow-soft',

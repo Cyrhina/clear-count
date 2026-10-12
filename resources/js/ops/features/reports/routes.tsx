@@ -3,7 +3,6 @@ import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { PlanGate } from '@ops/components/ui/PlanGate'
-import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { DebitCreditReport } from '@ops/features/reports/components/AccountingReports'
@@ -41,7 +40,7 @@ import { BonusReport, PayrollHistoryReport, ThirteenthMonthPayReport } from '@op
 import { Bir1601CReport, Bir2316Report, ConsolidatedStatutoryReport, StatutoryContributionReport } from '@ops/features/reports/components/StatutoryReports'
 import { DeMinimisBenefitsReport, TaxMonitoringReport, TaxableCompensationReport, ThirteenthMonthBenefitsReport, WithholdingTaxSummaryReport } from '@ops/features/reports/components/TaxComplianceReports'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 
 const BASIC_CATEGORIES: ReportCategory[] = [
   {
@@ -280,6 +279,7 @@ function visibleCategories(categories: ReportCategory[], tier: ReportTier): Repo
 
 export function ReportsPage() {
   const tier = useReportTier()
+  const { tier: planTier } = useActivePlanTier()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'advanced' ? 'advanced' : 'basic'
 
@@ -308,9 +308,11 @@ export function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
-          {visibleCategories(ADVANCED_CATEGORIES, tier).map((category) => (
-            <ReportCategorySection key={category.label} category={category} tab="advanced" />
-          ))}
+          <PlanGate feature="advanced_reports" planTier={planTier}>
+            {visibleCategories(ADVANCED_CATEGORIES, tier).map((category) => (
+              <ReportCategorySection key={category.label} category={category} tab="advanced" />
+            ))}
+          </PlanGate>
         </TabsContent>
       </Tabs>
     </div>
@@ -331,7 +333,7 @@ const REPORT_LOOKUP: Record<string, ReportLookup> = Object.fromEntries([
 export function ReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>()
   const [searchParams] = useSearchParams()
-  const { usage, isLoading: usageLoading } = useSubscriptionUsage()
+  const { tier: planTier } = useActivePlanTier()
   const tier = useReportTier()
   const meta = reportId && reportAllowed(reportId, tier) ? REPORT_LOOKUP[reportId] : undefined
 
@@ -359,13 +361,9 @@ export function ReportDetailPage() {
       ) : (
         <>
           {meta.kind === 'advanced' ? (
-            usageLoading ? (
-              <Skeleton className="h-56" />
-            ) : (
-              <PlanGate feature="advanced_reports" planTier={usage!.planTier}>
-                {content}
-              </PlanGate>
-            )
+            <PlanGate feature="advanced_reports" planTier={planTier}>
+              {content}
+            </PlanGate>
           ) : (
             content
           )}

@@ -1,10 +1,30 @@
 import { ForgotPasswordPage } from '@ops/features/auth/ForgotPasswordPage'
 import { LoginPage } from '@ops/features/auth/LoginPage'
 import { ResetPasswordPage } from '@ops/features/auth/ResetPasswordPage'
+import type { PlanFeature } from '@ops/lib/plans'
 import { lazy, type ComponentType } from 'react'
 
 const page = (load: () => Promise<object>, name: string) =>
   lazy(async () => ({ default: (await load() as Record<string, ComponentType>)[name] }))
+
+/** Pages that need a plan feature: typing the URL of a locked module shows the upgrade notice, same as its locked sidebar link. */
+export const PAGE_FEATURES: Record<string, PlanFeature> = {
+  attendance: 'attendance',
+  leave: 'leave',
+  overtime: 'overtime_night_diff',
+  approvals: 'approvals',
+  loans: 'loans_deductions',
+  schedules: 'schedules',
+  'bonuses.index': 'bonuses_incentives',
+  'bonuses.payslip': 'bonuses_incentives',
+  'thirteenth.index': 'thirteenth_month',
+  'thirteenth.payslip': 'thirteenth_month',
+  branches: 'multi_branch',
+  'ess.attendance': 'attendance',
+  'ess.overtime': 'overtime_night_diff',
+  'ess.leave': 'leave',
+  'ess.loans': 'loans_deductions',
+}
 
 /** Page key (sent by OpsController) => frontend-ops page component. */
 export const OPS_PAGES: Record<string, ComponentType> = {

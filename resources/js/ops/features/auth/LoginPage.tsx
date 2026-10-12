@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { router, usePage } from '@inertiajs/react'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
+import { BrandLoader } from '@ops/components/ui/BrandLogo'
 import { Button } from '@ops/components/ui/Button'
 import { Checkbox } from '@ops/components/ui/Checkbox'
 import { useToast } from '@ops/components/ui/Toast'
@@ -66,6 +67,7 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
+      {isSubmitting && <BrandLoader />}
       <h2 className="font-display text-2xl font-semibold tracking-tight">Welcome Back!</h2>
       <p className="mt-1.5 text-sm text-muted-foreground">Log in to your FBS Pay account to continue.</p>
 

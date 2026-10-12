@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
+import { usePermission } from '@ops/hooks/usePermission'
 import { FEATURE_LABELS, PLAN_DETAILS, minimumPlanFor, planHasFeature, type PlanFeature } from '@ops/lib/plans'
 import type { PlanTier } from '@ops/types/domain'
 
@@ -15,6 +16,7 @@ export interface PlanGateProps {
  * show what it is and where to upgrade, instead of an empty/missing screen.
  */
 export function PlanGate({ feature, planTier, children }: PlanGateProps) {
+  const canManagePlan = usePermission('subscription.manage')
   if (planHasFeature(planTier, feature)) return <>{children}</>
 
   const requiredPlan = minimumPlanFor(feature)
@@ -28,9 +30,13 @@ export function PlanGate({ feature, planTier, children }: PlanGateProps) {
         <p className="text-sm font-medium">{FEATURE_LABELS[feature]}</p>
         <p className="text-xs text-muted-foreground">Available in {PLAN_DETAILS[requiredPlan].label} Plan</p>
       </div>
-      <Button asChild size="sm">
-        <Link to="/subscription">Upgrade Plan</Link>
-      </Button>
+      {canManagePlan ? (
+        <Button asChild size="sm">
+          <Link to="/subscription">Upgrade Plan</Link>
+        </Button>
+      ) : (
+        <p className="text-xs text-muted-foreground">Ask your Company Admin to upgrade the plan.</p>
+      )}
     </div>
   )
 }

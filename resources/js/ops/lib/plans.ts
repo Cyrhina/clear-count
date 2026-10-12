@@ -22,10 +22,8 @@ export interface PlanDetails {
   label: string
   /** Who this plan is aimed at, shown on the tier comparison grid. */
   targetAudience: string
-  /** Monthly base price in PHP, or null for Enterprise's custom pricing (see startingPricePhp). */
+  /** Monthly base price in PHP, or null for Enterprise: no base price, quoted by complexity. */
   monthlyPricePhp: number | null
-  /** Enterprise only — the "from" price; the final quote depends on complexity. */
-  startingPricePhp?: number
   /** Monthly add-on per employee above employeeLimit, or null when custom (Enterprise). */
   additionalEmployeePricePhp: number | null
   /** Employees included in the base price (null = 151+ / custom). */
@@ -104,7 +102,6 @@ export const PLAN_DETAILS: Record<PlanTier, PlanDetails> = {
     label: 'Enterprise',
     targetAudience: 'Large organizations',
     monthlyPricePhp: null,
-    startingPricePhp: 8000,
     additionalEmployeePricePhp: null,
     employeeLimit: null,
     userLimit: null,
@@ -137,10 +134,9 @@ export function formatPlanPrice(monthlyPricePhp: number | null): string {
   return monthlyPricePhp === null ? 'Custom Pricing' : `${formatCurrency(monthlyPricePhp)}/month`
 }
 
-/** Base price for a plan — "₱5,000.00/month", or Enterprise's "₱8,000.00+/month". */
+/** Base price for a plan — "₱5,000.00/month", or "Custom Pricing" for Enterprise. */
 export function formatPlanBasePrice(plan: PlanDetails): string {
-  if (plan.monthlyPricePhp !== null) return `${formatCurrency(plan.monthlyPricePhp)}/month`
-  return plan.startingPricePhp ? `${formatCurrency(plan.startingPricePhp)}+/month` : 'Custom Pricing'
+  return formatPlanPrice(plan.monthlyPricePhp)
 }
 
 /** "Up to 150 employees", or "151+ employees" for Enterprise. */

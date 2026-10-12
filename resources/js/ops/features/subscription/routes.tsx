@@ -1,15 +1,20 @@
-import { Check, Layers, Mail, UserPlus, Users } from 'lucide-react'
+import { Check, Clock, Layers, Mail, UserPlus, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { UpgradePaymentDialog } from '@ops/features/subscription/components/UpgradePaymentDialog'
 import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { useSession } from '@ops/hooks/useSession'
+import { useDemoPlanStore } from '@ops/lib/demo/demoPlanStore'
 import { usePermission } from '@ops/hooks/usePermission'
 import { PLAN_DETAILS, PLAN_ORDER, estimateMonthlyBill, formatEmployeeLimit, formatPlanBasePrice } from '@ops/lib/plans'
-import { upgradePlan } from '@ops/lib/services/subscriptionService'
+import { downgradePlan } from '@ops/lib/services/subscriptionService'
 import { useToast } from '@ops/components/ui/Toast'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { PlanTier } from '@ops/types/domain'
@@ -31,41 +36,33 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   )
 }
 
-function ChangePlanDialog({
-  targetPlan,
-  direction,
-  onChanged,
-}: {
-  targetPlan: PlanTier
-  direction: 'upgrade' | 'downgrade'
-  onChanged: () => void
-}) {
+function DowngradeDialog({ targetPlan, onChanged }: { targetPlan: PlanTier; onChanged: () => void }) {
   const { user } = useSession()
   const { notify } = useToast()
+  const setPreviewTier = useDemoPlanStore((s) => s.setPreviewTier)
 
   async function onConfirm() {
-    await upgradePlan(user, targetPlan)
-    notify({ title: `${direction === 'upgrade' ? 'Upgraded' : 'Downgraded'} to ${PLAN_DETAILS[targetPlan].label} Plan`, tone: 'success' })
+    await downgradePlan(user, targetPlan)
+    setPreviewTier(null) // the real plan is now the target, so a preview of another tier would no longer match it
+    notify({ title: `Downgraded to ${PLAN_DETAILS[targetPlan].label} Plan`, tone: 'success' })
     onChanged()
   }
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button size="sm" variant={direction === 'upgrade' ? 'primary' : 'secondary'}>
-          {direction === 'upgrade' ? 'Upgrade Plan' : 'Downgrade Plan'}
+        <Button size="sm" variant="secondary">
+          Downgrade Plan
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>
-          {direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} to {PLAN_DETAILS[targetPlan].label} Plan
-        </DialogTitle>
+        <DialogTitle>Downgrade to {PLAN_DETAILS[targetPlan].label} Plan</DialogTitle>
         <DialogDescription>
-          {formatPlanBasePrice(PLAN_DETAILS[targetPlan])} · {formatEmployeeLimit(targetPlan)} included. This is a demo {direction} — no payment is collected.
+          {formatPlanBasePrice(PLAN_DETAILS[targetPlan])} · {formatEmployeeLimit(targetPlan)} included. Modules that are not in this plan will be locked.
         </DialogDescription>
         <div className="mt-5 flex justify-end gap-2">
           <Button size="sm" onClick={onConfirm}>
-            Confirm {direction === 'upgrade' ? 'Upgrade' : 'Downgrade'}
+            Confirm Downgrade
           </Button>
         </div>
       </DialogContent>
@@ -75,27 +72,51 @@ function ChangePlanDialog({
 
 export function SubscriptionPage() {
   const { usage, isLoading, refetch } = useSubscriptionUsage()
+  const { tier, isPreview } = useActivePlanTier() // follows the Demo Portal preview tier, so this page matches the sidebar
   const canManage = usePermission('subscription.manage')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [upgradeTarget, setUpgradeTarget] = useState<PlanTier | null>(null)
+  const pending = usage?.pendingChange
+
+  // The sidebar's "Upgrade to …" buttons arrive as /subscription?upgrade=<tier>: open the payment form for that tier.
+  const requested = searchParams.get('upgrade') as PlanTier | null
+  useEffect(() => {
+    if (!requested || !usage || !canManage) return
+    if (PLAN_ORDER.includes(requested) && requested !== 'enterprise' && !usage.pendingChange) setUpgradeTarget(requested)
+    setSearchParams({}, { replace: true })
+  }, [requested, usage, canManage, setSearchParams])
 
   if (isLoading || !usage) return <Skeleton className="h-96" />
 
-  const currentPlan = PLAN_DETAILS[usage.planTier]
-  const currentIndex = PLAN_ORDER.indexOf(usage.planTier)
-  const bill = estimateMonthlyBill(usage.planTier, usage.employeeCount)
+  const currentPlan = PLAN_DETAILS[tier]
+  const currentIndex = PLAN_ORDER.indexOf(tier)
+  const bill = estimateMonthlyBill(tier, usage.employeeCount)
 
   return (
     <div className="space-y-6">
       <PageHeader title="Subscription & Plan Management" description="Current plan, usage, and available upgrades." />
 
+      {pending && (
+        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <Clock className="mt-0.5 size-4 shrink-0 text-warning" />
+          <div>
+            <p className="font-medium">Upgrade to {PLAN_DETAILS[pending.targetTier].label} is waiting for verification</p>
+            <p className="text-xs text-muted-foreground">
+              The FBS Pay billing team is checking your payment ({pending.paymentReference}, submitted {formatDate(pending.submittedAt)}). Your plan changes once they confirm it.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Card className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <Badge tone="brand" className="mb-2">
-              Current Plan
+              {isPreview ? 'Previewing Plan (Demo)' : 'Current Plan'}
             </Badge>
             <p className="font-display text-2xl font-semibold">{currentPlan.label}</p>
             <p className="text-sm text-muted-foreground">
-              {formatPlanBasePrice(currentPlan)} · {formatEmployeeLimit(usage.planTier)}
+              {formatPlanBasePrice(currentPlan)} · {formatEmployeeLimit(tier)}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
               <p>
@@ -124,18 +145,18 @@ export function SubscriptionPage() {
             </div>
           </div>
           <div className="grid w-full max-w-sm gap-3 sm:w-72">
-            <UsageBar label="Employees" used={usage.employeeCount} limit={usage.employeeLimit} />
-            <UsageBar label="Users" used={usage.userCount} limit={usage.userLimit} />
+            <UsageBar label="Employees" used={usage.employeeCount} limit={currentPlan.employeeLimit} />
+            <UsageBar label="Users" used={usage.userCount} limit={currentPlan.userLimit} />
           </div>
         </div>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-        {PLAN_ORDER.map((tier, idx) => {
-          const details = PLAN_DETAILS[tier]
-          const isCurrent = tier === usage.planTier
+        {PLAN_ORDER.map((planTier, idx) => {
+          const details = PLAN_DETAILS[planTier]
+          const isCurrent = planTier === tier
           return (
-            <Card key={tier} className={isCurrent ? 'flex flex-col border-primary/40 p-6' : 'flex flex-col p-6'}>
+            <Card key={planTier} className={isCurrent ? 'flex flex-col border-primary/40 p-6' : 'flex flex-col p-6'}>
               <div className="flex items-center justify-between">
                 <p className="font-display text-lg font-semibold">{details.label}</p>
                 {isCurrent && <Badge tone="success">Current</Badge>}
@@ -143,19 +164,25 @@ export function SubscriptionPage() {
               <p className="mt-1 min-h-8 text-xs text-muted-foreground">{details.targetAudience}</p>
 
               <div className="mt-3">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Base price</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{details.monthlyPricePhp !== null ? 'Base price' : 'Pricing'}</p>
                 <p className="font-display text-2xl font-semibold tracking-tight">
-                  {details.monthlyPricePhp !== null ? formatCurrency(details.monthlyPricePhp) : details.startingPricePhp ? `${formatCurrency(details.startingPricePhp)}+` : 'Custom'}
-                  <span className="text-sm font-normal text-muted-foreground">/month</span>
+                  {details.monthlyPricePhp !== null ? (
+                    <>
+                      {formatCurrency(details.monthlyPricePhp)}
+                      <span className="text-sm font-normal text-muted-foreground">/month</span>
+                    </>
+                  ) : (
+                    'Custom Pricing'
+                  )}
                 </p>
                 {/* Same height on every card so the limits boxes line up. */}
-                <p className="min-h-8 text-xs text-muted-foreground">{details.monthlyPricePhp === null ? 'Depends on complexity — custom pricing' : ' '}</p>
+                <p className="min-h-8 text-xs text-muted-foreground">{details.monthlyPricePhp === null ? 'Depends on complexity' : ' '}</p>
               </div>
 
               <div className="mt-4 space-y-1.5 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs">
                 <p className="flex items-center gap-2">
                   <Users className="size-3.5 shrink-0 text-primary" />
-                  <span className="font-medium">{formatEmployeeLimit(tier)}</span>
+                  <span className="font-medium">{formatEmployeeLimit(planTier)}</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <UserPlus className="size-3.5 shrink-0 text-primary" />
@@ -194,12 +221,18 @@ export function SubscriptionPage() {
                   <Button size="sm" variant="secondary" disabled>
                     Current Plan
                   </Button>
-                ) : tier === 'enterprise' ? (
+                ) : planTier === 'enterprise' ? (
                   <Button asChild size="sm" icon={<Mail className="size-3.5" />}>
                     <a href="mailto:sales@frontlinebusiness.com.ph?subject=Enterprise%20Plan%20Inquiry">Contact Sales</a>
                   </Button>
                 ) : canManage ? (
-                  <ChangePlanDialog targetPlan={tier} direction={idx > currentIndex ? 'upgrade' : 'downgrade'} onChanged={refetch} />
+                  idx > currentIndex ? (
+                    <Button size="sm" disabled={!!pending} onClick={() => setUpgradeTarget(planTier)}>
+                      {pending?.targetTier === planTier ? 'Pending verification' : 'Upgrade Plan'}
+                    </Button>
+                  ) : (
+                    <DowngradeDialog targetPlan={planTier} onChanged={refetch} />
+                  )
                 ) : (
                   <Button size="sm" variant="secondary" disabled>
                     {idx < currentIndex ? 'Included' : 'Not available'}
@@ -210,6 +243,8 @@ export function SubscriptionPage() {
           )
         })}
       </div>
+
+      <UpgradePaymentDialog targetPlan={upgradeTarget} onClose={() => setUpgradeTarget(null)} onSubmitted={refetch} />
     </div>
   )
 }

@@ -1,8 +1,10 @@
-import { ArrowUp, Building2, HelpCircle } from 'lucide-react'
+import { ArrowUp, Building2, Clock, HelpCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { usePermission } from '@ops/hooks/usePermission'
+import { useTenant } from '@ops/hooks/useTenant'
 import { PLAN_DETAILS, PLAN_ORDER } from '@ops/lib/plans'
+import { useSubscriptionVersion } from '@ops/lib/services/subscriptionService'
 import type { PlanTier } from '@ops/types/domain'
 
 /** Sidebar footer widget shown to Company Admins in place of the old static tagline — a compact
@@ -13,6 +15,8 @@ import type { PlanTier } from '@ops/types/domain'
 export function SidebarPlanWidget() {
   const { tier, isPreview } = useActivePlanTier()
   const canManage = usePermission('subscription.manage')
+  useSubscriptionVersion((s) => s.version) // re-render when a pending upgrade is submitted or decided
+  const pending = useTenant().company?.pendingPlanChange
 
   const currentIndex = PLAN_ORDER.indexOf(tier)
   const nextTiers = PLAN_ORDER.slice(currentIndex + 1) as PlanTier[]
@@ -46,10 +50,17 @@ export function SidebarPlanWidget() {
         {currentPlan.employeeLimit === null && currentPlan.userLimit === null ? limitsSummary : `Limit: ${limitsSummary}`}
       </p>
 
-      {canManage && nextTiers.length > 0 && (
+      {canManage && pending && (
+        <Link to="/subscription" className="flex items-start gap-1.5 rounded-lg border border-dashed border-warning/40 bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning">
+          <Clock className="mt-0.5 size-3 shrink-0" />
+          Upgrade to {PLAN_DETAILS[pending.targetTier].label} is waiting for payment verification.
+        </Link>
+      )}
+
+      {canManage && !pending && nextTiers.length > 0 && (
         <div className="space-y-1.5">
           <Link
-            to="/subscription"
+            to={`/subscription?upgrade=${nextTiers[0]}`}
             className="flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-soft transition-opacity hover:opacity-90"
           >
             <ArrowUp className="size-3.5" />
@@ -57,7 +68,7 @@ export function SidebarPlanWidget() {
           </Link>
           {nextTiers[1] && (
             <Link
-              to="/subscription"
+              to={`/subscription?upgrade=${nextTiers[1]}`}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-sidebar-border px-3 py-2 text-xs font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-active"
             >
               <ArrowUp className="size-3.5" />

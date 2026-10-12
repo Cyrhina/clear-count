@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
 import { useToast } from '@ops/components/ui/Toast'
 import { useApiKeys, useWebhooks } from '@ops/features/integrations/hooks/useIntegrations'
-import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { useSession } from '@ops/hooks/useSession'
 import {
   createApiKey,
@@ -331,12 +331,11 @@ function ConnectedServicesTab() {
 }
 
 function GatedApiTabs() {
-  const { usage, isLoading } = useSubscriptionUsage()
+  const { tier } = useActivePlanTier()
   const [tab, setTab] = useState('api-keys')
-  if (isLoading) return <Skeleton className="h-56" />
 
   return (
-    <PlanGate feature="api_integrations" planTier={usage!.planTier}>
+    <PlanGate feature="api_integrations" planTier={tier}>
       <Tabs value={tab} onValueChange={setTab}>
         <Select className="-mb-2 lg:hidden" value={tab} onValueChange={setTab} aria-label="API section" options={[{ value: 'api-keys', label: 'API Keys' }, { value: 'webhooks', label: 'Webhooks' }]} />
         <TabsList className="hidden lg:flex">

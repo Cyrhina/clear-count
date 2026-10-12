@@ -17,6 +17,8 @@ import { PayrollGroupsSection } from '@ops/features/company-settings/components/
 import { PayrollRulesSection } from '@ops/features/company-settings/components/payroll/PayrollRulesSection'
 import { WorkSchedulesSection } from '@ops/features/company-settings/components/payroll/WorkSchedulesSection'
 import { useCompanySettings } from '@ops/features/company-settings/hooks/useCompanySettings'
+import { PlanGate } from '@ops/components/ui/PlanGate'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { usePermission } from '@ops/hooks/usePermission'
 import { formatDate } from '@ops/lib/utils/format'
 
@@ -40,6 +42,7 @@ export function CompanySettingsPage() {
     refetch,
     complianceDeadlines,
   } = useCompanySettings()
+  const { tier: planTier } = useActivePlanTier()
   const [tab, setTab] = useState('company')
   const [payrollTab, setPayrollTab] = useState('groups')
   const canEditCompany = usePermission('settings.company.edit')
@@ -81,15 +84,17 @@ export function CompanySettingsPage() {
             </TabsList>
 
             <TabsContent value="groups">
-              <PayrollGroupsSection
-                groups={payrollGroups}
-                deductionDefaults={payrollRules?.defaultDeductionSchedules}
-                compensationTypes={compensationTypes}
-                schedules={schedules}
-                employees={employees}
-                canEdit={canEditPayroll}
-                onRefetch={refetch}
-              />
+              <PlanGate feature="flexible_compensation" planTier={planTier}>
+                <PayrollGroupsSection
+                  groups={payrollGroups}
+                  deductionDefaults={payrollRules?.defaultDeductionSchedules}
+                  compensationTypes={compensationTypes}
+                  schedules={schedules}
+                  employees={employees}
+                  canEdit={canEditPayroll}
+                  onRefetch={refetch}
+                />
+              </PlanGate>
             </TabsContent>
 
             <TabsContent value="earnings">

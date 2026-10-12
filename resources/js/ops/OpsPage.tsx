@@ -2,12 +2,14 @@ import { usePage } from '@inertiajs/react'
 import { Suspense, useEffect, useState } from 'react'
 import { AppShell } from '@ops/components/layout/AppShell'
 import { ToastProvider } from '@ops/components/ui/Toast'
-import { BrandSplash } from '@ops/components/ui/BrandLogo'
+import { BrandLoader, BrandSplash } from '@ops/components/ui/BrandLogo'
 import { CompanyThemeApplier } from '@ops/components/layout/CompanyThemeApplier'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
 import { seedSamplePayrollRuns } from '@ops/mock-data/payrollRuns'
 import { users } from '@ops/mock-data/seed/users'
-import { OPS_PAGES } from './pages'
+import { PlanGate } from '@ops/components/ui/PlanGate'
+import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
+import { OPS_PAGES, PAGE_FEATURES } from './pages'
 import { OutletProvider } from './shim/react-router-dom'
 
 interface OpsProps {
@@ -29,7 +31,7 @@ function GuestPage({ pageKey }: { pageKey: string }) {
   const Page = OPS_PAGES[pageKey]
   return (
     <ToastProvider>
-      <Suspense fallback={null}>
+      <Suspense fallback={<BrandLoader />}>
         <Page />
       </Suspense>
     </ToastProvider>
@@ -38,6 +40,7 @@ function GuestPage({ pageKey }: { pageKey: string }) {
 
 function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; role: string | null }) {
   const [ready, setReady] = useState(false)
+  const { tier } = useActivePlanTier()
 
   useEffect(() => {
     syncMockSession(email, role)
@@ -47,15 +50,24 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
 
   if (!ready) return <BrandSplash />
   const Page = OPS_PAGES[pageKey] ?? OPS_PAGES.forbidden
+  const feature = PAGE_FEATURES[pageKey]
 
   return (
     <ToastProvider>
       <CompanyThemeApplier />
       <OutletProvider
         value={
-          <Suspense fallback={null}>
-            <Page />
-          </Suspense>
+          feature ? (
+            <PlanGate feature={feature} planTier={tier}>
+              <Suspense fallback={<BrandLoader />}>
+                <Page />
+              </Suspense>
+            </PlanGate>
+          ) : (
+            <Suspense fallback={<BrandLoader />}>
+              <Page />
+            </Suspense>
+          )
         }
       >
         <AppShell />
