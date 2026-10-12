@@ -9,13 +9,13 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createHoliday } from '@ops/lib/services/companyService'
+import { apiErrorMessage, fieldErrors } from '@ops/lib/api/http'
+import { createHoliday } from '@ops/lib/services/holidayService'
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
   date: z.string().min(1, 'Required'),
-  type: z.enum(['regular', 'special_non_working']),
+  type: z.enum(['regular', 'special_non_working', 'special_working', 'double_holiday']),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -23,11 +23,12 @@ type FormValues = z.infer<typeof schema>
 const TYPE_OPTIONS = [
   { value: 'regular', label: 'Regular Holiday' },
   { value: 'special_non_working', label: 'Special Non-Working Day' },
+  { value: 'special_working', label: 'Special Working Day' },
+  { value: 'double_holiday', label: 'Double Holiday' },
 ]
 
 export function AddHolidayDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -35,11 +36,23 @@ export function AddHolidayDialog({ onCreated }: { onCreated: () => void }) {
     handleSubmit,
     control,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { type: 'regular' } })
 
   async function onSubmit(values: FormValues) {
-    await createHoliday(user, values)
+    try {
+      await createHoliday(values)
+    } catch (error) {
+      const fields = fieldErrors(error)
+      if (fields.name || fields.date) {
+        if (fields.name) setError('name', { message: fields.name })
+        if (fields.date) setError('date', { message: fields.date })
+      } else {
+        notify({ title: 'Could not add the holiday', description: apiErrorMessage(error), tone: 'danger' })
+      }
+      return
+    }
     notify({ title: 'Holiday added', tone: 'success' })
     reset()
     setOpen(false)
@@ -65,11 +78,7 @@ export function AddHolidayDialog({ onCreated }: { onCreated: () => void }) {
             <Input type="date" {...register('date')} />
           </FormField>
           <FormField label="Type" required>
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TYPE_OPTIONS} />}
-            />
+            <Controller control={control} name="type" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={TYPE_OPTIONS} />} />
           </FormField>
 
           <div className="col-span-2 mt-2 flex justify-end gap-2">

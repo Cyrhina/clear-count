@@ -34,7 +34,9 @@ Proposed defaults. They apply unless the owner overrides them before Phase 0 sta
 | # | Default | Why |
 |---|---|---|
 | D5 | **TanStack Query** for frontend data fetching. | 25 modules need caching and cross-screen refresh. Two hacks exist only because there is no cache invalidation: the zustand `useSubscriptionVersion` counter and the module-level WFH `version` counter. The sister projects already use TanStack Query 5 (see `reusable-components-in-all-projects.md`). |
-| D6 | **API resources emit the shape of `resources/js/ops/types/domain.ts`**: camelCase keys and string IDs. | Frontend services can return API data without a mapper, and components keep their types. One mapper per entity (~40 entities) is avoided. Pagination `meta` and query parameters keep Laravel's snake_case. |
+| D6 | **The UI gets the shape of `resources/js/ops/types/domain.ts`**: camelCase keys and string IDs. The conversion happens at the service boundary with `camelizeKeys` / `snakeizeKeys` (`lib/api/case.ts`, added in P1), not with one hand-written mapper per entity. | New endpoints emit snake_case JSON like the existing ones; the service converts it. A hand-written mapper is only for entities whose shape really differs (company info, P1). Pagination `meta` and query parameters keep Laravel's snake_case. |
+
+Changed on 2026-10-12 (P1): D6 first said the API resources themselves would emit camelCase. The existing Settings endpoints were already snake_case with tests, so the converter in the service is the smaller change and keeps every endpoint consistent.
 
 ## 2. Baseline (what exists today)
 
@@ -230,17 +232,23 @@ Done when: all existing tests pass, the route guard test passes, the fixtures ar
 
 **Goal:** Company & Payroll Settings use the existing APIs. Stories US06, US07.
 
-Backend:
-- Switch the existing resources to the D6 shape and add the missing ones: `PayrollSettingsController` returns raw models today. Add `EarningTypeResource`, `DeductionTypeResource`, `OvertimeRateResource`, `WorkScheduleResource`. Update `CompanyInfoResource`, `HolidayResource`, `PayrollGroupResource`. Update their tests.
-- New: `compensation_types` table and CRUD (`payrollSettingsService.getCompensationTypes` and friends), under `settings.payroll.edit`.
-- New: `compliance_deadlines` table and CRUD (`complianceService`), under `settings.company.edit`.
-- Fix: payroll_admin cannot open Company Settings. Let the page route accept `settings.company.edit|settings.payroll.edit` and hide tabs by capability.
+Owner decisions (2026-10-12): **backend leads** for Payroll Groups (the dialog is rebuilt with real cutoff and pay-date pickers; the calendar comes from the server; daily and custom frequencies are dropped; a group points at a Compensation Type record). **Assigning employees** to a payroll group or work schedule is disabled until the Employees (P3) and Schedules (P4) modules, because the mock employee IDs cannot be sent to the real API.
 
-Frontend:
-- Add `api.upload` and `fieldErrors` to `lib/api/http.ts`. The company logo upload is the first user.
-- Swap to the API: the company and holiday parts of `companyService`, all of `payrollSettingsService`, `complianceService`, and `features/company-settings/hooks/useCompanySettings.ts`.
-- `payrollRatesStore`: load it from `api/payroll-settings/overtime-rates`. The mock `overtimeService` still reads it synchronously until P7.
-- Delete the mock code that no remaining mock module imports. Add the rest to the mock-removal ledger.
+Backend (done):
+- New `compensation_types` table and CRUD; `payroll_groups.compensation_type_id` replaces the fixed four-value enum.
+- New `compliance_deadlines` table and CRUD with built-in government defaults (built-in rows can be edited and switched off, only custom ones deleted).
+- Payroll admins open the page and read company info and holidays; only `settings.company.edit` writes.
+- Company info response carries plan, timezone, payroll frequency and created date; the Inertia shared `auth.company` carries the brand colour.
+- `DemoSeeder` creates the demo work schedules, payroll groups and group membership.
+- Existing endpoints keep their snake_case shape (see D6).
+
+Frontend (done):
+- New services: `companyInfoService`, `holidayService`, `payrollConfigService` (earnings, deductions, compensation types, rates, rules, work schedules, deadlines), `payrollGroupService`. Types in `features/company-settings/types.ts`.
+- `useCompanySettings` is a set of TanStack queries; a save invalidates the whole `company-settings` key.
+- Holidays tab: year selector, "Import PH holidays", add, delete.
+- The overtime rates store is filled from the saved rates so the mock overtime screens see them.
+- The company theme is read from the page props, so a saved brand colour applies everywhere.
+- The mock functions that nothing else reads were deleted. The rest stay (mock-removal ledger in PROGRESS.md).
 
 Done when: every Company Settings tab saves to the database and survives a page reload.
 

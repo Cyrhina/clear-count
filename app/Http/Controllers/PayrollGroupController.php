@@ -33,7 +33,7 @@ class PayrollGroupController extends Controller
         $groups = PayrollGroup::query()
             // Counts and schedule names come with the list, so the cards need no extra queries.
             ->withCount('employees')
-            ->with('workSchedule:id,name')
+            ->with(['workSchedule:id,name', 'compensationType:id,name'])
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['frequency'] ?? null, fn ($q, $v) => $q->where('frequency', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where('name', 'like', '%'.addcslashes($v, '%_\\').'%'))
@@ -45,7 +45,7 @@ class PayrollGroupController extends Controller
 
     public function show(PayrollGroup $payrollGroup): JsonResponse
     {
-        $payrollGroup->loadCount('employees')->load(['workSchedule:id,name', 'employees' => fn ($q) => $q->orderBy('name')]);
+        $payrollGroup->loadCount('employees')->load(['workSchedule:id,name', 'compensationType:id,name', 'employees' => fn ($q) => $q->orderBy('name')]);
 
         return (new PayrollGroupResource($payrollGroup))->response();
     }
@@ -132,6 +132,6 @@ class PayrollGroupController extends Controller
 
     private function fresh(PayrollGroup $group): PayrollGroup
     {
-        return $group->loadCount('employees')->load('workSchedule:id,name');
+        return $group->loadCount('employees')->load(['workSchedule:id,name', 'compensationType:id,name']);
     }
 }

@@ -1,5 +1,8 @@
 import type { ComplianceDeadline } from '@ops/types/domain'
 
+/** A deadline with or without its owning company: the API drops `companyId`, the mock data keeps it. */
+type DeadlineSchedule = Omit<ComplianceDeadline, 'companyId'>
+
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export const COMPLIANCE_CATEGORY_OPTIONS: { value: ComplianceDeadline['category']; label: string }[] = [
@@ -29,7 +32,7 @@ function clampedDate(year: number, month: number, day: number): Date {
 export const toIsoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /** The next occurrence of a deadline on or after `today`, or undefined for a one-time date already past. */
-export function nextDueDate(deadline: ComplianceDeadline, today = new Date()): Date | undefined {
+export function nextDueDate(deadline: DeadlineSchedule, today = new Date()): Date | undefined {
   const base = startOfDay(today)
   if (deadline.frequency === 'one_time') {
     if (!deadline.dueDate) return undefined
@@ -55,12 +58,12 @@ export function coveredMonthName(due: Date): string {
 }
 
 /** Fills the `{period}` token in a deadline's description with the month it covers. */
-export function describeDeadline(deadline: ComplianceDeadline, due: Date): string {
+export function describeDeadline(deadline: DeadlineSchedule, due: Date): string {
   return deadline.description.replace('{period}', coveredMonthName(due))
 }
 
 /** "Every month on the 10th", "Every year on Jan 31", "Mar 5, 2027". */
-export function scheduleLabel(deadline: ComplianceDeadline): string {
+export function scheduleLabel(deadline: DeadlineSchedule): string {
   const ordinal = (n: number) => {
     const s = ['th', 'st', 'nd', 'rd']
     const v = n % 100

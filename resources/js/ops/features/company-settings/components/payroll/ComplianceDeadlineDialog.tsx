@@ -9,10 +9,9 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
 import { COMPLIANCE_CATEGORY_OPTIONS, COMPLIANCE_FREQUENCY_OPTIONS, MONTH_NAMES } from '@ops/lib/payroll/complianceDeadlines'
-import { createComplianceDeadline, updateComplianceDeadline } from '@ops/lib/services/complianceService'
-import type { ComplianceDeadline } from '@ops/types/domain'
+import { createComplianceDeadline, updateComplianceDeadline } from '@ops/lib/services/payrollConfigService'
+import type { ComplianceDeadline } from '@ops/features/company-settings/types'
 
 const schema = z
   .object({
@@ -49,7 +48,6 @@ const MONTH_OPTIONS = MONTH_NAMES.map((name, i) => ({ value: String(i), label: n
 
 export function ComplianceDeadlineDialog({ deadline, onSaved, trigger }: { deadline?: ComplianceDeadline; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(deadline)
   // Built-in government deadlines keep their name and category; only the timing and reminder window are editable.
@@ -82,10 +80,10 @@ export function ComplianceDeadlineDialog({ deadline, onSaved, trigger }: { deadl
       dueDate: values.frequency === 'one_time' ? values.dueDate : undefined,
     }
     if (deadline) {
-      await updateComplianceDeadline(user, deadline.id, payload)
+      await updateComplianceDeadline(deadline.id, payload)
       notify({ title: 'Deadline updated', tone: 'success' })
     } else {
-      await createComplianceDeadline(user, { ...payload, enabled: true })
+      await createComplianceDeadline({ ...payload, enabled: true })
       notify({ title: 'Reminder added', tone: 'success' })
     }
     setOpen(false)

@@ -44,7 +44,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('reports/{reportId}', [OpsController::class, 'reportsShow'])->middleware('permission:reports.view')->name('reports.show');
         Route::get('insights', [OpsController::class, 'insights'])->middleware('permission:insights.view')->name('insights');
         Route::get('user-access', [OpsController::class, 'userAccess'])->middleware('permission:users.manage')->name('user-access');
-        Route::get('company-settings', [OpsController::class, 'companySettings'])->middleware('permission:settings.company.edit')->name('company-settings');
+        Route::get('company-settings', [OpsController::class, 'companySettings'])->middleware('permission:settings.company.edit|settings.payroll.edit')->name('company-settings');
         Route::get('onboarding', [OpsController::class, 'onboarding'])->middleware('permission:onboarding.manage')->name('onboarding');
         Route::get('branches', [OpsController::class, 'branches'])->middleware('permission:branches.manage')->name('branches');
         Route::get('subscription', [OpsController::class, 'subscription'])->middleware('permission:subscription.manage')->name('subscription');

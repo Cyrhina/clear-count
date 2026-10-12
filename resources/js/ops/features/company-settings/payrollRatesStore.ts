@@ -53,6 +53,8 @@ interface PayrollRatesState {
   removeCustomOtRate: (id: string) => void
   updateHolidayRate: (id: string, multiplier: number) => void
   resetToDefaults: () => void
+  /** Replaces both lists with the saved rates (rows keyed by their stable `key`). */
+  hydrate: (ot: { key: string; label: string; multiplier: number; isCustom: boolean }[], holiday: { key: string; label: string; multiplier: number }[]) => void
 }
 
 /**
@@ -78,6 +80,11 @@ export const usePayrollRatesStore = create<PayrollRatesState>((set, get) => ({
     set({ holidayRates: get().holidayRates.map((r) => (r.id === id ? { ...r, multiplier } : r)) })
   },
   resetToDefaults: () => set({ otRates: DEFAULT_OT_RATES, holidayRates: DEFAULT_HOLIDAY_RATES }),
+  hydrate: (ot, holiday) =>
+    set({
+      otRates: ot.map((r) => ({ id: r.key, label: r.label, multiplier: r.multiplier, isCustom: r.isCustom })),
+      holidayRates: holiday.map((r) => ({ id: r.key, label: r.label, multiplier: r.multiplier })),
+    }),
 }))
 
 export function getOtRateById(id: string): OtRateType | undefined {

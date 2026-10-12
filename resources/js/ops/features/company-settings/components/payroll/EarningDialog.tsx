@@ -10,9 +10,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createEarningConfig, updateEarningConfig } from '@ops/lib/services/payrollSettingsService'
-import type { EarningConfig } from '@ops/types/domain'
+import { createEarningConfig, updateEarningConfig } from '@ops/lib/services/payrollConfigService'
+import type { EarningConfig } from '@ops/features/company-settings/types'
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -41,7 +40,6 @@ const CALC_TYPE_OPTIONS = [
 
 export function EarningDialog({ earning, onSaved, trigger }: { earning?: EarningConfig; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(earning)
 
@@ -76,10 +74,10 @@ export function EarningDialog({ earning, onSaved, trigger }: { earning?: Earning
 
   async function onSubmit(values: FormValues) {
     if (isEdit && earning) {
-      await updateEarningConfig(user, earning.id, values)
+      await updateEarningConfig(earning.id, { ...values, isActive: earning.isActive })
       notify({ title: 'Earning updated', tone: 'success' })
     } else {
-      await createEarningConfig(user, { ...values, isActive: true })
+      await createEarningConfig({ ...values, isActive: true })
       notify({ title: 'Earning added', tone: 'success' })
     }
     setOpen(false)

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\CompensationTypeController;
+use App\Http\Controllers\ComplianceDeadlineController;
 use App\Http\Controllers\PayrollGroupController;
 use App\Http\Controllers\PayrollSettingsController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +17,15 @@ Route::prefix('api/payroll-settings')->name('payroll-settings.')->middleware('pe
     Route::delete('payroll-groups/{payrollGroup}', [PayrollGroupController::class, 'destroy'])->name('groups.destroy');
     Route::post('payroll-groups/{payrollGroup}/employees', [PayrollGroupController::class, 'assignEmployees'])->name('groups.employees');
     Route::get('payroll-groups/{payrollGroup}/calendar', [PayrollGroupController::class, 'calendar'])->name('groups.calendar');
+
+    Route::get('compensation-types', [CompensationTypeController::class, 'index'])->name('compensation-types.index');
+    Route::post('compensation-types', [CompensationTypeController::class, 'store'])->name('compensation-types.store');
+    Route::put('compensation-types/{compensationType}', [CompensationTypeController::class, 'update'])->name('compensation-types.update');
+
+    Route::get('compliance-deadlines', [ComplianceDeadlineController::class, 'index'])->name('compliance-deadlines.index');
+    Route::post('compliance-deadlines', [ComplianceDeadlineController::class, 'store'])->name('compliance-deadlines.store');
+    Route::put('compliance-deadlines/{complianceDeadline}', [ComplianceDeadlineController::class, 'update'])->name('compliance-deadlines.update');
+    Route::delete('compliance-deadlines/{complianceDeadline}', [ComplianceDeadlineController::class, 'destroy'])->name('compliance-deadlines.destroy');
 
     Route::get('earnings', [PayrollSettingsController::class, 'earnings'])->name('earnings.index');
     Route::post('earnings', [PayrollSettingsController::class, 'storeEarning'])->name('earnings.store');

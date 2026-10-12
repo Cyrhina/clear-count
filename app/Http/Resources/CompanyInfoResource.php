@@ -30,6 +30,11 @@ class CompanyInfoResource extends JsonResource
             'description' => $this->description,
             'use_logo_colors' => $this->use_logo_colors,
             'brand_color' => $this->brand_color,
+            // Read-only context for the settings screen; the plan is changed by the platform admin, never from this form.
+            'plan_tier' => $this->plan_tier,
+            'timezone' => $this->timezone,
+            'payroll_frequency' => $this->payroll_frequency,
+            'created_at' => $this->created_at?->toIso8601String(),
 
             // Philippine statutory and tax registrations, grouped like the form's section.
             'registration' => [

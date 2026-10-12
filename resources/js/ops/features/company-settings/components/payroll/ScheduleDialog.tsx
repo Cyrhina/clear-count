@@ -10,9 +10,9 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createSchedule, updateSchedule } from '@ops/lib/services/companyService'
-import type { Schedule, ShiftType } from '@ops/types/domain'
+import { createSchedule, updateSchedule } from '@ops/lib/services/payrollConfigService'
+import type { Schedule } from '@ops/features/company-settings/types'
+import type { ShiftType } from '@ops/types/domain'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -49,7 +49,6 @@ function toFormValues(schedule?: Schedule): FormValues {
 
 export function ScheduleDialog({ schedule, onSaved, trigger }: { schedule?: Schedule; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(schedule)
 
@@ -77,10 +76,10 @@ export function ScheduleDialog({ schedule, onSaved, trigger }: { schedule?: Sche
   async function onSubmit(values: FormValues) {
     const input = { ...values, restDays }
     if (isEdit && schedule) {
-      await updateSchedule(user, schedule.id, input)
+      await updateSchedule(schedule.id, input)
       notify({ title: 'Work schedule updated', tone: 'success' })
     } else {
-      await createSchedule(user, input)
+      await createSchedule(input)
       notify({ title: 'Work schedule added', tone: 'success' })
     }
     setOpen(false)

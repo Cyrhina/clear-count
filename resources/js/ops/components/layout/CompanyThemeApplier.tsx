@@ -1,11 +1,12 @@
+import { usePage } from '@inertiajs/react'
 import { useEffect } from 'react'
-import { useTenant } from '@ops/hooks/useTenant'
 import { applyBrandTheme } from '@ops/lib/theme/brandTheme'
 
 /** Applies the company's logo-based color theme (if turned on in Company Information) across the app. Renders nothing. */
 export function CompanyThemeApplier() {
-  const { company } = useTenant()
-  const color = company?.useLogoTheme ? company.brandColor : undefined
+  // The saved company comes from the server with every page (see HandleInertiaRequests).
+  const company = usePage<{ auth: { company?: { use_logo_colors?: boolean; brand_color?: string | null } | null } }>().props.auth.company
+  const color = company?.use_logo_colors ? (company.brand_color ?? undefined) : undefined
 
   useEffect(() => {
     applyBrandTheme(color)
