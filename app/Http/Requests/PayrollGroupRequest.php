@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\CompensationType;
 use App\Enums\DeductionScheduleType;
 use App\Enums\PayDateType;
 use App\Enums\PayrollFrequency;
@@ -34,7 +33,7 @@ abstract class PayrollGroupRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:500'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'frequency' => ['required', Rule::enum(PayrollFrequency::class)],
-            'compensation_type' => ['required', Rule::enum(CompensationType::class)],
+            'compensation_type_id' => ['nullable', Rule::exists('compensation_types', 'id')->where('company_id', $companyId)],
             // validated() keeps only keys that have a rule, so every key of the two configs is listed here;
             // after() then checks which ones this frequency needs.
             'cutoff_config' => ['required', 'array'],

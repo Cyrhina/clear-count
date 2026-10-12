@@ -3,6 +3,7 @@
 use App\Enums\PayrollFrequency;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\CompensationType;
 use App\Models\Employee;
 use App\Models\PayrollGroup;
 use App\Models\User;
@@ -26,7 +27,7 @@ function groupPayload(array $overrides = []): array
         'description' => 'Regular rank-and-file employees paid twice a month.',
         'status' => 'active',
         'frequency' => 'semi_monthly',
-        'compensation_type' => 'monthly_rate',
+        'compensation_type_id' => null,
         'cutoff_config' => SEMI_CUTOFF,
         'pay_date_config' => ['type' => 'fixed_days', 'days' => [15, 30], 'weekend_rule' => 'previous'],
         'deduction_schedule' => 'DIVIDED',
@@ -100,9 +101,10 @@ test('display strings match the group card', function () {
 // ---- payroll groups -----------------------------------------------------------------------------------------------
 
 test('create returns the card payload and lists with counts and schedule name', function () {
+    $type = CompensationType::create(['company_id' => $this->company->id, 'name' => 'Monthly Rate', 'kind' => 'monthly_rate', 'config' => ['basic_rate' => 28000]]);
     $schedule = WorkSchedule::create(['company_id' => $this->company->id, 'name' => 'Standard Day Shift', 'shift_type' => 'day', 'start_time' => '09:00', 'end_time' => '18:00', 'break_minutes' => 60, 'grace_period_minutes' => 0, 'days_of_week' => [1, 2, 3, 4, 5]]);
 
-    $created = $this->actingAs($this->admin)->postJson('/api/payroll-settings/payroll-groups', groupPayload(['work_schedule_id' => $schedule->id]))->assertCreated()->json('data');
+    $created = $this->actingAs($this->admin)->postJson('/api/payroll-settings/payroll-groups', groupPayload(['work_schedule_id' => $schedule->id, 'compensation_type_id' => $type->id]))->assertCreated()->json('data');
 
     expect($created)->toMatchArray([
         'name' => 'Semi-Monthly Regular Payroll',

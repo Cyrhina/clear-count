@@ -26,7 +26,7 @@ class PayrollGroupResource extends JsonResource
 
             // Display strings for the card
             'frequency' => $this->frequency->label(),
-            'compensation' => $this->compensation_type->label(),
+            'compensation' => $this->compensationType?->name,
             'cutoff_display' => PayrollCalendar::cutoffDisplay($this->frequency, $this->cutoff_config),
             'pay_dates_display' => PayrollCalendar::payDatesDisplay($this->pay_date_config),
             'deduction_schedule_display' => $this->deduction_schedule->label($this->frequency),
@@ -36,7 +36,7 @@ class PayrollGroupResource extends JsonResource
 
             // Raw values to pre-fill the edit form
             'frequency_key' => $this->frequency->value,
-            'compensation_type' => $this->compensation_type->value,
+            'compensation_type_id' => $this->compensation_type_id,
             'cutoff_config' => $this->cutoff_config,
             'pay_date_config' => $this->pay_date_config,
             'deduction_schedule' => $this->deduction_schedule->value,

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\CompensationType;
+use App\Models\ComplianceDeadline;
 use App\Models\DeductionType;
 use App\Models\EarningType;
 use App\Models\OvertimeRate;
@@ -72,6 +74,29 @@ final class PayrollDefaults
         'default_deduction_schedules' => [],
     ];
 
+    /** [name, kind, config]. Rates are starting points the company edits. */
+    public const COMPENSATION_TYPES = [
+        ['Monthly Rate', 'monthly_rate', ['basic_rate' => 28000]],
+        ['Daily Rate', 'daily_rate', ['basic_rate' => 610]],
+        ['Hourly Rate', 'hourly_rate', ['basic_rate' => 90]],
+        ['Output-Based / Piece-Rate', 'output_based', ['output_rates' => [['label' => 'Product A', 'unit' => 'unit', 'rate_per_unit' => 10]], 'output_min' => null, 'output_max' => null]],
+        ['Commission-Based', 'commission_based', ['commission_type' => 'percentage', 'commission_value' => 5, 'commission_basis' => 'Net Sales']],
+        ['Mixed Compensation', 'mixed', ['basic_rate' => 18000, 'mixed_components' => ['Base Salary', 'Output Incentive']]],
+    ];
+
+    /**
+     * Government filing deadlines. Due days are illustrative starting points (real SSS dates vary by employer number).
+     * [name, category, description, frequency, due_day, due_month, remind_days_before, link]
+     */
+    public const COMPLIANCE_DEADLINES = [
+        ['SSS Contribution Due', 'SSS', 'Remit the {period} SSS premiums (R-3 / R-5).', 'monthly', 10, null, 7, '/reports/sss-contribution'],
+        ['File BIR Form 1601-C', 'BIR', 'Monthly withholding tax on compensation for {period}.', 'monthly', 10, null, 7, '/reports/bir-1601c'],
+        ['Pag-IBIG Contribution Due', 'Pag-IBIG', 'Remit the {period} Pag-IBIG contributions and loan amortizations.', 'monthly', 10, null, 7, '/reports/pagibig-contribution'],
+        ['PhilHealth Contribution Due', 'PhilHealth', 'Remit the {period} PhilHealth premiums.', 'monthly', 15, null, 7, '/reports/philhealth-contribution'],
+        ['13th Month Pay Deadline', 'Payroll', 'Release 13th month pay to all rank-and-file employees (due on or before December 24).', 'yearly', 24, 11, 30, '/thirteenth-month-pay'],
+        ['Issue BIR Form 2316', 'BIR', 'Give employees their annual certificate of compensation payment and tax withheld.', 'yearly', 31, 0, 30, '/reports/bir-2316'],
+    ];
+
     /** Each list is created only while the company has none, so a row a company deleted or renamed never comes back. */
     public static function ensureOvertimeRates(int $companyId): void
     {
@@ -100,6 +125,29 @@ final class PayrollDefaults
         }
         foreach (self::DEDUCTIONS as [$name, $category, $recurrence]) {
             DeductionType::withoutGlobalScopes()->create(['company_id' => $companyId, 'name' => $name, 'category' => $category, 'recurrence' => $recurrence, 'allocation_method' => 'equal_split']);
+        }
+    }
+
+    public static function ensureCompensationTypes(int $companyId): void
+    {
+        if (CompensationType::withoutGlobalScopes()->where('company_id', $companyId)->exists()) {
+            return;
+        }
+        foreach (self::COMPENSATION_TYPES as [$name, $kind, $config]) {
+            CompensationType::withoutGlobalScopes()->create(['company_id' => $companyId, 'name' => $name, 'kind' => $kind, 'config' => $config]);
+        }
+    }
+
+    public static function ensureComplianceDeadlines(int $companyId): void
+    {
+        if (ComplianceDeadline::withoutGlobalScopes()->where('company_id', $companyId)->exists()) {
+            return;
+        }
+        foreach (self::COMPLIANCE_DEADLINES as [$name, $category, $description, $frequency, $dueDay, $dueMonth, $remind, $link]) {
+            ComplianceDeadline::withoutGlobalScopes()->create([
+                'company_id' => $companyId, 'name' => $name, 'category' => $category, 'description' => $description, 'frequency' => $frequency,
+                'due_day' => $dueDay, 'due_month' => $dueMonth, 'remind_days_before' => $remind, 'link' => $link, 'is_custom' => false,
+            ]);
         }
     }
 }
