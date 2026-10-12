@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
-import { Badge } from '@ops/components/ui/Badge'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
-import { AddHolidayDialog } from '@ops/features/company-settings/components/AddHolidayDialog'
+import { HolidaysTab } from '@ops/features/company-settings/components/HolidaysTab'
 import { CompanyInfoForm } from '@ops/features/company-settings/components/CompanyInfoForm'
 import { ComplianceDeadlinesSection } from '@ops/features/company-settings/components/payroll/ComplianceDeadlinesSection'
 import { DeductionsSection } from '@ops/features/company-settings/components/payroll/DeductionsSection'
@@ -20,25 +19,19 @@ import { useCompanySettings } from '@ops/features/company-settings/hooks/useComp
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { usePermission } from '@ops/hooks/usePermission'
-import { formatDate } from '@ops/lib/utils/format'
-
-const HOLIDAY_TYPE_LABEL: Record<string, string> = {
-  regular: 'Regular Holiday',
-  special_non_working: 'Special Non-Working Day',
-}
 
 export function CompanySettingsPage() {
   const {
     company,
     schedules,
-    holidays,
     payrollGroups,
     compensationTypes,
     earningConfigs,
     deductionConfigs,
     payrollRules,
-    employees,
+    rates,
     isLoading,
+    error,
     refetch,
     complianceDeadlines,
   } = useCompanySettings()
@@ -46,8 +39,9 @@ export function CompanySettingsPage() {
   const [tab, setTab] = useState('company')
   const [payrollTab, setPayrollTab] = useState('groups')
   const canEditCompany = usePermission('settings.company.edit')
-  const canEditPayroll = usePermission('settings.payroll.edit') || canEditCompany
+  const canEditPayroll = usePermission('settings.payroll.edit')
 
+  if (error) return <EmptyState title="Could not load the settings" description={error} />
   if (isLoading || !company) return <Skeleton className="h-96" />
 
   return (
@@ -90,7 +84,6 @@ export function CompanySettingsPage() {
                   deductionDefaults={payrollRules?.defaultDeductionSchedules}
                   compensationTypes={compensationTypes}
                   schedules={schedules}
-                  employees={employees}
                   canEdit={canEditPayroll}
                   onRefetch={refetch}
                 />
@@ -114,37 +107,22 @@ export function CompanySettingsPage() {
             </TabsContent>
 
             <TabsContent value="ot-holiday-rates">
-              <OvertimeHolidayRatesSection rules={payrollRules} canEdit={canEditPayroll} onRefetch={refetch} />
+              <OvertimeHolidayRatesSection rules={payrollRules} rates={rates} canEdit={canEditPayroll} onRefetch={refetch} />
             </TabsContent>
 
             <TabsContent value="schedules">
-              <WorkSchedulesSection schedules={schedules} employees={employees} canEdit={canEditPayroll} onRefetch={refetch} />
+              <WorkSchedulesSection schedules={schedules} canEdit={canEditPayroll} onRefetch={refetch} />
             </TabsContent>
 
             <TabsContent value="calendar">
-              <PayrollCalendarSection groups={payrollGroups} holidays={holidays} />
+              <PayrollCalendarSection groups={payrollGroups} />
               <ComplianceDeadlinesSection deadlines={complianceDeadlines} canEdit={canEditPayroll} onRefetch={refetch} />
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         <TabsContent value="holidays">
-          <div className="mb-3 flex justify-end">{canEditCompany && <AddHolidayDialog onCreated={refetch} />}</div>
-          {holidays.length === 0 ? (
-            <EmptyState title="No holidays configured" />
-          ) : (
-            <div className="space-y-2">
-              {holidays.map((h) => (
-                <div key={h.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">{h.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(h.date)}</p>
-                  </div>
-                  <Badge tone={h.type === 'regular' ? 'brand' : 'neutral'}>{HOLIDAY_TYPE_LABEL[h.type]}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
+          <HolidaysTab canEdit={canEditCompany} />
         </TabsContent>
       </Tabs>
     </div>

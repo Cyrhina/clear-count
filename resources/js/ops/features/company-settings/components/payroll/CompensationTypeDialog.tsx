@@ -7,9 +7,9 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createCompensationType, updateCompensationType } from '@ops/lib/services/payrollSettingsService'
-import type { CompensationKind, CompensationType } from '@ops/types/domain'
+import { createCompensationType, updateCompensationType } from '@ops/lib/services/payrollConfigService'
+import type { CompensationKind } from '@ops/types/domain'
+import type { CompensationType } from '@ops/features/company-settings/types'
 
 interface FormValues {
   name: string
@@ -64,7 +64,6 @@ export function CompensationTypeDialog({
   trigger?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(compensationType)
 
@@ -102,10 +101,10 @@ export function CompensationTypeDialog({
           : undefined,
     }
     if (isEdit && compensationType) {
-      await updateCompensationType(user, compensationType.id, { name: values.name, kind: values.kind, config, isActive: compensationType.isActive })
+      await updateCompensationType(compensationType.id, { name: values.name, kind: values.kind, config, isActive: compensationType.isActive })
       notify({ title: 'Compensation type updated', tone: 'success' })
     } else {
-      await createCompensationType(user, { name: values.name, kind: values.kind, config, isActive: true })
+      await createCompensationType({ name: values.name, kind: values.kind, config, isActive: true })
       notify({ title: 'Compensation type created', tone: 'success' })
     }
     setOpen(false)

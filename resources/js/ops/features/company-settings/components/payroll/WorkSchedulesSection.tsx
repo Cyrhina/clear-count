@@ -3,10 +3,8 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
-import { useSession } from '@ops/hooks/useSession'
-import { setScheduleAssignedEmployees } from '@ops/lib/services/companyService'
-import type { Employee, Schedule, ShiftType } from '@ops/types/domain'
-import { AssignEmployeesDialog } from '@ops/features/company-settings/components/payroll/AssignEmployeesDialog'
+import type { Schedule } from '@ops/features/company-settings/types'
+import type { ShiftType } from '@ops/types/domain'
 import { ScheduleDialog } from '@ops/features/company-settings/components/payroll/ScheduleDialog'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -29,16 +27,13 @@ function formatDays(days: number[]) {
 
 export function WorkSchedulesSection({
   schedules,
-  employees,
   canEdit,
   onRefetch,
 }: {
   schedules: Schedule[]
-  employees: Employee[]
   canEdit: boolean
   onRefetch: () => void
 }) {
-  const { user } = useSession()
 
   return (
     <div className="space-y-4">
@@ -83,20 +78,9 @@ export function WorkSchedulesSection({
                 <Badge tone="brand">{schedule.assignedEmployeeIds?.length ?? 0} Assigned</Badge>
                 {canEdit && (
                   <div className="flex gap-1.5">
-                    <AssignEmployeesDialog
-                      title={`Assign Employees – ${schedule.name}`}
-                      employees={employees}
-                      selectedIds={schedule.assignedEmployeeIds ?? []}
-                      onSave={async (ids) => {
-                        await setScheduleAssignedEmployees(user, schedule.id, ids)
-                        onRefetch()
-                      }}
-                      trigger={
-                        <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />}>
-                          Assign
-                        </Button>
-                      }
-                    />
+                    <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />} disabled title="Assigning employees comes with the Employees and Schedules modules">
+                      Assign
+                    </Button>
                     <ScheduleDialog
                       schedule={schedule}
                       onSaved={onRefetch}

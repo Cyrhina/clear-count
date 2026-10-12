@@ -16,7 +16,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | Phase | Name | Status | Branch | PR | Merged on |
 |---|---|---|---|---|---|
 | P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
-| P1 | Company setup wiring | in progress | backend/p01-company-setup | | |
+| P1 | Company setup wiring | in review | backend/p01-company-setup | | |
 | P2 | Branches, departments, onboarding | not started | | | |
 | P3 | Employees (a, b) | not started | | | |
 | P4 | Schedules and roster | not started | | | |
@@ -45,6 +45,8 @@ Decisions made during the phases (PLAN.md marks each one with **Confirm with the
 | 2026-10-12 | plan | How do phases map to git? | One branch, worktree and PR per phase, from `master` (D3). |
 | 2026-10-12 | plan | Which later modules are in scope? | All: platform and subscriptions, integrations, payslip PDF and email, notifications (D4). |
 | 2026-10-12 | P0 | Turn off open registration? | Yes. Fortify registration, the register page and CreateNewUser are removed. |
+| 2026-10-12 | P1 | Payroll Groups: screen or backend leads? | Backend leads. Real cutoff and pay-date pickers, server calendar, 4 frequencies, group points at a Compensation Type record. |
+| 2026-10-12 | P1 | What do the Assign employees actions do before P3/P4? | Disabled with a note; they come back with the Employees and Schedules modules. |
 | 2026-10-12 | P0 | Give company_admin, super_admin and manager `profile.view`? | Yes, on the server and in the client copy. `ess.view` was not added to admins. |
 
 ## Mock-removal ledger
@@ -53,7 +55,11 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 
 | Mock code (file:function) | Still imported by | Remove in | Added in |
 |---|---|---|---|
-| | | | |
+| `companyService`: getCompany, getSchedules, getHolidays, addEmployeesToSchedule | attendance, schedules, onboarding, employees, company-settings (dead dialogs) | P2 (company), P4 (schedules), P5 (holidays in attendance) | P1 |
+| `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules, updatePayrollGroupMembership, setEmployeePayrollGroup, bulkSetEmployeePayrollGroup | employees, payroll, payslips, loans-deductions, attendance (late counting), reports | P3 (groups, membership), P9 (deductions), P10 (rules, compensation) | P1 |
+| `features/company-settings/components/payroll/PayrollGroupAssignDialog.tsx`, `AssignEmployeesDialog.tsx` | nothing (kept to be rewired on the API) | P3 (groups), P4 (schedules) | P1 |
+| `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
+| `useTenant` (mock company) | layout, dashboards | P2 | P1 |
 
 ## Handoff notes
 
@@ -69,6 +75,22 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P1 - 2026-10-12
+- Branch: backend/p01-company-setup (pushed: yes)
+- Done:
+  - Backend (commit 9ed1560): compensation types, compliance deadlines, payroll_admin read access, company info fields. Tests: 140 pass, 4 skipped.
+  - Frontend: services, hooks and screens switched to the API (see the P1 section of PLAN.md). Rebuilt Payroll Group dialog, calendar from the server, Holidays tab with year selector and PH import, rates section on the API.
+  - DemoSeeder: demo work schedules, 4 payroll groups, employees spread over the groups.
+  - Checked in the browser as the demo company admin: company info save (and the 422 list), payroll group create, all payroll tabs, holidays import, calendar.
+- Next: open the P1 PR, merge it, then start P2 (branches, departments, onboarding).
+- Gotchas:
+  - Settings now save to the database, but the mock payroll, attendance and reports modules still read the mock copy (ledger above). A setting changed here does not change what the mock payroll screens compute until their phase (P3 to P14). The overtime rates are the one exception: the mock store is filled from the saved rates.
+  - Weekdays: the API uses 1 = Monday ... 7 = Sunday, the screens use 0 = Sunday ... 6 = Saturday. `payrollConfigService` converts both ways. The API calls two-week pay `bi_weekly`, the shared frontend types `biweekly`; the rules service converts the map keys.
+  - Logo files need `php artisan storage:link` (public/storage) locally; the Dockerfile autorun already does it on deploy.
+  - Company info: the server requires the company email and type; a company created by a seeder without an email must fill it before the first save.
+  - Not browser-tested: weekly and bi-weekly group dialogs, work schedule dialog, compensation type and compliance dialogs, logo upload (covered by backend tests and tsc only).
+- Checks: php artisan test 136 passed, 4 skipped; tsc clean; test:samples 13 pass; test:golden pass.
 
 ### P0 - 2026-10-12
 - Branch: backend/p00-foundation (pushed: see PR column above)

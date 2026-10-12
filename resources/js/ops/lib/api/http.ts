@@ -25,6 +25,8 @@ function withQuery(path: string, query?: Query): string {
 }
 
 async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
+  // A FormData body (file upload) is sent as multipart: the browser sets the Content-Type with its boundary.
+  const isForm = body instanceof FormData
   const response = await fetch(withQuery(path, query), {
     method,
     credentials: 'same-origin',
@@ -32,9 +34,9 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
       Accept: 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
       'X-XSRF-TOKEN': xsrfToken(),
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(body === undefined || isForm ? {} : { 'Content-Type': 'application/json' }),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
 
   if (response.status === 204) return undefined as T
@@ -51,6 +53,8 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
 export const api = {
   get: <T>(path: string, query?: Query) => request<T>('GET', path, undefined, query),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  /** Multipart POST for a file; put the file (and any other fields) in the FormData. */
+  upload: <T>(path: string, form: FormData) => request<T>('POST', path, form),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body ?? {}),
   delete: <T>(path: string) => request<T>('DELETE', path),
@@ -60,4 +64,10 @@ export const api = {
 export function apiErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return Object.values(error.errors)[0]?.[0] ?? error.message
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+}
+
+/** The first message per field of a 422, for showing next to the matching input (`errors.name`). */
+export function fieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError)) return {}
+  return Object.fromEntries(Object.entries(error.errors).map(([field, messages]) => [field, messages[0] ?? '']))
 }

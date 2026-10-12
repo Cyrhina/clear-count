@@ -54,7 +54,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'role' => $user?->getRoleNames()->first(),
                 'permissions' => $user?->getAllPermissions()->pluck('name')->values() ?? [],
-                'company' => $user?->company?->only(['id', 'name', 'plan_tier']),
+                'company' => $user?->company?->only(['id', 'name', 'plan_tier', 'use_logo_colors', 'brand_color']),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

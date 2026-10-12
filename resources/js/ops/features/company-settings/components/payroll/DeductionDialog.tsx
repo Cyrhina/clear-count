@@ -9,9 +9,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createDeductionConfig, updateDeductionConfig } from '@ops/lib/services/payrollSettingsService'
-import type { DeductionConfig } from '@ops/types/domain'
+import { createDeductionConfig, updateDeductionConfig } from '@ops/lib/services/payrollConfigService'
+import type { DeductionConfig } from '@ops/features/company-settings/types'
 
 const schema = z.object({
   name: z.string().min(1, 'Required'),
@@ -50,7 +49,6 @@ const ALLOCATION_METHOD_OPTIONS = [
 
 export function DeductionDialog({ deduction, onSaved, trigger }: { deduction?: DeductionConfig; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(deduction)
 
@@ -95,10 +93,10 @@ export function DeductionDialog({ deduction, onSaved, trigger }: { deduction?: D
           : undefined,
     }
     if (isEdit && deduction) {
-      await updateDeductionConfig(user, deduction.id, input)
+      await updateDeductionConfig(deduction.id, { ...input, isActive: deduction.isActive })
       notify({ title: 'Deduction updated', tone: 'success' })
     } else {
-      await createDeductionConfig(user, { ...input, isActive: true })
+      await createDeductionConfig({ ...input, isActive: true })
       notify({ title: 'Deduction added', tone: 'success' })
     }
     setOpen(false)

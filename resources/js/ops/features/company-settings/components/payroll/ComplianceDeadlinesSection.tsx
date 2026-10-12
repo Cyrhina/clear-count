@@ -6,11 +6,10 @@ import { Switch } from '@ops/components/ui/Switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { ComplianceDeadlineDialog } from '@ops/features/company-settings/components/payroll/ComplianceDeadlineDialog'
-import { useSession } from '@ops/hooks/useSession'
 import { daysUntil, nextDueDate, scheduleLabel, toIsoDate } from '@ops/lib/payroll/complianceDeadlines'
-import { deleteComplianceDeadline, updateComplianceDeadline } from '@ops/lib/services/complianceService'
+import { deleteComplianceDeadline, updateComplianceDeadline } from '@ops/lib/services/payrollConfigService'
 import { formatDate } from '@ops/lib/utils/format'
-import type { ComplianceDeadline } from '@ops/types/domain'
+import type { ComplianceDeadline } from '@ops/features/company-settings/types'
 
 function countdown(days: number): { text: string; tone: 'danger' | 'warning' | 'neutral' } {
   if (days === 0) return { text: 'Due today', tone: 'danger' }
@@ -19,7 +18,6 @@ function countdown(days: number): { text: string; tone: 'danger' | 'warning' | '
 }
 
 export function ComplianceDeadlinesSection({ deadlines, canEdit, onRefetch }: { deadlines: ComplianceDeadline[]; canEdit: boolean; onRefetch: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   // Soonest first; deadlines with no upcoming date (a past one-time reminder) sink to the bottom.
@@ -28,12 +26,12 @@ export function ComplianceDeadlinesSection({ deadlines, canEdit, onRefetch }: { 
     .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity))
 
   async function toggle(deadline: ComplianceDeadline, enabled: boolean) {
-    await updateComplianceDeadline(user, deadline.id, { enabled })
+    await updateComplianceDeadline(deadline.id, { enabled })
     onRefetch()
   }
 
   async function remove(deadline: ComplianceDeadline) {
-    await deleteComplianceDeadline(user, deadline.id)
+    await deleteComplianceDeadline(deadline.id)
     notify({ title: 'Reminder deleted', tone: 'success' })
     onRefetch()
   }

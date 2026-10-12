@@ -9,10 +9,10 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Switch } from '@ops/components/ui/Switch'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updatePayrollRules } from '@ops/lib/services/payrollSettingsService'
+import { updatePayrollRules } from '@ops/lib/services/payrollConfigService'
 import { cn } from '@ops/lib/utils/cn'
-import type { LateCountingPeriod, PayrollRules } from '@ops/types/domain'
+import type { PayrollRules } from '@ops/features/company-settings/types'
+import type { LateCountingPeriod } from '@ops/types/domain'
 
 type FormValues = Pick<
   PayrollRules,
@@ -75,7 +75,6 @@ function toFormValues(rules?: PayrollRules): FormValues {
 
 /** Everything about tardiness in one place: grace period, deduction, and how the per-employee late count resets. */
 export function LatePolicySection({ rules, canEdit, onRefetch }: { rules?: PayrollRules; canEdit: boolean; onRefetch: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const {
     register,
@@ -94,7 +93,7 @@ export function LatePolicySection({ rules, canEdit, onRefetch }: { rules?: Payro
   const deductionOn = watch('lateDeductionEnabled')
 
   async function onSubmit(values: FormValues) {
-    await updatePayrollRules(user, {
+    await updatePayrollRules({
       ...values,
       lateGracePeriodMinutes: Number(values.lateGracePeriodMinutes),
       latePerMinuteDeduction: Number(values.latePerMinuteDeduction),

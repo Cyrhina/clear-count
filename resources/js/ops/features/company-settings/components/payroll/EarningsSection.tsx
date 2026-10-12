@@ -5,17 +5,16 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Switch } from '@ops/components/ui/Switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEarningConfig } from '@ops/lib/services/payrollSettingsService'
-import type { EarningConfig } from '@ops/types/domain'
+import { updateEarningConfig } from '@ops/lib/services/payrollConfigService'
+import type { EarningConfig } from '@ops/features/company-settings/types'
 import { EarningDialog } from '@ops/features/company-settings/components/payroll/EarningDialog'
 
 export function EarningsSection({ earnings, canEdit, onRefetch }: { earnings: EarningConfig[]; canEdit: boolean; onRefetch: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   async function toggleActive(earning: EarningConfig) {
-    await updateEarningConfig(user, earning.id, { isActive: !earning.isActive })
+    const { id, ...rest } = earning
+    await updateEarningConfig(id, { ...rest, isActive: !earning.isActive })
     notify({ title: earning.isActive ? 'Earning deactivated' : 'Earning activated', tone: 'success' })
     onRefetch()
   }

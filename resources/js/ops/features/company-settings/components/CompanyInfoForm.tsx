@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react'
 import { ImagePlus, Palette, RotateCcw, Wand2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -9,8 +10,8 @@ import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Switch } from '@ops/components/ui/Switch'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateCompany } from '@ops/lib/services/companyService'
+import { ApiError, apiErrorMessage } from '@ops/lib/api/http'
+import { updateCompanyInfo, uploadCompanyLogo } from '@ops/lib/services/companyInfoService'
 import { BRAND_SHADES, applyBrandTheme, buildBrandScale, extractBrandColor } from '@ops/lib/theme/brandTheme'
 import type { Address, Company, CompanyContact, CompanyRegistration } from '@ops/types/domain'
 
@@ -129,9 +130,11 @@ function ContactFields({
  * Select, does not reliably propagate; see git history if this regresses).
  */
 export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Company; canEdit: boolean; onSaved: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [logoUrl, setLogoUrl] = useState(company.logoUrl ?? '')
+  // The chosen file is uploaded when the form is saved; `logoUrl` is only its preview.
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [serverErrors, setServerErrors] = useState<string[]>([])
   const [useLogoTheme, setUseLogoTheme] = useState(company.useLogoTheme ?? false)
   const [brandColor, setBrandColor] = useState(company.brandColor ?? '')
   const [detecting, setDetecting] = useState(false)
@@ -173,6 +176,7 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
 
   function handleLogoChange(file: File | undefined) {
     if (!file) return
+    setLogoFile(file)
     const reader = new FileReader()
     reader.onload = () => {
       const url = String(reader.result)
@@ -196,9 +200,20 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
   }
 
   async function onSubmit(values: FormValues) {
-    await updateCompany(user, { ...values, logoUrl, useLogoTheme: useLogoTheme && !!brandColor, brandColor: brandColor || undefined })
+    setServerErrors([])
+    try {
+      await updateCompanyInfo({ ...values, useLogoTheme: useLogoTheme && !!brandColor, brandColor: brandColor || undefined })
+      if (logoFile) await uploadCompanyLogo(logoFile)
+    } catch (error) {
+      // A 422 lists every field the server rejected; show them all instead of only the first.
+      setServerErrors(error instanceof ApiError && Object.keys(error.errors).length > 0 ? Object.values(error.errors).flat() : [apiErrorMessage(error)])
+      return
+    }
+    setLogoFile(null)
     notify({ title: 'Company settings updated', tone: 'success' })
     onSaved()
+    // The theme and plan widgets read the company from the page props.
+    router.reload({ only: ['auth'] })
   }
 
   return (
@@ -395,9 +410,20 @@ export function CompanyInfoForm({ company, canEdit, onSaved }: { company: Compan
         </div>
       </Card>
 
+      {serverErrors.length > 0 && (
+        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">The company information was not saved.</p>
+          <ul className="mt-1 list-disc pl-5">
+            {serverErrors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {canEdit && (
         <div className="flex justify-end">
-          <Button type="submit" isLoading={isSubmitting} disabled={!isDirty && logoUrl === (company.logoUrl ?? '') && useLogoTheme === (company.useLogoTheme ?? false) && brandColor === (company.brandColor ?? '')}>
+          <Button type="submit" isLoading={isSubmitting} disabled={!isDirty && !logoFile && useLogoTheme === (company.useLogoTheme ?? false) && brandColor === (company.brandColor ?? '')}>
             Save Changes
           </Button>
         </div>

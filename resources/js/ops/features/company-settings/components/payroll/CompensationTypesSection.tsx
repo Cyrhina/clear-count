@@ -5,10 +5,9 @@ import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Switch } from '@ops/components/ui/Switch'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateCompensationType } from '@ops/lib/services/payrollSettingsService'
+import { updateCompensationType } from '@ops/lib/services/payrollConfigService'
 import { formatCurrency } from '@ops/lib/utils/format'
-import type { CompensationType } from '@ops/types/domain'
+import type { CompensationType } from '@ops/features/company-settings/types'
 import { CompensationTypeDialog } from '@ops/features/company-settings/components/payroll/CompensationTypeDialog'
 
 const KIND_LABEL: Record<CompensationType['kind'], string> = {
@@ -61,11 +60,11 @@ export function CompensationTypesSection({
   canEdit: boolean
   onRefetch: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   async function toggleActive(comp: CompensationType) {
-    await updateCompensationType(user, comp.id, { isActive: !comp.isActive })
+    const { id, ...rest } = comp
+    await updateCompensationType(id, { ...rest, isActive: !comp.isActive })
     notify({ title: comp.isActive ? 'Compensation type deactivated' : 'Compensation type activated', tone: 'success' })
     onRefetch()
   }

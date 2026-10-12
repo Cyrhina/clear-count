@@ -5,9 +5,8 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Switch } from '@ops/components/ui/Switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateDeductionConfig } from '@ops/lib/services/payrollSettingsService'
-import type { DeductionConfig } from '@ops/types/domain'
+import { updateDeductionConfig } from '@ops/lib/services/payrollConfigService'
+import type { DeductionConfig } from '@ops/features/company-settings/types'
 import { DeductionDialog } from '@ops/features/company-settings/components/payroll/DeductionDialog'
 
 const CATEGORY_LABEL: Record<DeductionConfig['category'], string> = {
@@ -25,11 +24,11 @@ const CATEGORY_TONE: Record<DeductionConfig['category'], 'brand' | 'warning' | '
 }
 
 export function DeductionsSection({ deductions, canEdit, onRefetch }: { deductions: DeductionConfig[]; canEdit: boolean; onRefetch: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   async function toggleActive(deduction: DeductionConfig) {
-    await updateDeductionConfig(user, deduction.id, { isActive: !deduction.isActive })
+    const { id, ...rest } = deduction
+    await updateDeductionConfig(id, { ...rest, isActive: !deduction.isActive })
     notify({ title: deduction.isActive ? 'Deduction deactivated' : 'Deduction activated', tone: 'success' })
     onRefetch()
   }

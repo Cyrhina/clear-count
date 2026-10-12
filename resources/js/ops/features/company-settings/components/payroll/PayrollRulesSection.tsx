@@ -7,10 +7,9 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Switch } from '@ops/components/ui/Switch'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
 import { CONFIGURABLE_FREQUENCIES, DEDUCTION_SCHEDULE_HELP, deductionScheduleOptions, resolveDeductionSchedule } from '@ops/lib/payroll/deductionSchedule'
-import { updatePayrollRules } from '@ops/lib/services/payrollSettingsService'
-import type { PayrollRules } from '@ops/types/domain'
+import { updatePayrollRules } from '@ops/lib/services/payrollConfigService'
+import type { PayrollRules } from '@ops/features/company-settings/types'
 
 // Overtime rules live on the Overtime & Holiday Rates tab and late rules on the Late Policy tab, so they're not part
 // of this form (saving Payroll Rules never touches them).
@@ -65,7 +64,6 @@ function toFormValues(rules?: PayrollRules): FormValues {
 }
 
 export function PayrollRulesSection({ rules, canEdit, onRefetch }: { rules?: PayrollRules; canEdit: boolean; onRefetch: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -81,7 +79,7 @@ export function PayrollRulesSection({ rules, canEdit, onRefetch }: { rules?: Pay
   }, [rules, reset])
 
   async function onSubmit(values: FormValues) {
-    await updatePayrollRules(user, values)
+    await updatePayrollRules(values)
     notify({ title: 'Payroll rules updated', tone: 'success' })
     onRefetch()
   }
