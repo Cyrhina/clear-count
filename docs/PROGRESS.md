@@ -15,8 +15,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 
 | Phase | Name | Status | Branch | PR | Merged on |
 |---|---|---|---|---|---|
-| P0 | Foundation and golden snapshot | in review | backend/p00-foundation | | |
-| P1 | Company setup wiring | not started | | | |
+| P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
+| P1 | Company setup wiring | in progress | backend/p01-company-setup | | |
 | P2 | Branches, departments, onboarding | not started | | | |
 | P3 | Employees (a, b) | not started | | | |
 | P4 | Schedules and roster | not started | | | |
@@ -79,7 +79,7 @@ Newest first. One entry per working session or finished sub-step.
   - Defects fixed: inactive users cannot log in (Fortify authenticateUsing) and settings/* has the active middleware; registration removed; profile.view added to company_admin, super_admin and manager (Capabilities.php and ops/lib/rbac/permissions.ts).
   - Frontend: @tanstack/react-query, one queryClient (lib/api/queryClient.ts), provider in OpsPage.tsx, useUsers.ts is the reference hook. usePermission, RequireCapability and the sidebar read auth.permissions through hooks/useCapabilities.ts.
   - Golden fixtures in tests/Fixtures/golden/ (statutory, payroll-runs with inputs, thirteenth-month), written by tests/js/golden/golden.test.ts with a pinned date (2026-10-12), TZ Asia/Manila and a counter for crypto.randomUUID. `npm run test:golden` checks the TS engine still reproduces them; refresh only with `GOLDEN_WRITE=1 npx vp test run` (rule R6: not after P0).
-- Next: open the P0 PR, merge it, then start P1 in a new worktree.
+- Next: P1 (done: PR #3 merged to master).
 - Gotchas:
   - Baseline lint debt that is NOT from P0: `vendor/bin/pint --test` fails on 15 older files, `vendor/bin/phpstan analyse` reports 81 errors, and `npm run check` reports formatting issues in all 502 files (CRLF checkout). The checks in the definition of done mean: no new issues in files the phase touches. Clean the rest in P17 or when a phase touches the file.
   - A fresh worktree has no vendor/, node_modules/, .env or public/build. Run: composer install, npm ci, copy .env from the main checkout, npm run build (Pest renders the Vite manifest).
