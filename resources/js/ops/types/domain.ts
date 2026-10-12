@@ -406,13 +406,23 @@ export interface DeductionConfig {
   customSplitPercentages?: number[]
 }
 
+/** How the per-employee late count resets — see `features/attendance/lateCycle.ts`. */
+export type LateCountingPeriod = 'calendar_year' | 'rolling' | 'anniversary' | 'custom' | 'monthly'
+
 export interface PayrollRules {
   companyId: string
   roundingDecimalPrecision: number
   roundingMethod: 'nearest' | 'round_up' | 'round_down'
+  // Late Policy tab
   lateGracePeriodMinutes: number
+  /** Off for companies that don't deduct pay for lateness (the late count and grace period still apply). */
+  lateDeductionEnabled: boolean
   lateDeductionMethod: 'per_minute' | 'fixed'
   latePerMinuteDeduction: number
+  lateCountingPeriod: LateCountingPeriod
+  /** Start of the yearly period for `custom` (e.g. 7 / 1 = Jul 1 – Jun 30). */
+  lateCustomStartMonth: number
+  lateCustomStartDay: number
   overtimePreApprovalRequired: boolean
   /** @deprecated Not shown or used — OT rates are configured on the Overtime & Holiday Rates tab (payrollRatesStore). */
   overtimeDefaultMultiplier: number

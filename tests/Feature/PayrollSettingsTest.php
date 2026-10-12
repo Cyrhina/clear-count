@@ -258,6 +258,19 @@ test('payroll rules have defaults, keep unsent values, and validate default dedu
     $this->actingAs($this->admin)->putJson('/api/payroll-settings/rules', ['rounding_method' => 'banker'])->assertUnprocessable();
 });
 
+test('late policy defaults to the calendar year and validates the counting period', function () {
+    $this->actingAs($this->admin)->getJson('/api/payroll-settings/rules')->assertJsonPath('data.late_counting_period', 'calendar_year')->assertJsonPath('data.late_custom_start_month', 1);
+
+    $this->actingAs($this->admin)->putJson('/api/payroll-settings/rules', ['late_counting_period' => 'custom', 'late_custom_start_month' => 7, 'late_custom_start_day' => 1])
+        ->assertOk()->assertJsonPath('data.late_counting_period', 'custom')->assertJsonPath('data.late_custom_start_month', 7)->assertJsonPath('data.rounding_method', 'nearest');
+
+    $this->actingAs($this->admin)->getJson('/api/payroll-settings/rules')->assertJsonPath('data.late_deduction_enabled', true);
+    $this->actingAs($this->admin)->putJson('/api/payroll-settings/rules', ['late_deduction_enabled' => false])->assertOk()->assertJsonPath('data.late_deduction_enabled', false)->assertJsonPath('data.late_counting_period', 'custom');
+
+    $this->actingAs($this->admin)->putJson('/api/payroll-settings/rules', ['late_counting_period' => 'weekly'])->assertUnprocessable()->assertJsonValidationErrors('late_counting_period');
+    $this->actingAs($this->admin)->putJson('/api/payroll-settings/rules', ['late_custom_start_month' => 13, 'late_custom_start_day' => 0])->assertUnprocessable()->assertJsonValidationErrors(['late_custom_start_month', 'late_custom_start_day']);
+});
+
 test('work schedules: create, block deleting one a group uses', function () {
     $id = $this->actingAs($this->admin)->postJson('/api/payroll-settings/work-schedules', [
         'name' => 'Night Shift', 'shift_type' => 'night', 'start_time' => '22:00', 'end_time' => '06:00', 'break_minutes' => 60, 'grace_period_minutes' => 5, 'days_of_week' => [1, 2, 3, 4, 5],

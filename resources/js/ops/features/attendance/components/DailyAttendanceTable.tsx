@@ -6,7 +6,7 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { AdjustmentRequestDialog } from '@ops/features/attendance/components/AdjustmentRequestDialog'
-import { lateOrdinal } from '@ops/features/attendance/lateCycle'
+import { useLateCounting } from '@ops/features/attendance/hooks/useLateCounting'
 import type { LeaveResolution } from '@ops/features/attendance/leaveStatus'
 import { formatDate } from '@ops/lib/utils/format'
 import { usePermission } from '@ops/hooks/usePermission'
@@ -29,6 +29,7 @@ export function DailyAttendanceTable({
 }) {
   const canAdjust = usePermission('attendance.adjust')
   const [adjusting, setAdjusting] = useState<AttendanceRecord | null>(null)
+  const lateCounting = useLateCounting()
 
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
@@ -48,9 +49,9 @@ export function DailyAttendanceTable({
     )
   }
 
-  // "Late #3" — which late this is in the employee's current cycle (a cycle starts on their first late and lasts a year).
+  // "Late #3" — which late this is in the employee's counting period (set by the company's Late Policy).
   function lateNote(record: AttendanceRecord) {
-    const o = record.status === 'late' ? lateOrdinal(lateDates?.get(record.employeeId), record.date) : undefined
+    const o = record.status === 'late' ? lateCounting.ordinal(record.employeeId, lateDates?.get(record.employeeId), record.date) : undefined
     return o ? (
       <p className="text-[11px] font-medium text-warning" title={`Counting since ${formatDate(o.cycle.start)}, resets after ${formatDate(o.cycle.end)}`}>
         Late #{o.n} this cycle

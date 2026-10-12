@@ -12,19 +12,28 @@ import { CONFIGURABLE_FREQUENCIES, DEDUCTION_SCHEDULE_HELP, deductionScheduleOpt
 import { updatePayrollRules } from '@ops/lib/services/payrollSettingsService'
 import type { PayrollRules } from '@ops/types/domain'
 
-// Overtime rules live exclusively on the Overtime & Holiday Rates tab, so they're not part of this form
-// (saving Payroll Rules never touches them).
-type FormValues = Omit<PayrollRules, 'companyId' | 'overtimePreApprovalRequired' | 'overtimeDefaultMultiplier' | 'overtimeRestDayMultiplier' | 'overtimeHolidayMultiplier'>
+// Overtime rules live on the Overtime & Holiday Rates tab and late rules on the Late Policy tab, so they're not part
+// of this form (saving Payroll Rules never touches them).
+type FormValues = Omit<
+  PayrollRules,
+  | 'companyId'
+  | 'overtimePreApprovalRequired'
+  | 'overtimeDefaultMultiplier'
+  | 'overtimeRestDayMultiplier'
+  | 'overtimeHolidayMultiplier'
+  | 'lateGracePeriodMinutes'
+  | 'lateDeductionEnabled'
+  | 'lateDeductionMethod'
+  | 'latePerMinuteDeduction'
+  | 'lateCountingPeriod'
+  | 'lateCustomStartMonth'
+  | 'lateCustomStartDay'
+>
 
 const ROUNDING_METHOD_OPTIONS = [
   { value: 'nearest', label: 'Round to Nearest' },
   { value: 'round_up', label: 'Always Round Up' },
   { value: 'round_down', label: 'Always Round Down' },
-]
-
-const LATE_DEDUCTION_METHOD_OPTIONS = [
-  { value: 'per_minute', label: 'Per-Minute Deduction' },
-  { value: 'fixed', label: 'Fixed Deduction' },
 ]
 
 const ABSENCE_BASIS_OPTIONS = [
@@ -41,9 +50,6 @@ function toFormValues(rules?: PayrollRules): FormValues {
   return {
     roundingDecimalPrecision: rules?.roundingDecimalPrecision ?? 2,
     roundingMethod: rules?.roundingMethod ?? 'nearest',
-    lateGracePeriodMinutes: rules?.lateGracePeriodMinutes ?? 10,
-    lateDeductionMethod: rules?.lateDeductionMethod ?? 'per_minute',
-    latePerMinuteDeduction: rules?.latePerMinuteDeduction ?? 0,
     absenceDailyRateBasis: rules?.absenceDailyRateBasis ?? 'basic_pay_divided_by_working_days',
     absenceUnpaidHandling: rules?.absenceUnpaidHandling ?? 'deduct_daily_rate',
     prorationNewEmployee: rules?.prorationNewEmployee ?? true,
@@ -93,21 +99,6 @@ export function PayrollRulesSection({ rules, canEdit, onRefetch }: { rules?: Pay
             </FormField>
             <FormField label="Rounding method">
               <Controller control={control} name="roundingMethod" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={ROUNDING_METHOD_OPTIONS} disabled={!canEdit} />} />
-            </FormField>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <Card.Title>Late & Undertime</Card.Title>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <FormField label="Grace period (minutes)">
-              <Input type="number" min={0} disabled={!canEdit} {...register('lateGracePeriodMinutes')} />
-            </FormField>
-            <FormField label="Deduction method">
-              <Controller control={control} name="lateDeductionMethod" render={({ field }) => <Select value={field.value} onValueChange={field.onChange} options={LATE_DEDUCTION_METHOD_OPTIONS} disabled={!canEdit} />} />
-            </FormField>
-            <FormField label="Per-minute deduction (PHP)" className="col-span-2">
-              <Input type="number" step="0.01" min={0} disabled={!canEdit} {...register('latePerMinuteDeduction')} />
             </FormField>
           </div>
         </Card>

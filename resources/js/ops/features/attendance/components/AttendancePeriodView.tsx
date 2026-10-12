@@ -5,7 +5,8 @@ import { Button } from '@ops/components/ui/Button'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { lateCycles, lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
+import { useLateCounting } from '@ops/features/attendance/hooks/useLateCounting'
+import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import { dayMonth, fromDateKey, monthDays, rangeLabel, shiftAnchor, todayKey, viewRange, weekDays } from '@ops/features/schedules/dateUtil'
 import { useSession } from '@ops/hooks/useSession'
 import { cn } from '@ops/lib/utils/cn'
@@ -43,6 +44,7 @@ export function AttendancePeriodView({ employees }: { employees: Employee[] }) {
   const [records, setRecords] = useState<AttendanceRecord[] | null>(null)
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [leaves, setLeaves] = useState<Awaited<ReturnType<typeof getApprovedLeavesInRange>>>([])
+  const lateCounting = useLateCounting()
 
   const days = useMemo(() => (view === 'week' ? weekDays(anchor) : monthDays(anchor)), [view, anchor])
   const { from, to } = viewRange(anchor, view)
@@ -72,10 +74,10 @@ export function AttendancePeriodView({ employees }: { employees: Employee[] }) {
         totals[code]++
         return { date, code, wfh: record?.workType === 'wfh' }
       })
-      const cycle = lateCycles(lates.get(employee.id) ?? []).at(-1)
+      const cycle = lateCounting.cycles(employee.id, lates.get(employee.id)).at(-1)
       return { employee, cells, totals, cycle }
     })
-  }, [records, schedules, leaves, employees, days])
+  }, [records, schedules, leaves, employees, days, lateCounting])
 
   const name = (e: Employee) => `${e.personal.firstName} ${e.personal.lastName}`
   const cycleNote = (cycle: (typeof rows)[number]['cycle']) => (cycle ? `Late cycle: ${cycle.dates.length} since ${formatDate(cycle.start)}` : 'Late cycle: none')

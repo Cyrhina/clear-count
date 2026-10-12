@@ -25,7 +25,8 @@ import { ColumnMappingForm } from '@ops/features/attendance/components/ColumnMap
 import { PunchEditor, type PunchTimes } from '@ops/features/attendance/components/PunchEditor'
 import { annotateImportWithLeaves, type ImportLeaveContext } from '@ops/features/attendance/leaveStatus'
 import { approvedLeaveOn } from '@ops/features/attendance/leaveStatus'
-import { lateDatesByEmployee, lateOrdinal } from '@ops/features/attendance/lateCycle'
+import { useLateCounting } from '@ops/features/attendance/hooks/useLateCounting'
+import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import { buildScheduleReview, type ImportScope, type ScheduleReviewRow } from '@ops/features/attendance/scheduleReview'
 import { addDays, startOfWeek, todayKey } from '@ops/features/schedules/dateUtil'
 import { ScheduleReviewTable } from '@ops/features/attendance/components/ScheduleReviewTable'
@@ -196,6 +197,8 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   // Rows that need review stay out until approved; everything else is in unless the reviewer unticks it.
   const isIncluded = (row: ScheduleReviewRow) => row.applicable && (decisions.get(row.key) ?? !row.needsReview)
 
+  const lateCounting = useLateCounting()
+
   // Late dates per employee: what is already on record, with this import's rows replacing the same days.
   // Standard import has no review step, so its status comes from the employee's schedule the same way applying it will.
   const standardStatus = (r: DailyImportRecord): 'present' | 'late' | 'undertime' | 'absent' => {
@@ -210,12 +213,12 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     const replaced = new Set(incoming.map((r) => `${r.employeeId}|${r.date}`))
     const dates = lateDatesByEmployee([...preview.existing.filter((r) => !replaced.has(`${r.employeeId}|${r.date}`)), ...incoming])
     const late = incoming.filter((r) => r.status === 'late')
-    const repeat = late.filter((r) => (lateOrdinal(dates.get(r.employeeId), r.date)?.n ?? 1) > 1).length
+    const repeat = late.filter((r) => (lateCounting.ordinal(r.employeeId, dates.get(r.employeeId), r.date)?.n ?? 1) > 1).length
     return { dates, late: late.length, repeat }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, review, decisions, records])
+  }, [preview, review, decisions, records, lateCounting])
   const lateNoteFor = (employeeId: string, date: string, status: string) => {
-    const o = status === 'late' ? lateOrdinal(lateInfo?.dates.get(employeeId), date) : undefined
+    const o = status === 'late' ? lateCounting.ordinal(employeeId, lateInfo?.dates.get(employeeId), date) : undefined
     return o ? `Late #${o.n} · counting since ${formatDate(o.cycle.start)}, resets after ${formatDate(o.cycle.end)}` : undefined
   }
   const lateNote = (row: ScheduleReviewRow) => (row.isRestDay ? undefined : lateNoteFor(row.record.employeeId, row.record.date, row.status))

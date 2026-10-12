@@ -6,7 +6,8 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { lateCycles, lateDatesByEmployee, lateOrdinal, type LateCycle } from '@ops/features/attendance/lateCycle'
+import { useLateCounting } from '@ops/features/attendance/hooks/useLateCounting'
+import { lateDatesByEmployee, type LateCycle } from '@ops/features/attendance/lateCycle'
 import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import type { ExcelExport, ReportMetaItem } from '@ops/features/reports/reportExport'
@@ -109,6 +110,7 @@ export function LateAbsenceReport() {
     }
   }, [user, from, to])
 
+  const lateCounting = useLateCounting()
   const departments = useMemo(() => [...new Set((data?.employees ?? []).map((e) => e.employment.department))].sort(), [data])
   const today = dateKey(new Date())
 
@@ -122,12 +124,12 @@ export function LateAbsenceReport() {
       const incidents: Incident[] = []
       for (const r of data.attendance) {
         if (r.employeeId !== e.id || r.date < from || r.date > to) continue
-        if (r.status === 'late' && status !== 'absent') incidents.push({ date: r.date, kind: 'late', timeIn: r.timeIn, ordinal: lateOrdinal(lates, r.date) })
+        if (r.status === 'late' && status !== 'absent') incidents.push({ date: r.date, kind: 'late', timeIn: r.timeIn, ordinal: lateCounting.ordinal(e.id, lates, r.date) })
         else if (r.status === 'absent' && status !== 'late' && !leaves.some((l) => l.employeeId === e.id && l.from <= r.date && l.to >= r.date)) incidents.push({ date: r.date, kind: 'absent', timeIn: null })
       }
       if (incidents.length === 0) continue
       incidents.sort((a, b) => a.date.localeCompare(b.date))
-      const cycle = lateCycles(lates ?? []).at(-1)
+      const cycle = lateCounting.cycles(e.id, lates).at(-1)
       result.push({
         employee: e,
         late: incidents.filter((i) => i.kind === 'late').length,
@@ -138,7 +140,7 @@ export function LateAbsenceReport() {
       })
     }
     return result.sort((a, b) => fullName(a.employee).localeCompare(fullName(b.employee)))
-  }, [data, leaves, from, to, department, branchId, status, employeeId])
+  }, [data, leaves, from, to, department, branchId, status, employeeId, lateCounting])
 
   const totalLate = rows.reduce((s, r) => s + r.late, 0)
   const totalAbsent = rows.reduce((s, r) => s + r.absent, 0)

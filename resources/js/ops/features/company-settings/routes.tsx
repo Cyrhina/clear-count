@@ -12,6 +12,7 @@ import { DeductionsSection } from '@ops/features/company-settings/components/pay
 import { EarningsSection } from '@ops/features/company-settings/components/payroll/EarningsSection'
 import { PayrollCalendarSection } from '@ops/features/company-settings/components/payroll/PayrollCalendarSection'
 import { OvertimeHolidayRatesSection } from '@ops/features/company-settings/components/payroll/OvertimeHolidayRatesSection'
+import { LatePolicySection } from '@ops/features/company-settings/components/payroll/LatePolicySection'
 import { PayrollGroupsSection } from '@ops/features/company-settings/components/payroll/PayrollGroupsSection'
 import { PayrollRulesSection } from '@ops/features/company-settings/components/payroll/PayrollRulesSection'
 import { WorkSchedulesSection } from '@ops/features/company-settings/components/payroll/WorkSchedulesSection'
@@ -67,12 +68,13 @@ export function CompanySettingsPage() {
 
         <TabsContent value="payroll-settings">
           <Tabs value={payrollTab} onValueChange={setPayrollTab}>
-            <Select className="-mb-2 lg:hidden" value={payrollTab} onValueChange={setPayrollTab} aria-label="Payroll settings section" options={[{ value: 'groups', label: 'Payroll Groups' }, { value: 'earnings', label: 'Earnings' }, { value: 'deductions', label: 'Deductions' }, { value: 'rules', label: 'Payroll Rules' }, { value: 'ot-holiday-rates', label: 'Overtime & Holiday Rates' }, { value: 'schedules', label: 'Work Schedules' }, { value: 'calendar', label: 'Payroll Calendar' }]} />
+            <Select className="-mb-2 lg:hidden" value={payrollTab} onValueChange={setPayrollTab} aria-label="Payroll settings section" options={[{ value: 'groups', label: 'Payroll Groups' }, { value: 'earnings', label: 'Earnings' }, { value: 'deductions', label: 'Deductions' }, { value: 'rules', label: 'Payroll Rules' }, { value: 'late-policy', label: 'Late Policy' }, { value: 'ot-holiday-rates', label: 'Overtime & Holiday Rates' }, { value: 'schedules', label: 'Work Schedules' }, { value: 'calendar', label: 'Payroll Calendar' }]} />
             <TabsList className="hidden lg:flex">
               <TabsTrigger value="groups">Payroll Groups</TabsTrigger>
               <TabsTrigger value="earnings">Earnings</TabsTrigger>
               <TabsTrigger value="deductions">Deductions</TabsTrigger>
               <TabsTrigger value="rules">Payroll Rules</TabsTrigger>
+              <TabsTrigger value="late-policy">Late Policy</TabsTrigger>
               <TabsTrigger value="ot-holiday-rates">Overtime &amp; Holiday Rates</TabsTrigger>
               <TabsTrigger value="schedules">Work Schedules</TabsTrigger>
               <TabsTrigger value="calendar">Payroll Calendar</TabsTrigger>
@@ -100,6 +102,10 @@ export function CompanySettingsPage() {
 
             <TabsContent value="rules">
               <PayrollRulesSection rules={payrollRules} canEdit={canEditPayroll} onRefetch={refetch} />
+            </TabsContent>
+
+            <TabsContent value="late-policy">
+              <LatePolicySection rules={payrollRules} canEdit={canEditPayroll} onRefetch={refetch} />
             </TabsContent>
 
             <TabsContent value="ot-holiday-rates">

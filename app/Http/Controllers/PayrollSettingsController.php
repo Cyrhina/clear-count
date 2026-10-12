@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\LateCountingPeriod;
 use App\Enums\PayrollFrequency;
 use App\Models\DeductionType;
 use App\Models\EarningType;
@@ -186,8 +187,12 @@ class PayrollSettingsController extends Controller
             'rounding_decimal_precision' => ['sometimes', 'integer', 'min:0', 'max:4'],
             'rounding_method' => ['sometimes', Rule::in(['nearest', 'round_up', 'round_down'])],
             'late_grace_period_minutes' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'late_deduction_enabled' => ['sometimes', 'boolean'],
             'late_deduction_method' => ['sometimes', Rule::in(['per_minute', 'fixed'])],
             'late_per_minute_deduction' => ['sometimes', 'numeric', 'min:0', 'max:100000'],
+            'late_counting_period' => ['sometimes', Rule::enum(LateCountingPeriod::class)],
+            'late_custom_start_month' => ['sometimes', 'integer', 'between:1,12'],
+            'late_custom_start_day' => ['sometimes', 'integer', 'between:1,31'], // a short month falls back to its last day
             'overtime_pre_approval_required' => ['sometimes', 'boolean'],
             'overtime_rest_day_multiplier' => ['sometimes', 'numeric', 'min:1', 'max:10'],
             'overtime_holiday_multiplier' => ['sometimes', 'numeric', 'min:1', 'max:10'],
