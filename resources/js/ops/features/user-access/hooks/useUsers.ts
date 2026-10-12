@@ -1,43 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { apiErrorMessage } from '@ops/lib/api/http'
-import { listAccessUsers, listPermissionRoles, type AccessUser, type PermissionRole } from '@ops/lib/services/userAccessService'
+import { listAccessUsers, listPermissionRoles } from '@ops/lib/services/userAccessService'
+
+/** Reference hook for API-backed modules: a `useQuery` per list, keyed by module name, mapped to `{ data, isLoading, error, refetch }`. */
 
 /** The company's users from the API. `error` is set (and `users` empty) if the request failed. */
 export function useAccessUsers() {
-  const [users, setUsers] = useState<AccessUser[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const refetch = useCallback(() => {
-    listAccessUsers()
-      .then((list) => {
-        setUsers(list)
-        setError(null)
-      })
-      .catch((e) => {
-        setUsers([])
-        setError(apiErrorMessage(e))
-      })
-  }, [])
-
-  useEffect(() => {
-    refetch()
-  }, [refetch])
-
-  return { users: users ?? [], isLoading: users === null, error, refetch }
+  const query = useQuery({ queryKey: ['users'], queryFn: listAccessUsers })
+  return {
+    users: query.data ?? [],
+    isLoading: query.isPending,
+    error: query.error ? apiErrorMessage(query.error) : null,
+    refetch: () => void query.refetch(),
+  }
 }
 
 export function usePermissionRoles() {
-  const [roles, setRoles] = useState<PermissionRole[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    listPermissionRoles()
-      .then(setRoles)
-      .catch((e) => {
-        setRoles([])
-        setError(apiErrorMessage(e))
-      })
-  }, [])
-
-  return { roles: roles ?? [], isLoading: roles === null, error }
+  const query = useQuery({ queryKey: ['permission-map'], queryFn: listPermissionRoles })
+  return { roles: query.data ?? [], isLoading: query.isPending, error: query.error ? apiErrorMessage(query.error) : null }
 }

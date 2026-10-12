@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\Company;
+use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /*
@@ -44,7 +48,20 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/** A signed-in-ready user of `$company` (a fresh company when omitted) holding `$role`. Roles are seeded on first use. */
+function companyUser(string $role = 'company_admin', ?Company $company = null, array $attrs = []): User
 {
-    // ..
+    if (! Role::where('name', $role)->exists()) {
+        test()->seed(RoleSeeder::class);
+    }
+
+    $company ??= Company::factory()->create();
+
+    return User::factory()->create(['company_id' => $company->id, ...$attrs])->assignRole($role);
+}
+
+/** A second company, to prove a row of another tenant is a 404 and never leaks. */
+function otherCompany(): Company
+{
+    return Company::factory()->create();
 }

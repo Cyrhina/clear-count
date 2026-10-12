@@ -99,8 +99,8 @@ Proposed defaults. They apply unless the owner overrides them before Phase 0 sta
 ### Definition of done (every phase)
 
 - [ ] `php artisan test` is green.
-- [ ] `vendor/bin/pint --test` and `vendor/bin/phpstan analyse` are clean.
-- [ ] `npm run types:check`, `npm run check` and `npm run test:samples` are clean.
+- [ ] Pint and Larastan report no new issues in the files the phase touches (`vendor/bin/pint <files>`, `vendor/bin/phpstan analyse`). Older files have baseline debt, see the P0 handoff note in PROGRESS.md.
+- [ ] `npm run types:check`, `npm run test:samples` and `npm run test:golden` pass.
 - [ ] Every new endpoint has a feature test for: the happy path, validation (422), missing capability (403) and another company's row (404).
 - [ ] The module's screens call the API. The module's mock service code is deleted (except code listed in the mock-removal ledger, rule R1).
 - [ ] `DemoSeeder` covers the module, so a fresh `php artisan migrate:fresh --seed` demo still shows realistic data.

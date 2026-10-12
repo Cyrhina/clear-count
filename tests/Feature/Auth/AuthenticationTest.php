@@ -77,3 +77,18 @@ test('users are rate limited', function () {
 
     $response->assertTooManyRequests();
 });
+
+test('a deactivated user cannot log in and gets no session', function () {
+    $this->seed(RoleSeeder::class);
+    $user = User::factory()->create(['is_active' => false])->assignRole('company_admin');
+
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+    expect($user->fresh()->last_login_at)->toBeNull();
+});
+
+test('self registration is turned off', function () {
+    $this->get('/register')->assertNotFound();
+    $this->post('/register', ['first_name' => 'A', 'last_name' => 'B', 'email' => 'a@example.com', 'password' => 'Passw0rd!x', 'password_confirmation' => 'Passw0rd!x'])->assertStatus(404);
+});

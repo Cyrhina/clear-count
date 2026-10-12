@@ -1,9 +1,11 @@
 import { usePage } from '@inertiajs/react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useEffect, useState } from 'react'
 import { AppShell } from '@ops/components/layout/AppShell'
 import { ToastProvider } from '@ops/components/ui/Toast'
 import { BrandLoader, BrandSplash } from '@ops/components/ui/BrandLogo'
 import { CompanyThemeApplier } from '@ops/components/layout/CompanyThemeApplier'
+import { queryClient } from '@ops/lib/api/queryClient'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
 import { seedSamplePayrollRuns } from '@ops/mock-data/payrollRuns'
 import { users } from '@ops/mock-data/seed/users'
@@ -78,6 +80,10 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
 
 export default function OpsPage() {
   const { page, auth } = usePage<OpsProps>().props
-  if (page.startsWith('auth.') || !auth.user) return <GuestPage pageKey={OPS_PAGES[page] ? page : 'auth.login'} />
-  return <AuthedPage pageKey={page} email={auth.user.email} role={auth.role} />
+  const user = auth.user
+  return (
+    <QueryClientProvider client={queryClient}>
+      {!user || page.startsWith('auth.') ? <GuestPage pageKey={OPS_PAGES[page] ? page : 'auth.login'} /> : <AuthedPage pageKey={page} email={user.email} role={auth.role} />}
+    </QueryClientProvider>
+  )
 }

@@ -58,6 +58,7 @@ export type Capability =
 
 const ALL_ADMIN_CAPS: Capability[] = [
   'dashboard.view',
+  'profile.view',
   'employees.view',
   'employees.pay.view',
   'employees.edit',
@@ -179,6 +180,7 @@ export const ROLE_PERMISSIONS: Record<Role, Capability[]> = {
   // approve work and output, view overtime and leave requests (and file overtime for the team), view leave credits, team reports. View-only team roster without pay details; no payroll.
   manager: [
     'dashboard.view',
+    'profile.view',
     'employees.view',
     'attendance.view',
     'attendance.adjust',
