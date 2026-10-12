@@ -43,6 +43,10 @@ export default defineConfig({
             ),
         },
     },
+    // Golden snapshots of the browser payroll engine (docs/PLAN.md P0). The node:test files in tests/js/*.test.mts run with npm run test:samples.
+    test: {
+        include: ['tests/js/golden/**/*.test.ts'],
+    },
     server: {
         watch: {
             ignored: [

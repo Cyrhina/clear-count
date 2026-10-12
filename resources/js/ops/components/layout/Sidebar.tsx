@@ -2,6 +2,7 @@ import { ChevronsLeft, ChevronsRight, Lock, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { BRAND_NAME, BrandLogo } from '@ops/components/ui/BrandLogo'
+import { useCapabilities } from '@ops/hooks/useCapabilities'
 import { useSession } from '@ops/hooks/useSession'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
@@ -10,7 +11,6 @@ import type { NavGroup } from '@ops/components/layout/navConfig'
 import { NotificationsBell } from '@ops/components/layout/NotificationsBell'
 import { SidebarPlanWidget } from '@ops/components/layout/SidebarPlanWidget'
 import { PLAN_DETAILS, minimumPlanFor, planHasFeature } from '@ops/lib/plans'
-import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { cn } from '@ops/lib/utils/cn'
 
 export interface SidebarProps {
@@ -22,12 +22,13 @@ export interface SidebarProps {
 
 function useNavGroups(): NavGroup[] {
   const { user } = useSession()
+  const can = useCapabilities()
 
   if (user.role === 'employee') return EMPLOYEE_NAV
   if (user.role === 'manager') return MANAGER_NAV
   if (user.role === 'super_admin') return SUPER_ADMIN_NAV
   // Drop items the role can't open, and any group left with no items (so no empty section headers).
-  return ADMIN_NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.capability || roleHasCapability(user.role, item.capability)) })).filter((group) => group.items.length > 0)
+  return ADMIN_NAV.map((group) => ({ ...group, items: group.items.filter((item) => !item.capability || can(item.capability)) })).filter((group) => group.items.length > 0)
 }
 
 function NavItemLink({ item, collapsed, onNavigate }: { item: NavGroup['items'][number]; collapsed: boolean; onNavigate?: () => void }) {

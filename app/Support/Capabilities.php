@@ -9,7 +9,7 @@ namespace App\Support;
 final class Capabilities
 {
     public const ADMIN = [
-        'dashboard.view', 'employees.view', 'employees.pay.view', 'employees.edit', 'employees.compensation.edit',
+        'dashboard.view', 'profile.view', 'employees.view', 'employees.pay.view', 'employees.edit', 'employees.compensation.edit',
         'employees.government.edit', 'employees.bank.edit', 'employees.separate',
         'attendance.view', 'attendance.adjust', 'attendance.approve', 'attendance.import',
         'schedules.view', 'schedules.manage',
@@ -48,7 +48,7 @@ final class Capabilities
         ],
         // Their team only (branch-scoped): attendance, work and output, leave and overtime approvals, team reports.
         'manager' => [
-            'dashboard.view', 'employees.view', 'attendance.view', 'attendance.adjust', 'schedules.view', 'schedules.manage',
+            'dashboard.view', 'profile.view', 'employees.view', 'attendance.view', 'attendance.adjust', 'schedules.view', 'schedules.manage',
             'overtime.view', 'overtime.log', 'leave.view', 'compensation_approvals.manage',
             'reports.view', 'approvals.view', 'notifications.view', 'ess.view',
         ],

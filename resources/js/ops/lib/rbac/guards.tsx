@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
+import { useCapabilities } from '@ops/hooks/useCapabilities'
 import { useSession } from '@ops/hooks/useSession'
 import type { Capability } from '@ops/lib/rbac/permissions'
-import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import type { Role } from '@ops/types/domain'
 
 /** Gates the authenticated app shell — redirects to the login screen when no demo session is active. */
@@ -33,8 +33,8 @@ interface RequireCapabilityProps {
 }
 
 export function RequireCapability({ capability, children }: RequireCapabilityProps) {
-  const { user } = useSession()
-  if (!roleHasCapability(user.role, capability)) {
+  const can = useCapabilities()
+  if (!can(capability)) {
     return <Navigate to="/forbidden" replace />
   }
   return <>{children}</>

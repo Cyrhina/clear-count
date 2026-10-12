@@ -1,0 +1,2749 @@
+{
+  "config": {
+    "companyId": "co_frontline",
+    "sssBrackets": [
+      {
+        "minSalary": 0,
+        "maxSalary": 5250,
+        "msc": 5000,
+        "employeeShare": 250,
+        "employerShare": 500,
+        "ec": 10
+      },
+      {
+        "minSalary": 5250,
+        "maxSalary": 5750,
+        "msc": 5500,
+        "employeeShare": 275,
+        "employerShare": 550,
+        "ec": 10
+      },
+      {
+        "minSalary": 5750,
+        "maxSalary": 6250,
+        "msc": 6000,
+        "employeeShare": 300,
+        "employerShare": 600,
+        "ec": 10
+      },
+      {
+        "minSalary": 6250,
+        "maxSalary": 6750,
+        "msc": 6500,
+        "employeeShare": 325,
+        "employerShare": 650,
+        "ec": 10
+      },
+      {
+        "minSalary": 6750,
+        "maxSalary": 7250,
+        "msc": 7000,
+        "employeeShare": 350,
+        "employerShare": 700,
+        "ec": 10
+      },
+      {
+        "minSalary": 7250,
+        "maxSalary": 7750,
+        "msc": 7500,
+        "employeeShare": 375,
+        "employerShare": 750,
+        "ec": 10
+      },
+      {
+        "minSalary": 7750,
+        "maxSalary": 8250,
+        "msc": 8000,
+        "employeeShare": 400,
+        "employerShare": 800,
+        "ec": 10
+      },
+      {
+        "minSalary": 8250,
+        "maxSalary": 8750,
+        "msc": 8500,
+        "employeeShare": 425,
+        "employerShare": 850,
+        "ec": 10
+      },
+      {
+        "minSalary": 8750,
+        "maxSalary": 9250,
+        "msc": 9000,
+        "employeeShare": 450,
+        "employerShare": 900,
+        "ec": 10
+      },
+      {
+        "minSalary": 9250,
+        "maxSalary": 9750,
+        "msc": 9500,
+        "employeeShare": 475,
+        "employerShare": 950,
+        "ec": 10
+      },
+      {
+        "minSalary": 9750,
+        "maxSalary": 10250,
+        "msc": 10000,
+        "employeeShare": 500,
+        "employerShare": 1000,
+        "ec": 10
+      },
+      {
+        "minSalary": 10250,
+        "maxSalary": 10750,
+        "msc": 10500,
+        "employeeShare": 525,
+        "employerShare": 1050,
+        "ec": 10
+      },
+      {
+        "minSalary": 10750,
+        "maxSalary": 11250,
+        "msc": 11000,
+        "employeeShare": 550,
+        "employerShare": 1100,
+        "ec": 10
+      },
+      {
+        "minSalary": 11250,
+        "maxSalary": 11750,
+        "msc": 11500,
+        "employeeShare": 575,
+        "employerShare": 1150,
+        "ec": 10
+      },
+      {
+        "minSalary": 11750,
+        "maxSalary": 12250,
+        "msc": 12000,
+        "employeeShare": 600,
+        "employerShare": 1200,
+        "ec": 10
+      },
+      {
+        "minSalary": 12250,
+        "maxSalary": 12750,
+        "msc": 12500,
+        "employeeShare": 625,
+        "employerShare": 1250,
+        "ec": 10
+      },
+      {
+        "minSalary": 12750,
+        "maxSalary": 13250,
+        "msc": 13000,
+        "employeeShare": 650,
+        "employerShare": 1300,
+        "ec": 10
+      },
+      {
+        "minSalary": 13250,
+        "maxSalary": 13750,
+        "msc": 13500,
+        "employeeShare": 675,
+        "employerShare": 1350,
+        "ec": 10
+      },
+      {
+        "minSalary": 13750,
+        "maxSalary": 14250,
+        "msc": 14000,
+        "employeeShare": 700,
+        "employerShare": 1400,
+        "ec": 10
+      },
+      {
+        "minSalary": 14250,
+        "maxSalary": 14750,
+        "msc": 14500,
+        "employeeShare": 725,
+        "employerShare": 1450,
+        "ec": 10
+      },
+      {
+        "minSalary": 14750,
+        "maxSalary": 15250,
+        "msc": 15000,
+        "employeeShare": 750,
+        "employerShare": 1500,
+        "ec": 30
+      },
+      {
+        "minSalary": 15250,
+        "maxSalary": 15750,
+        "msc": 15500,
+        "employeeShare": 775,
+        "employerShare": 1550,
+        "ec": 30
+      },
+      {
+        "minSalary": 15750,
+        "maxSalary": 16250,
+        "msc": 16000,
+        "employeeShare": 800,
+        "employerShare": 1600,
+        "ec": 30
+      },
+      {
+        "minSalary": 16250,
+        "maxSalary": 16750,
+        "msc": 16500,
+        "employeeShare": 825,
+        "employerShare": 1650,
+        "ec": 30
+      },
+      {
+        "minSalary": 16750,
+        "maxSalary": 17250,
+        "msc": 17000,
+        "employeeShare": 850,
+        "employerShare": 1700,
+        "ec": 30
+      },
+      {
+        "minSalary": 17250,
+        "maxSalary": 17750,
+        "msc": 17500,
+        "employeeShare": 875,
+        "employerShare": 1750,
+        "ec": 30
+      },
+      {
+        "minSalary": 17750,
+        "maxSalary": 18250,
+        "msc": 18000,
+        "employeeShare": 900,
+        "employerShare": 1800,
+        "ec": 30
+      },
+      {
+        "minSalary": 18250,
+        "maxSalary": 18750,
+        "msc": 18500,
+        "employeeShare": 925,
+        "employerShare": 1850,
+        "ec": 30
+      },
+      {
+        "minSalary": 18750,
+        "maxSalary": 19250,
+        "msc": 19000,
+        "employeeShare": 950,
+        "employerShare": 1900,
+        "ec": 30
+      },
+      {
+        "minSalary": 19250,
+        "maxSalary": 19750,
+        "msc": 19500,
+        "employeeShare": 975,
+        "employerShare": 1950,
+        "ec": 30
+      },
+      {
+        "minSalary": 19750,
+        "maxSalary": 20250,
+        "msc": 20000,
+        "employeeShare": 1000,
+        "employerShare": 2000,
+        "ec": 30
+      },
+      {
+        "minSalary": 20250,
+        "maxSalary": 20750,
+        "msc": 20500,
+        "employeeShare": 1025,
+        "employerShare": 2050,
+        "ec": 30
+      },
+      {
+        "minSalary": 20750,
+        "maxSalary": 21250,
+        "msc": 21000,
+        "employeeShare": 1050,
+        "employerShare": 2100,
+        "ec": 30
+      },
+      {
+        "minSalary": 21250,
+        "maxSalary": 21750,
+        "msc": 21500,
+        "employeeShare": 1075,
+        "employerShare": 2150,
+        "ec": 30
+      },
+      {
+        "minSalary": 21750,
+        "maxSalary": 22250,
+        "msc": 22000,
+        "employeeShare": 1100,
+        "employerShare": 2200,
+        "ec": 30
+      },
+      {
+        "minSalary": 22250,
+        "maxSalary": 22750,
+        "msc": 22500,
+        "employeeShare": 1125,
+        "employerShare": 2250,
+        "ec": 30
+      },
+      {
+        "minSalary": 22750,
+        "maxSalary": 23250,
+        "msc": 23000,
+        "employeeShare": 1150,
+        "employerShare": 2300,
+        "ec": 30
+      },
+      {
+        "minSalary": 23250,
+        "maxSalary": 23750,
+        "msc": 23500,
+        "employeeShare": 1175,
+        "employerShare": 2350,
+        "ec": 30
+      },
+      {
+        "minSalary": 23750,
+        "maxSalary": 24250,
+        "msc": 24000,
+        "employeeShare": 1200,
+        "employerShare": 2400,
+        "ec": 30
+      },
+      {
+        "minSalary": 24250,
+        "maxSalary": 24750,
+        "msc": 24500,
+        "employeeShare": 1225,
+        "employerShare": 2450,
+        "ec": 30
+      },
+      {
+        "minSalary": 24750,
+        "maxSalary": 25250,
+        "msc": 25000,
+        "employeeShare": 1250,
+        "employerShare": 2500,
+        "ec": 30
+      },
+      {
+        "minSalary": 25250,
+        "maxSalary": 25750,
+        "msc": 25500,
+        "employeeShare": 1275,
+        "employerShare": 2550,
+        "ec": 30
+      },
+      {
+        "minSalary": 25750,
+        "maxSalary": 26250,
+        "msc": 26000,
+        "employeeShare": 1300,
+        "employerShare": 2600,
+        "ec": 30
+      },
+      {
+        "minSalary": 26250,
+        "maxSalary": 26750,
+        "msc": 26500,
+        "employeeShare": 1325,
+        "employerShare": 2650,
+        "ec": 30
+      },
+      {
+        "minSalary": 26750,
+        "maxSalary": 27250,
+        "msc": 27000,
+        "employeeShare": 1350,
+        "employerShare": 2700,
+        "ec": 30
+      },
+      {
+        "minSalary": 27250,
+        "maxSalary": 27750,
+        "msc": 27500,
+        "employeeShare": 1375,
+        "employerShare": 2750,
+        "ec": 30
+      },
+      {
+        "minSalary": 27750,
+        "maxSalary": 28250,
+        "msc": 28000,
+        "employeeShare": 1400,
+        "employerShare": 2800,
+        "ec": 30
+      },
+      {
+        "minSalary": 28250,
+        "maxSalary": 28750,
+        "msc": 28500,
+        "employeeShare": 1425,
+        "employerShare": 2850,
+        "ec": 30
+      },
+      {
+        "minSalary": 28750,
+        "maxSalary": 29250,
+        "msc": 29000,
+        "employeeShare": 1450,
+        "employerShare": 2900,
+        "ec": 30
+      },
+      {
+        "minSalary": 29250,
+        "maxSalary": 29750,
+        "msc": 29500,
+        "employeeShare": 1475,
+        "employerShare": 2950,
+        "ec": 30
+      },
+      {
+        "minSalary": 29750,
+        "maxSalary": 30250,
+        "msc": 30000,
+        "employeeShare": 1500,
+        "employerShare": 3000,
+        "ec": 30
+      },
+      {
+        "minSalary": 30250,
+        "maxSalary": 30750,
+        "msc": 30500,
+        "employeeShare": 1525,
+        "employerShare": 3050,
+        "ec": 30
+      },
+      {
+        "minSalary": 30750,
+        "maxSalary": 31250,
+        "msc": 31000,
+        "employeeShare": 1550,
+        "employerShare": 3100,
+        "ec": 30
+      },
+      {
+        "minSalary": 31250,
+        "maxSalary": 31750,
+        "msc": 31500,
+        "employeeShare": 1575,
+        "employerShare": 3150,
+        "ec": 30
+      },
+      {
+        "minSalary": 31750,
+        "maxSalary": 32250,
+        "msc": 32000,
+        "employeeShare": 1600,
+        "employerShare": 3200,
+        "ec": 30
+      },
+      {
+        "minSalary": 32250,
+        "maxSalary": 32750,
+        "msc": 32500,
+        "employeeShare": 1625,
+        "employerShare": 3250,
+        "ec": 30
+      },
+      {
+        "minSalary": 32750,
+        "maxSalary": 33250,
+        "msc": 33000,
+        "employeeShare": 1650,
+        "employerShare": 3300,
+        "ec": 30
+      },
+      {
+        "minSalary": 33250,
+        "maxSalary": 33750,
+        "msc": 33500,
+        "employeeShare": 1675,
+        "employerShare": 3350,
+        "ec": 30
+      },
+      {
+        "minSalary": 33750,
+        "maxSalary": 34250,
+        "msc": 34000,
+        "employeeShare": 1700,
+        "employerShare": 3400,
+        "ec": 30
+      },
+      {
+        "minSalary": 34250,
+        "maxSalary": 34750,
+        "msc": 34500,
+        "employeeShare": 1725,
+        "employerShare": 3450,
+        "ec": 30
+      },
+      {
+        "minSalary": 34750,
+        "maxSalary": null,
+        "msc": 35000,
+        "employeeShare": 1750,
+        "employerShare": 3500,
+        "ec": 30
+      }
+    ],
+    "philhealthRate": 0.05,
+    "philhealthEmployeeSharePercent": 0.5,
+    "philhealthEmployerSharePercent": 0.5,
+    "philhealthSalaryFloor": 10000,
+    "philhealthSalaryCeiling": 100000,
+    "pagibigRate": 0.02,
+    "pagibigMaxFundSalary": 10000,
+    "pagibigEmployeeAmount": 200,
+    "pagibigEmployerAmount": 200,
+    "taxBrackets": [
+      {
+        "min": 0,
+        "max": 20833,
+        "rate": 0,
+        "baseTax": 0
+      },
+      {
+        "min": 20833,
+        "max": 33333,
+        "rate": 0.15,
+        "baseTax": 0
+      },
+      {
+        "min": 33333,
+        "max": 66667,
+        "rate": 0.2,
+        "baseTax": 1875
+      },
+      {
+        "min": 66667,
+        "max": 166667,
+        "rate": 0.25,
+        "baseTax": 8541.8
+      },
+      {
+        "min": 166667,
+        "max": 666667,
+        "rate": 0.3,
+        "baseTax": 33541.8
+      },
+      {
+        "min": 666667,
+        "max": null,
+        "rate": 0.35,
+        "baseTax": 183541.8
+      }
+    ],
+    "taxBracketTables": {
+      "annual": [
+        {
+          "min": 0,
+          "max": 250000,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 250000,
+          "max": 400000,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 400000,
+          "max": 800000,
+          "rate": 0.2,
+          "baseTax": 22500
+        },
+        {
+          "min": 800000,
+          "max": 2000000,
+          "rate": 0.25,
+          "baseTax": 102500
+        },
+        {
+          "min": 2000000,
+          "max": 8000000,
+          "rate": 0.3,
+          "baseTax": 402500
+        },
+        {
+          "min": 8000000,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 2202500
+        }
+      ],
+      "semi_monthly": [
+        {
+          "min": 0,
+          "max": 10417,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 10417,
+          "max": 16667,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 16667,
+          "max": 33333,
+          "rate": 0.2,
+          "baseTax": 937.5
+        },
+        {
+          "min": 33333,
+          "max": 83333,
+          "rate": 0.25,
+          "baseTax": 4270.7
+        },
+        {
+          "min": 83333,
+          "max": 333333,
+          "rate": 0.3,
+          "baseTax": 16770.7
+        },
+        {
+          "min": 333333,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 91770.7
+        }
+      ],
+      "weekly": [
+        {
+          "min": 0,
+          "max": 4808,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 4808,
+          "max": 7692,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 7692,
+          "max": 15385,
+          "rate": 0.2,
+          "baseTax": 432.6
+        },
+        {
+          "min": 15385,
+          "max": 38462,
+          "rate": 0.25,
+          "baseTax": 1971.2
+        },
+        {
+          "min": 38462,
+          "max": 153846,
+          "rate": 0.3,
+          "baseTax": 7740.45
+        },
+        {
+          "min": 153846,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 42355.65
+        }
+      ],
+      "daily": [
+        {
+          "min": 0,
+          "max": 685,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 685,
+          "max": 1096,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 1096,
+          "max": 2192,
+          "rate": 0.2,
+          "baseTax": 61.65
+        },
+        {
+          "min": 2192,
+          "max": 5479,
+          "rate": 0.25,
+          "baseTax": 280.85
+        },
+        {
+          "min": 5479,
+          "max": 21918,
+          "rate": 0.3,
+          "baseTax": 1102.6
+        },
+        {
+          "min": 21918,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 6034.3
+        }
+      ]
+    }
+  },
+  "rows": [
+    {
+      "input": {
+        "monthlySalary": 1000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 1000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 10,
+        "pagibigEmployer": 20,
+        "monthlyTaxable": 490,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 1000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 10,
+        "pagibigEmployer": 20,
+        "monthlyTaxable": 490,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 1000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 10,
+        "pagibigEmployer": 20,
+        "monthlyTaxable": 490,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 1000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 10,
+        "pagibigEmployer": 20,
+        "monthlyTaxable": 490,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1500,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 1500,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 15,
+        "pagibigEmployer": 30,
+        "monthlyTaxable": 985,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1500,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 1500,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 15,
+        "pagibigEmployer": 30,
+        "monthlyTaxable": 985,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1500,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 1500,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 15,
+        "pagibigEmployer": 30,
+        "monthlyTaxable": 985,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 1500,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 1500,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 15,
+        "pagibigEmployer": 30,
+        "monthlyTaxable": 985,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 5000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 5000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 100,
+        "pagibigEmployer": 100,
+        "monthlyTaxable": 4400,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 5000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 5000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 100,
+        "pagibigEmployer": 100,
+        "monthlyTaxable": 4400,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 5000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 5000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 100,
+        "pagibigEmployer": 100,
+        "monthlyTaxable": 4400,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 5000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 5000,
+        "sssMsc": 5000,
+        "sssEmployee": 250,
+        "sssEmployer": 510,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 100,
+        "pagibigEmployer": 100,
+        "monthlyTaxable": 4400,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 8000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 8000,
+        "sssMsc": 8000,
+        "sssEmployee": 400,
+        "sssEmployer": 810,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 160,
+        "pagibigEmployer": 160,
+        "monthlyTaxable": 7190,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 8000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 8000,
+        "sssMsc": 8000,
+        "sssEmployee": 400,
+        "sssEmployer": 810,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 160,
+        "pagibigEmployer": 160,
+        "monthlyTaxable": 7190,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 8000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 8000,
+        "sssMsc": 8000,
+        "sssEmployee": 400,
+        "sssEmployer": 810,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 160,
+        "pagibigEmployer": 160,
+        "monthlyTaxable": 7190,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 8000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 8000,
+        "sssMsc": 8000,
+        "sssEmployee": 400,
+        "sssEmployer": 810,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 160,
+        "pagibigEmployer": 160,
+        "monthlyTaxable": 7190,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 10000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 10000,
+        "sssMsc": 10000,
+        "sssEmployee": 500,
+        "sssEmployer": 1010,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 9050,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 10000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 10000,
+        "sssMsc": 10000,
+        "sssEmployee": 500,
+        "sssEmployer": 1010,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 9050,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 10000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 10000,
+        "sssMsc": 10000,
+        "sssEmployee": 500,
+        "sssEmployer": 1010,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 9050,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 10000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 10000,
+        "sssMsc": 10000,
+        "sssEmployee": 500,
+        "sssEmployer": 1010,
+        "sssEc": 10,
+        "philhealthBase": 10000,
+        "philhealthEmployee": 250,
+        "philhealthEmployer": 250,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 9050,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 12500,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 12500,
+        "sssMsc": 12500,
+        "sssEmployee": 625,
+        "sssEmployer": 1260,
+        "sssEc": 10,
+        "philhealthBase": 12500,
+        "philhealthEmployee": 312.5,
+        "philhealthEmployer": 312.5,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 11362.5,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 12500,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 12500,
+        "sssMsc": 12500,
+        "sssEmployee": 625,
+        "sssEmployer": 1260,
+        "sssEc": 10,
+        "philhealthBase": 12500,
+        "philhealthEmployee": 312.5,
+        "philhealthEmployer": 312.5,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 11362.5,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 12500,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 12500,
+        "sssMsc": 12500,
+        "sssEmployee": 625,
+        "sssEmployer": 1260,
+        "sssEc": 10,
+        "philhealthBase": 12500,
+        "philhealthEmployee": 312.5,
+        "philhealthEmployer": 312.5,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 11362.5,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 12500,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 12500,
+        "sssMsc": 12500,
+        "sssEmployee": 625,
+        "sssEmployer": 1260,
+        "sssEc": 10,
+        "philhealthBase": 12500,
+        "philhealthEmployee": 312.5,
+        "philhealthEmployer": 312.5,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 11362.5,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 15000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 15000,
+        "sssMsc": 15000,
+        "sssEmployee": 750,
+        "sssEmployer": 1530,
+        "sssEc": 30,
+        "philhealthBase": 15000,
+        "philhealthEmployee": 375,
+        "philhealthEmployer": 375,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 13675,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 15000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 15000,
+        "sssMsc": 15000,
+        "sssEmployee": 750,
+        "sssEmployer": 1530,
+        "sssEc": 30,
+        "philhealthBase": 15000,
+        "philhealthEmployee": 375,
+        "philhealthEmployer": 375,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 13675,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 15000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 15000,
+        "sssMsc": 15000,
+        "sssEmployee": 750,
+        "sssEmployer": 1530,
+        "sssEc": 30,
+        "philhealthBase": 15000,
+        "philhealthEmployee": 375,
+        "philhealthEmployer": 375,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 13675,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 15000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 15000,
+        "sssMsc": 15000,
+        "sssEmployee": 750,
+        "sssEmployer": 1530,
+        "sssEc": 30,
+        "philhealthBase": 15000,
+        "philhealthEmployee": 375,
+        "philhealthEmployer": 375,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 13675,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 20000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 20000,
+        "sssMsc": 20000,
+        "sssEmployee": 1000,
+        "sssEmployer": 2030,
+        "sssEc": 30,
+        "philhealthBase": 20000,
+        "philhealthEmployee": 500,
+        "philhealthEmployer": 500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 18300,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 20000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 20000,
+        "sssMsc": 20000,
+        "sssEmployee": 1000,
+        "sssEmployer": 2030,
+        "sssEc": 30,
+        "philhealthBase": 20000,
+        "philhealthEmployee": 500,
+        "philhealthEmployer": 500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 18300,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 20000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 20000,
+        "sssMsc": 20000,
+        "sssEmployee": 1000,
+        "sssEmployer": 2030,
+        "sssEc": 30,
+        "philhealthBase": 20000,
+        "philhealthEmployee": 500,
+        "philhealthEmployer": 500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 18300,
+        "withholdingTax": 0,
+        "marginalRate": 0,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 20000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 20000,
+        "sssMsc": 20000,
+        "sssEmployee": 1000,
+        "sssEmployer": 2030,
+        "sssEc": 30,
+        "philhealthBase": 20000,
+        "philhealthEmployee": 500,
+        "philhealthEmployer": 500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 18300,
+        "withholdingTax": 484.5,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 25000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 25000,
+        "sssMsc": 25000,
+        "sssEmployee": 1250,
+        "sssEmployer": 2530,
+        "sssEc": 30,
+        "philhealthBase": 25000,
+        "philhealthEmployee": 625,
+        "philhealthEmployer": 625,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 22925,
+        "withholdingTax": 313.8,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 25000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 25000,
+        "sssMsc": 25000,
+        "sssEmployee": 1250,
+        "sssEmployer": 2530,
+        "sssEc": 30,
+        "philhealthBase": 25000,
+        "philhealthEmployee": 625,
+        "philhealthEmployer": 625,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 22925,
+        "withholdingTax": 313.65,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 25000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 25000,
+        "sssMsc": 25000,
+        "sssEmployee": 1250,
+        "sssEmployer": 2530,
+        "sssEc": 30,
+        "philhealthBase": 25000,
+        "philhealthEmployee": 625,
+        "philhealthEmployer": 625,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 22925,
+        "withholdingTax": 313.55,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 25000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 25000,
+        "sssMsc": 25000,
+        "sssEmployee": 1250,
+        "sssEmployer": 2530,
+        "sssEc": 30,
+        "philhealthBase": 25000,
+        "philhealthEmployee": 625,
+        "philhealthEmployer": 625,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 22925,
+        "withholdingTax": 1178.25,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 32000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 32000,
+        "sssMsc": 32000,
+        "sssEmployee": 1600,
+        "sssEmployer": 3230,
+        "sssEc": 30,
+        "philhealthBase": 32000,
+        "philhealthEmployee": 800,
+        "philhealthEmployer": 800,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 29400,
+        "withholdingTax": 1285.05,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 32000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 32000,
+        "sssMsc": 32000,
+        "sssEmployee": 1600,
+        "sssEmployer": 3230,
+        "sssEc": 30,
+        "philhealthBase": 32000,
+        "philhealthEmployee": 800,
+        "philhealthEmployer": 800,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 29400,
+        "withholdingTax": 1284.9,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 32000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 32000,
+        "sssMsc": 32000,
+        "sssEmployee": 1600,
+        "sssEmployer": 3230,
+        "sssEc": 30,
+        "philhealthBase": 32000,
+        "philhealthEmployee": 800,
+        "philhealthEmployer": 800,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 29400,
+        "withholdingTax": 1284.8,
+        "marginalRate": 0.15,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 32000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 32000,
+        "sssMsc": 32000,
+        "sssEmployee": 1600,
+        "sssEmployer": 3230,
+        "sssEc": 30,
+        "philhealthBase": 32000,
+        "philhealthEmployee": 800,
+        "philhealthEmployer": 800,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 29400,
+        "withholdingTax": 2413.9,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.15
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 45000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 45000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 45000,
+        "philhealthEmployee": 1125,
+        "philhealthEmployer": 1125,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 41925,
+        "withholdingTax": 3593.4,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 45000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 45000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 45000,
+        "philhealthEmployee": 1125,
+        "philhealthEmployer": 1125,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 41925,
+        "withholdingTax": 3593.2,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 45000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 45000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 45000,
+        "philhealthEmployee": 1125,
+        "philhealthEmployer": 1125,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 41925,
+        "withholdingTax": 3593.2,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 45000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 45000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 45000,
+        "philhealthEmployee": 1125,
+        "philhealthEmployer": 1125,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 41925,
+        "withholdingTax": 4918.9,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 60000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 60000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 60000,
+        "philhealthEmployee": 1500,
+        "philhealthEmployer": 1500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 56550,
+        "withholdingTax": 6518.4,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 60000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 60000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 60000,
+        "philhealthEmployee": 1500,
+        "philhealthEmployer": 1500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 56550,
+        "withholdingTax": 6518.2,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 60000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 60000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 60000,
+        "philhealthEmployee": 1500,
+        "philhealthEmployer": 1500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 56550,
+        "withholdingTax": 6518.2,
+        "marginalRate": 0.2,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 60000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 60000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 60000,
+        "philhealthEmployee": 1500,
+        "philhealthEmployer": 1500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 56550,
+        "withholdingTax": 8260.2,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.2
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 80000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 80000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 80000,
+        "philhealthEmployee": 2000,
+        "philhealthEmployer": 2000,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 76050,
+        "withholdingTax": 10887.55,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 80000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 80000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 80000,
+        "philhealthEmployee": 2000,
+        "philhealthEmployer": 2000,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 76050,
+        "withholdingTax": 10887.4,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 80000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 80000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 80000,
+        "philhealthEmployee": 2000,
+        "philhealthEmployer": 2000,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 76050,
+        "withholdingTax": 10887.28,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 80000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 80000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 80000,
+        "philhealthEmployee": 2000,
+        "philhealthEmployer": 2000,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 76050,
+        "withholdingTax": 13135.2,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 100000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 100000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 95550,
+        "withholdingTax": 15762.55,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 100000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 100000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 95550,
+        "withholdingTax": 15762.4,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 100000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 100000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 95550,
+        "withholdingTax": 15762.28,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 100000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 100000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 95550,
+        "withholdingTax": 18010.2,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 150000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 150000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 145550,
+        "withholdingTax": 28262.55,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 150000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 150000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 145550,
+        "withholdingTax": 28262.4,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 150000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 150000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 145550,
+        "withholdingTax": 28262.28,
+        "marginalRate": 0.25,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 150000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 150000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 145550,
+        "withholdingTax": 31760.8,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.25
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 250000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 250000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 245550,
+        "withholdingTax": 57206.7,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 250000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 250000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 245550,
+        "withholdingTax": 57206.6,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 250000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 250000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 245550,
+        "withholdingTax": 57206.35,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 250000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 250000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 245550,
+        "withholdingTax": 61760.8,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 500000,
+        "frequency": "monthly",
+        "periodsPerMonth": 1
+      },
+      "output": {
+        "monthlyBasis": 500000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 495550,
+        "withholdingTax": 132206.7,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 500000,
+        "frequency": "semi_monthly",
+        "periodsPerMonth": 2
+      },
+      "output": {
+        "monthlyBasis": 500000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 495550,
+        "withholdingTax": 132206.6,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 500000,
+        "frequency": "weekly",
+        "periodsPerMonth": 4.333333333333333
+      },
+      "output": {
+        "monthlyBasis": 500000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 495550,
+        "withholdingTax": 132206.35,
+        "marginalRate": 0.3,
+        "annualMarginalRate": 0.3
+      }
+    },
+    {
+      "input": {
+        "monthlySalary": 500000,
+        "frequency": "daily",
+        "periodsPerMonth": 22
+      },
+      "output": {
+        "monthlyBasis": 500000,
+        "sssMsc": 35000,
+        "sssEmployee": 1750,
+        "sssEmployer": 3530,
+        "sssEc": 30,
+        "philhealthBase": 100000,
+        "philhealthEmployee": 2500,
+        "philhealthEmployer": 2500,
+        "pagibigEmployee": 200,
+        "pagibigEmployer": 200,
+        "monthlyTaxable": 495550,
+        "withholdingTax": 137428.5,
+        "marginalRate": 0.35,
+        "annualMarginalRate": 0.3
+      }
+    }
+  ],
+  "taxTables": {
+    "annual": {
+      "brackets": [
+        {
+          "min": 0,
+          "max": 250000,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 250000,
+          "max": 400000,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 400000,
+          "max": 800000,
+          "rate": 0.2,
+          "baseTax": 22500
+        },
+        {
+          "min": 800000,
+          "max": 2000000,
+          "rate": 0.25,
+          "baseTax": 102500
+        },
+        {
+          "min": 2000000,
+          "max": 8000000,
+          "rate": 0.3,
+          "baseTax": 402500
+        },
+        {
+          "min": 8000000,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 2202500
+        }
+      ],
+      "samples": [
+        {
+          "taxable": 0,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 100,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 1000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 5000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 10000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 20833,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 33333,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 66667,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 166667,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 666667,
+          "tax": 75833.4,
+          "marginalRate": 0.2
+        },
+        {
+          "taxable": 1000000,
+          "tax": 152500,
+          "marginalRate": 0.25
+        }
+      ]
+    },
+    "monthly": {
+      "brackets": [
+        {
+          "min": 0,
+          "max": 20833,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 20833,
+          "max": 33333,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 33333,
+          "max": 66667,
+          "rate": 0.2,
+          "baseTax": 1875
+        },
+        {
+          "min": 66667,
+          "max": 166667,
+          "rate": 0.25,
+          "baseTax": 8541.8
+        },
+        {
+          "min": 166667,
+          "max": 666667,
+          "rate": 0.3,
+          "baseTax": 33541.8
+        },
+        {
+          "min": 666667,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 183541.8
+        }
+      ],
+      "samples": [
+        {
+          "taxable": 0,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 100,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 1000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 5000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 10000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 20833,
+          "tax": 0,
+          "marginalRate": 0.15
+        },
+        {
+          "taxable": 33333,
+          "tax": 1875,
+          "marginalRate": 0.2
+        },
+        {
+          "taxable": 66667,
+          "tax": 8541.8,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 166667,
+          "tax": 33541.8,
+          "marginalRate": 0.3
+        },
+        {
+          "taxable": 666667,
+          "tax": 183541.8,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 1000000,
+          "tax": 300208.35,
+          "marginalRate": 0.35
+        }
+      ]
+    },
+    "semi_monthly": {
+      "brackets": [
+        {
+          "min": 0,
+          "max": 10417,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 10417,
+          "max": 16667,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 16667,
+          "max": 33333,
+          "rate": 0.2,
+          "baseTax": 937.5
+        },
+        {
+          "min": 33333,
+          "max": 83333,
+          "rate": 0.25,
+          "baseTax": 4270.7
+        },
+        {
+          "min": 83333,
+          "max": 333333,
+          "rate": 0.3,
+          "baseTax": 16770.7
+        },
+        {
+          "min": 333333,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 91770.7
+        }
+      ],
+      "samples": [
+        {
+          "taxable": 0,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 100,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 1000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 5000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 10000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 20833,
+          "tax": 1770.7,
+          "marginalRate": 0.2
+        },
+        {
+          "taxable": 33333,
+          "tax": 4270.7,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 66667,
+          "tax": 12604.2,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 166667,
+          "tax": 41770.9,
+          "marginalRate": 0.3
+        },
+        {
+          "taxable": 666667,
+          "tax": 208437.59999999998,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 1000000,
+          "tax": 325104.14999999997,
+          "marginalRate": 0.35
+        }
+      ]
+    },
+    "weekly": {
+      "brackets": [
+        {
+          "min": 0,
+          "max": 4808,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 4808,
+          "max": 7692,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 7692,
+          "max": 15385,
+          "rate": 0.2,
+          "baseTax": 432.6
+        },
+        {
+          "min": 15385,
+          "max": 38462,
+          "rate": 0.25,
+          "baseTax": 1971.2
+        },
+        {
+          "min": 38462,
+          "max": 153846,
+          "rate": 0.3,
+          "baseTax": 7740.45
+        },
+        {
+          "min": 153846,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 42355.65
+        }
+      ],
+      "samples": [
+        {
+          "taxable": 0,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 100,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 1000,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 5000,
+          "tax": 28.799999999999997,
+          "marginalRate": 0.15
+        },
+        {
+          "taxable": 10000,
+          "tax": 894.2,
+          "marginalRate": 0.2
+        },
+        {
+          "taxable": 20833,
+          "tax": 3333.2,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 33333,
+          "tax": 6458.2,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 66667,
+          "tax": 16201.95,
+          "marginalRate": 0.3
+        },
+        {
+          "taxable": 166667,
+          "tax": 46843,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 666667,
+          "tax": 221842.99999999997,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 1000000,
+          "tax": 338509.55,
+          "marginalRate": 0.35
+        }
+      ]
+    },
+    "daily": {
+      "brackets": [
+        {
+          "min": 0,
+          "max": 685,
+          "rate": 0,
+          "baseTax": 0
+        },
+        {
+          "min": 685,
+          "max": 1096,
+          "rate": 0.15,
+          "baseTax": 0
+        },
+        {
+          "min": 1096,
+          "max": 2192,
+          "rate": 0.2,
+          "baseTax": 61.65
+        },
+        {
+          "min": 2192,
+          "max": 5479,
+          "rate": 0.25,
+          "baseTax": 280.85
+        },
+        {
+          "min": 5479,
+          "max": 21918,
+          "rate": 0.3,
+          "baseTax": 1102.6
+        },
+        {
+          "min": 21918,
+          "max": null,
+          "rate": 0.35,
+          "baseTax": 6034.3
+        }
+      ],
+      "samples": [
+        {
+          "taxable": 0,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 100,
+          "tax": 0,
+          "marginalRate": 0
+        },
+        {
+          "taxable": 1000,
+          "tax": 47.25,
+          "marginalRate": 0.15
+        },
+        {
+          "taxable": 5000,
+          "tax": 982.85,
+          "marginalRate": 0.25
+        },
+        {
+          "taxable": 10000,
+          "tax": 2458.8999999999996,
+          "marginalRate": 0.3
+        },
+        {
+          "taxable": 20833,
+          "tax": 5708.799999999999,
+          "marginalRate": 0.3
+        },
+        {
+          "taxable": 33333,
+          "tax": 10029.55,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 66667,
+          "tax": 21696.45,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 166667,
+          "tax": 56696.45,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 666667,
+          "tax": 231696.44999999998,
+          "marginalRate": 0.35
+        },
+        {
+          "taxable": 1000000,
+          "tax": 348362.99999999994,
+          "marginalRate": 0.35
+        }
+      ]
+    }
+  }
+}

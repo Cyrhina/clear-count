@@ -66,6 +66,9 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
+        // An N+1 query throws outside production, so it is caught by tests instead of by slow pages.
+        Model::preventLazyLoading(! app()->isProduction());
+
         // Every environment: 8+ characters with upper and lowercase letters, a number and a special character
         // (same rules as the checklist on the reset-password page). Production also rejects leaked passwords.
         Password::defaults(function (): Password {
