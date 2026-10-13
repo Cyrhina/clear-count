@@ -295,6 +295,8 @@ Done when: branches and departments persist, and the checklist reflects real dat
 - Add indexes on `employees.branch_id`, `employees.status` and `employees.payroll_group_id` (defect 6).
 - Create a login for an employee: `POST api/employees/{id}/account`, reusing the invite flow from `UserController`.
 
+**P3a status:** done in branch `backend/p03-employees` (see PROGRESS.md). The account endpoint is behind `users.manage`. Not done in P3a: documents, import, bulk, mixed compensation, separation side effects, the Assign employees dialogs.
+
 **P3b: bulk, import, documents**
 - Import: build the Import kit. The browser keeps parsing files (`lib/payroll/employeeImport.ts`) and posts rows as JSON; the server validates, previews with `dry_run=1` and commits.
 - Bulk department and bulk status changes.

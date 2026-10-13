@@ -17,8 +17,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 |---|---|---|---|---|---|
 | P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
 | P1 | Company setup wiring | merged | backend/p01-company-setup | #4 | 2026-10-13 |
-| P2 | Branches, departments, onboarding | in review | backend/p02-branches-departments | | |
-| P3 | Employees (a, b) | not started | | | |
+| P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
+| P3 | Employees (a, b) | in progress: P3a in review | backend/p03-employees | | |
 | P4 | Schedules and roster | not started | | | |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | not started | | | |
 | P6 | Leave | not started | | | |
@@ -61,8 +61,11 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `features/company-settings/components/payroll/PayrollGroupAssignDialog.tsx`, `AssignEmployeesDialog.tsx` | nothing (kept to be rewired on the API) | P3 (groups), P4 (schedules) | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
-| `branchService`: getBranches, reassignEmployeeBranch, assignEmployeesToBranch; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved; `branches/hooks/useBranchDepartments.ts` | employees (bulk actions, import, department select), schedules (teams, roster), integrations, `employeeService` | P3 (employees), P4 (schedules), P16 (integrations) | P2 |
-| `features/branches/components/AssignEmployeesDialog.tsx`, `EmployeeMultiPicker.tsx` | nothing (kept to be rewired on the API) | P3 | P2 |
+| `branchService`: getBranches, reassignEmployeeBranch, assignEmployeesToBranch; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved; `branches/hooks/useBranchDepartments.ts` | employees (bulk actions, import, department select), schedules (teams, roster), integrations, `employeeService` | P3b (import and bulk), P4 (schedules), P16 (integrations) | P2 |
+| `features/branches/components/AssignEmployeesDialog.tsx`, `EmployeeMultiPicker.tsx` | nothing (kept to be rewired on the API) | P3b | P2 |
+| `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee, importEmployees, updateEmployeeStatus, bulkUpdateEmployeeDepartment, bulkUpdateEmployeeStatus | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations, `BulkEmployeeActions` | P3b (create, import, status, bulk); P4-P14 (getEmployees in each module); P13 (self service) | P3a |
+| `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
+| `features/employees/components/ImportEmployeesDialog.tsx`, `BulkEmployeeActions.tsx` | nothing (not rendered until P3b) | P3b | P3a |
 
 ## Handoff notes
 
@@ -78,6 +81,24 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P3a - 2026-10-14
+- Branch: backend/p03-employees (pushed: no)
+- Done:
+  - Backend: `GET api/employees` (paginated, search, branch, department, status, payroll group, sort) with the new `ListQuery`; `GET api/employees/{id}` with change history and compensation history; `POST api/employees` (server hands out EMP-0001... under a row lock); one `PUT api/employees/{id}/{section}` per section behind its own capability (personal, employment, benefits: `employees.edit`; compensation, government, bank, status/separation: their own); `POST api/employees/{id}/account` (shares `UserInvites` with the Users tab). New `employee_compensations` table with the `EffectiveDated` trait (`effectiveOn($date)`), `companies.employee_sequence`, indexes on `employees`. Old `POST /employees` and `PUT /employees/{id}` removed. Tests: 162 pass, 4 skipped.
+  - Frontend: list (server filters and paging), profile (all sections, status and separation, payroll group, create login, reset password), add dialog (now asks birth date, contact number and address because the server requires them), edit forms on the API. Branch transfer moved into the employment form.
+  - Read access: `employees.view` can read branches, departments and payroll groups (the list filters and the profile need them).
+- Next: open the P3a PR, merge it, then P3b in branch backend/p03b-employees-bulk (import kit with dry run, bulk department and status, documents on a private disk with signed URLs, mixed compensation into the record, SeparateEmployee ending benefits in P9, enable the Assign employees dialogs of Payroll Groups and Work Schedules).
+- Gotchas:
+  - Employee sections keep the camelCase of the stored JSON; only the top level is snake_case. `employeeService.toEmployee` converts with `camelizeKeys(..., SECTIONS)`.
+  - Pay and bank fields are left out for roles without `employees.pay.view` (manager); `toEmployee` fills an empty shape so screens render.
+  - A pay change needs a reason; effective date is today unless `effective_from` (never in the future) is sent; no change means no history row.
+  - Department is still a name on the employee (decision in P2): a department rename updates the employees, a transfer creates the department in the new branch and drops the old supervisor seat.
+  - The list drops "On Leave" and the Branch sort until Leave (P6) and a join are built; "Date hired" sort is "Date added" (created_at).
+  - Other modules (attendance, payroll, reports ...) still read the mock employees, so their screens show nothing for the real employees until their phase. The Attendance tab and Work arrangement card on the profile are the same.
+  - Import, bulk actions and the mixed-compensation store are not on the API yet (P3b); the Import button and the bulk bar are hidden.
+  - Not browser-tested: separation dialog, reactivate, benefits, government and bank forms, branch transfer from the employment form, the manager view. Backend tests cover them.
+- Checks: php artisan test 162 passed, 4 skipped; tsc clean; test:samples 13 pass; test:golden 3 pass.
 
 ### P2 - 2026-10-13
 - Branch: backend/p02-branches-departments (pushed: no)

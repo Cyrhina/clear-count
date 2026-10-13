@@ -8,11 +8,15 @@ use Illuminate\Support\Facades\Route;
 
 // Required inside the auth + verified + active group in routes/web.php.
 
+// Payroll groups can be read by anyone who opens the employee profile (it shows and assigns the group).
+Route::prefix('api/payroll-settings/payroll-groups')->middleware('permission:settings.payroll.edit|employees.view')->group(function () {
+    Route::get('/', [PayrollGroupController::class, 'index'])->name('payroll-settings.groups.index');
+    Route::get('{payrollGroup}', [PayrollGroupController::class, 'show'])->name('payroll-settings.groups.show');
+});
+
 // Payroll Settings: groups, earnings, deductions, overtime & holiday rates, rules, work schedules.
 Route::prefix('api/payroll-settings')->name('payroll-settings.')->middleware('permission:settings.payroll.edit')->group(function () {
-    Route::get('payroll-groups', [PayrollGroupController::class, 'index'])->name('groups.index');
     Route::post('payroll-groups', [PayrollGroupController::class, 'store'])->name('groups.store');
-    Route::get('payroll-groups/{payrollGroup}', [PayrollGroupController::class, 'show'])->name('groups.show');
     Route::put('payroll-groups/{payrollGroup}', [PayrollGroupController::class, 'update'])->name('groups.update');
     Route::delete('payroll-groups/{payrollGroup}', [PayrollGroupController::class, 'destroy'])->name('groups.destroy');
     Route::post('payroll-groups/{payrollGroup}/employees', [PayrollGroupController::class, 'assignEmployees'])->name('groups.employees');

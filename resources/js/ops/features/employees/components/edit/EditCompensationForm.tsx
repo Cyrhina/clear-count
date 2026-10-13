@@ -3,9 +3,8 @@ import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeCompensation, type UpdateCompensationInput } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeeCompensation, type UpdateCompensationInput } from '@ops/lib/services/employeeService'
 import {
   OUTPUT_UNIT_OPTIONS,
   PAY_RATE_TYPE_OPTIONS,
@@ -34,8 +33,7 @@ export function EditCompensationForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
 
   const {
     register,
@@ -64,16 +62,11 @@ export function EditCompensationForm({
   }
 
   async function onSubmit(values: UpdateCompensationInput) {
-    await updateEmployeeCompensation(user, employee.id, {
-      ...values,
-      outputUnit: values.payType === 'output_based' ? values.outputUnit : null,
-    })
-    notify({
-      title: 'Compensation updated',
-      description: salaryChanged ? 'A new compensation history entry was recorded.' : undefined,
-      tone: 'success',
-    })
-    onSaved()
+    await save(
+      () => saveEmployeeCompensation(employee.id, { ...values, basicPay: Number(values.basicPay), outputUnit: values.payType === 'output_based' ? values.outputUnit : null }),
+      'Compensation updated',
+      salaryChanged ? 'A new compensation history entry was recorded.' : undefined,
+    )
   }
 
   return (

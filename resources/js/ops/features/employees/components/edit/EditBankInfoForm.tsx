@@ -2,9 +2,8 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeBankInfo } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeeBank } from '@ops/lib/services/employeeService'
 import type { Employee, EmployeeBank } from '@ops/types/domain'
 
 export function EditBankInfoForm({
@@ -16,8 +15,7 @@ export function EditBankInfoForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
 
   const {
     register,
@@ -26,9 +24,7 @@ export function EditBankInfoForm({
   } = useForm<EmployeeBank>({ defaultValues: employee.bank })
 
   async function onSubmit(values: EmployeeBank) {
-    await updateEmployeeBankInfo(user, employee.id, values)
-    notify({ title: 'Bank/payment information updated', tone: 'success' })
-    onSaved()
+    await save(() => saveEmployeeBank(employee.id, values), 'Bank/payment information updated')
   }
 
   return (

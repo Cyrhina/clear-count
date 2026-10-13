@@ -2,9 +2,8 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeBenefits, type UpdateBenefitsInput } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeeBenefits, type UpdateBenefitsInput } from '@ops/lib/services/employeeService'
 import type { Employee } from '@ops/types/domain'
 
 export function EditBenefitsForm({
@@ -16,8 +15,7 @@ export function EditBenefitsForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
   const leaveTypes = Object.keys(employee.benefits.leaveCreditsByType)
 
   const {
@@ -36,9 +34,7 @@ export function EditBenefitsForm({
       hmoPlan: values.hmoPlan.trim() || undefined,
       leaveCreditsByType: Object.fromEntries(Object.entries(values.credits).map(([k, v]) => [k, Number(v)])),
     }
-    await updateEmployeeBenefits(user, employee.id, updates)
-    notify({ title: 'Benefits updated', tone: 'success' })
-    onSaved()
+    await save(() => saveEmployeeBenefits(employee.id, updates), 'Benefits updated')
   }
 
   return (

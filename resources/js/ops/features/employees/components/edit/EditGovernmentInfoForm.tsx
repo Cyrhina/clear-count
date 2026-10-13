@@ -2,9 +2,8 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeGovernmentInfo } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeeGovernment } from '@ops/lib/services/employeeService'
 import type { Employee, EmployeeGovernment } from '@ops/types/domain'
 
 export function EditGovernmentInfoForm({
@@ -16,8 +15,7 @@ export function EditGovernmentInfoForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
 
   const {
     register,
@@ -26,14 +24,10 @@ export function EditGovernmentInfoForm({
   } = useForm<EmployeeGovernment>({ defaultValues: employee.government })
 
   async function onSubmit(values: EmployeeGovernment) {
-    await updateEmployeeGovernmentInfo(user, employee.id, {
-      ...values,
-      pagibigEmployeeContribution: values.pagibigEmployeeContribution
-        ? Number(values.pagibigEmployeeContribution)
-        : undefined,
-    })
-    notify({ title: 'Government information updated', tone: 'success' })
-    onSaved()
+    await save(
+      () => saveEmployeeGovernment(employee.id, { ...values, pagibigEmployeeContribution: values.pagibigEmployeeContribution ? Number(values.pagibigEmployeeContribution) : undefined }),
+      'Government information updated',
+    )
   }
 
   return (
