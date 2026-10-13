@@ -349,7 +349,7 @@ Frontend: `attendanceService`, `wfhService`, `wfhLimitStore`, the Attendance pag
 
 Done when: imports, adjustments and WFH persist; approvals are logged; a manager sees only their branch.
 
-**P5a status:** done in branch `backend/p05a-attendance` (see PROGRESS.md). P5b (WFH) is next.
+**P5a status:** merged (#9). **P5b status:** done in branch `backend/p05b-wfh` (see PROGRESS.md). Next: P6 (Leave).
 
 ---
 

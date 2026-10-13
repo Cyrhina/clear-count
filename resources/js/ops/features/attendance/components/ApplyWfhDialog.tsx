@@ -9,12 +9,12 @@ import { EmployeePickerPanel } from '@ops/components/ui/EmployeePickerPanel'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
-import { useWfhLimitStore } from '@ops/features/attendance/wfhLimitStore'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
-import { useSession } from '@ops/hooks/useSession'
+import { useWfh } from '@ops/features/attendance/hooks/useWfh'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { cn } from '@ops/lib/utils/cn'
-import { createWfhBatch, previewWfh, validateWfhInput } from '@ops/lib/services/wfhService'
-import type { WfhInput, WfhPreviewRow } from '@ops/lib/services/wfhService'
+import { createWfh, previewWfh, validateWfhInput } from '@ops/lib/services/wfhArrangementService'
+import type { WfhInput, WfhPreviewRow } from '@ops/lib/services/wfhArrangementService'
 import type { WfhKind, WfhTimes } from '@ops/types/domain'
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -77,10 +77,9 @@ export function ApplyWfhDialog({
   onOpenChange?: (open: boolean) => void
   onApplied?: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
-  const { employees } = useEmployees()
-  const monthlyLimit = useWfhLimitStore((s) => s.monthlyLimit)
+  const { employees } = useAllEmployees()
+  const { monthlyLimit, refetch: refetchWfh } = useWfh()
   const [innerOpen, setInnerOpen] = useState(false)
   const open = openProp ?? innerOpen
   const setOpen = (v: boolean) => {
@@ -123,7 +122,6 @@ export function ApplyWfhDialog({
     custom: times === 'custom' ? custom : undefined,
     reason,
     replaceOverlaps: replace,
-    monthlyLimit: monthlyLimit || undefined,
   })
 
   function reset() {
@@ -140,7 +138,13 @@ export function ApplyWfhDialog({
     if (err) return setError(err)
     setError(undefined)
     setBusy(true)
-    const result = await previewWfh(user, input)
+    let result: WfhPreviewRow[]
+    try {
+      result = await previewWfh(input, employees)
+    } catch (e) {
+      setBusy(false)
+      return setError(apiErrorMessage(e))
+    }
     setBusy(false)
     setRows(result)
     setIncluded(new Set(result.filter((r) => r.overlapIds.length === 0).map((r) => r.employee.id)))
@@ -151,10 +155,11 @@ export function ApplyWfhDialog({
     setBusy(true)
     try {
       const ids = rows.filter((r) => included.has(r.employee.id)).map((r) => r.employee.id)
-      const result = await createWfhBatch(user, buildInput(ids))
+      const result = await createWfh(buildInput(ids))
       const skipped = result.skipped.length + (rows.length - ids.length)
+      refetchWfh()
       notify({
-        title: `${result.created.length} employee${result.created.length === 1 ? '' : 's'} set to WFH`,
+        title: `${result.created} employee${result.created === 1 ? '' : 's'} set to WFH`,
         description: skipped ? `${skipped} skipped` : undefined,
         tone: 'success',
       })
@@ -162,7 +167,7 @@ export function ApplyWfhDialog({
       reset()
       onApplied?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not apply WFH.')
+      setError(apiErrorMessage(e))
     } finally {
       setBusy(false)
     }
