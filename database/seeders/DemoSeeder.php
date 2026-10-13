@@ -16,6 +16,7 @@ use App\Models\EmployeeCompensation;
 use App\Models\EmployeeDeduction;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Models\Loan;
 use App\Models\OvertimeRate;
 use App\Models\OvertimeRecord;
 use App\Models\PayrollGroup;
@@ -28,6 +29,8 @@ use App\Support\AttendanceStatusResolver;
 use App\Support\LeaveDefaults;
 use App\Support\LeaveLedger;
 use App\Support\LeavePlanner;
+use App\Support\LoanDefaults;
+use App\Support\LoanLedger;
 use App\Support\Notifier;
 use App\Support\PayrollDefaults;
 use App\Support\WfhPlanner;
@@ -185,7 +188,7 @@ class DemoSeeder extends Seeder
         }
     }
 
-    /** Two HMO plans and a rice allowance with some employees enrolled, a cooperative savings plan, and one one-time deduction. */
+    /** Two HMO plans and a rice allowance with some employees enrolled, a cooperative savings plan, one one-time deduction, and three loans. */
     private function seedBenefits(Company $company): void
     {
         $employees = Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get();
@@ -206,6 +209,17 @@ class DemoSeeder extends Seeder
         ]));
         if ($employees->has(1)) {
             EmployeeDeduction::create(['company_id' => $company->id, 'employee_id' => $employees[1]->id, 'name' => 'Uniform', 'kind' => 'one_time', 'amount' => 900, 'due_date' => now()->addDays(10)->toDateString(), 'reason' => 'Company uniform']);
+        }
+
+        LoanDefaults::ensure($company->id);
+        foreach ([[0, 'sss_salary_loan', 'SSS Loan – Salary', 24000, 2000, 3], [1, 'company_loan', 'Company Loan / Emergency Advance', 10000, 2500, 1], [2, 'pagibig_multipurpose_loan', 'Pag-IBIG Loan – Multi-Purpose', 30000, 1500, 0]] as [$i, $type, $label, $principal, $monthly, $paid]) {
+            if (! isset($employees[$i])) {
+                continue;
+            }
+            $loan = Loan::create(['company_id' => $company->id, 'employee_id' => $employees[$i]->id, 'type' => $type, 'label' => $label, 'principal' => $principal, 'monthly_deduction' => $monthly, 'start_date' => now()->subMonths($paid)->startOfMonth()->toDateString()]);
+            for ($m = 0; $m < $paid; $m++) {
+                LoanLedger::repay($loan, $monthly, now()->subMonths($paid - $m)->endOfMonth()->toDateString(), 'Payroll '.now()->subMonths($paid - $m)->format('M Y'));
+            }
         }
     }
 

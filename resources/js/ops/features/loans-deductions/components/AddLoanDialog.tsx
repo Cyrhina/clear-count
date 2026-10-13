@@ -10,8 +10,7 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { useLoanTypes } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
-import { useSession } from '@ops/hooks/useSession'
-import { createLoan, updateLoan } from '@ops/lib/services/loanService'
+import { createLoan, updateLoan } from '@ops/lib/services/loanApiService'
 import type { Employee, LoanRecord } from '@ops/types/domain'
 
 const schema = z.object({
@@ -52,7 +51,6 @@ export function AddLoanDialog({
   trigger?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const { types } = useLoanTypes()
   const isEdit = Boolean(loan)
@@ -73,10 +71,10 @@ export function AddLoanDialog({
 
   async function onSubmit(values: FormValues) {
     if (loan) {
-      await updateLoan(user, loan.id, { type: values.type, label: values.label, monthlyDeduction: values.monthlyDeduction, startDate: values.startDate })
+      await updateLoan(loan.id, { type: values.type, label: values.label, monthlyDeduction: values.monthlyDeduction, startDate: values.startDate })
       notify({ title: 'Loan updated', tone: 'success' })
     } else {
-      await createLoan(user, values)
+      await createLoan(values)
       notify({ title: 'Loan added', tone: 'success' })
     }
     setOpen(false)

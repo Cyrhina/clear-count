@@ -9,8 +9,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createLoanType, updateLoanType } from '@ops/lib/services/loanTypeService'
+import { createLoanType, updateLoanType } from '@ops/lib/services/loanApiService'
 import type { LoanTypeConfig } from '@ops/types/domain'
 
 const PROVIDER_OPTIONS = [
@@ -61,7 +60,6 @@ function toFormValues(type?: LoanTypeConfig): FormValues {
 export function LoanTypeDialog({ type, existing, onSaved, trigger }: { type?: LoanTypeConfig; existing: LoanTypeConfig[]; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [duplicate, setDuplicate] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(type)
 
@@ -92,10 +90,10 @@ export function LoanTypeDialog({ type, existing, onSaved, trigger }: { type?: Lo
     const fixed = values.amountType === 'fixed'
     const payload = { ...rest, fixedPrincipal: fixed ? Number(fixedPrincipal) : undefined, fixedMonthlyDeduction: fixed ? Number(fixedMonthlyDeduction) : undefined }
     if (type) {
-      await updateLoanType(user, type.id, payload)
+      await updateLoanType(type.id, payload)
       notify({ title: 'Loan type updated', tone: 'success' })
     } else {
-      await createLoanType(user, payload)
+      await createLoanType(payload)
       notify({ title: `${values.label} added`, description: 'It’s now available when adding an employee loan.', tone: 'success' })
     }
     setOpen(false)

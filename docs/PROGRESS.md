@@ -24,7 +24,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
 | P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
 | P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
-| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a in review | backend/p09-benefits-loans | | |
+| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a done (merged #14), P9b in review | backend/p09b-loans | | |
 | P10 | Payroll engine and runs (a, b) | not started | | | |
 | P11 | Payslips, PDF, email | not started | | | |
 | P12 | 13th month and separate bonus payslips | not started | | | |
@@ -72,6 +72,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `notificationService` (mock): getNotifications (team absence, payroll reminders, payslip and loan notices only) | the bell and Notifications page, merged with the stored ones | P10, P11 (payroll, payslips), P14 | P7 |
 | `payrollService` (mock): getStatutoryConfig, updateStatutoryConfig, monthlyStatutoryFor; `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/withholdingTax.ts` | the browser payroll engine (runs, period detail, payslips, 13th month, loans) | P10 (payroll), P12 (13th month) | P8 |
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | the browser payroll engine (earnings, deductions, one-time deductions settled on finalize), tax and compliance report | P10 (payroll), P14 (reports) | P9a |
+| `loanService` (mock): getLoans; `db.loans`, `db.loanTypes` (mock-data generators); the ESS loans store (`features/ess` sample loans) | the browser payroll engine (loan deductions, repayment history on finalize), payroll period detail, payslip detail, ESS loans page, notifications (loan payment notice) | P10 (payroll, payslips), P13 (ESS) | P9b |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -90,6 +91,20 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P9b - 2026-10-23
+- Branch: backend/p09b-loans (pushed: no)
+- Done:
+  - Backend: `loan_types` (the 7 built-in types are created on first use by `LoanDefaults`, as in the mock; a company can add its own, which gets a unique `custom_<label>` key; fixed or custom amounts; built-in types can be deactivated but not deleted, and a type a loan uses cannot be deleted either), `loans` (principal and monthly deduction, start date, status active, suspended, completed or cancelled) and `loan_repayments`, the ledger: the balance is the principal less the entries, nothing is edited in place. `LoanLedger::repay` takes an amount (never more than the balance) off a loan and completes it at zero; payroll calls it when a run finalizes (P10). Endpoints under `api/loans`: list with balance and repayment history, add one, add many of one type (a fixed type's amounts for everyone; skips anyone with a live loan of the type or a missing amount), edit terms (not the principal), pause, resume or cancel (completed and cancelled are final), and the type list, add, edit, delete. `loans.view` to read and `loans.manage` to change. Tests: 247 (243 pass, 4 skipped).
+  - Frontend: `loanApiService`; the Loans and Loan Types tabs read and write the API with the real employees. The mock `loanTypeService` is deleted and the mock `loanService` keeps only `getLoans`. DemoSeeder: three loans, with four repayments between them.
+- Next: P9c bonuses (`bonus_incentives`, the Approval kit: draft, pending, decided; payout through regular payroll or a separate payslip), then P10. PLAN.md P9.
+- Gotchas:
+  - No endpoint writes a repayment yet: payroll does (P10). Until then a loan's balance only changes through `LoanLedger::repay` (the seeder and the tests).
+  - The payroll engine, payslips and the ESS loans page still read the mock loans (see the ledger), so the Loans tab and a payroll run disagree until P10.
+  - A separation does not touch loans: the unpaid balance is for the final pay to settle (P10 or P3 follow-up).
+  - Not browser-tested: the add, edit, pause and bulk dialogs. Checked: the Loans and Loan Types tabs load from the API.
+- Checks: php artisan test 247 (243 passed, 4 skipped); tsc clean; build clean.
+
 
 ### P9a - 2026-10-22
 - Branch: backend/p09-benefits-loans (pushed: no)

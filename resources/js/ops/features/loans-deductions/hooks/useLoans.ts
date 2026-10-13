@@ -1,20 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getLoans } from '@ops/lib/services/loanService'
-import type { LoanRecord } from '@ops/types/domain'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchLoans } from '@ops/lib/services/loanApiService'
 
 export function useLoans() {
-  const { user } = useSession()
-  const [loans, setLoans] = useState<LoanRecord[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getLoans(user).then(setLoans)
-  }, [user])
-
-  useEffect(() => {
-    setLoans(null)
-    refetch()
-  }, [refetch])
-
-  return { loans: loans ?? [], isLoading: loans === null, refetch }
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: ['benefits-deductions', 'loans'], queryFn: fetchLoans })
+  return { loans: query.data ?? [], isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: ['benefits-deductions'] }) }
 }
