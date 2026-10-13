@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Branch;
+use App\Models\BranchDepartment;
 use App\Models\Company;
 use App\Models\CompensationType;
 use App\Models\Employee;
@@ -23,6 +24,8 @@ class DemoSeeder extends Seeder
 
         Employee::factory()->count(12)->create(['company_id' => $company->id, 'branch_id' => $head->id]);
         $this->seedPayrollSetup($company);
+        Employee::withoutGlobalScopes()->where('branch_id', $head->id)->distinct()->pluck('department')->filter()
+            ->each(fn ($name) => BranchDepartment::create(['company_id' => $company->id, 'branch_id' => $head->id, 'name' => $name]));
         $own = Employee::withoutGlobalScopes()->where('company_id', $company->id)->first();
 
         $accounts = [

@@ -1,38 +1,15 @@
-import { getPayrollLines, getPayrollPeriods } from '@ops/lib/services/payrollService'
+// mock: remove in P3. getBranches, reassignEmployeeBranch and assignEmployeesToBranch still serve the mock Employees, Integrations
+// and bulk-action screens. The Branches page uses the API functions below.
+import type { BranchRecord, BranchSummary } from '@ops/features/branches/types'
+import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
+import { api } from '@ops/lib/api/http'
 import { ensureBranchDepartment, releaseSupervisorIfMoved } from '@ops/lib/services/branchDepartmentService'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
-import type { Branch, Employee, SessionUser } from '@ops/types/domain'
+import type { Branch, SessionUser } from '@ops/types/domain'
 
 export async function getBranches(session: SessionUser): Promise<Branch[]> {
   return scopeToCompany(db.branches, session.companyId)
-}
-
-export interface CreateBranchInput {
-  name: string
-  isHeadOffice: boolean
-  code?: string
-  address?: string
-  city?: string
-  contactNumber?: string
-  email?: string
-  managerEmployeeId?: string
-  openedDate?: string
-}
-
-/** Creates a branch and, optionally, bulk-assigns (or transfers) employees to it in the same step. */
-export async function createBranch(session: SessionUser, input: CreateBranchInput & { employeeIds?: string[] }): Promise<Branch> {
-  const { employeeIds = [], ...details } = input
-  const branch: Branch = { id: crypto.randomUUID(), companyId: session.companyId, ...details }
-  db.branches.push(branch)
-  await assignEmployeesToBranch(session, employeeIds, branch.id)
-  return branch
-}
-
-export async function updateBranch(session: SessionUser, branchId: string, updates: Partial<CreateBranchInput>): Promise<void> {
-  const branch = db.branches.find((b) => b.id === branchId && b.companyId === session.companyId)
-  if (!branch) return
-  Object.assign(branch, updates)
 }
 
 /** Moves an employee to another branch. Returns the department name if it had to be created in the new branch, else null. */
@@ -72,32 +49,38 @@ export async function assignEmployeesToBranch(session: SessionUser, employeeIds:
   return moved
 }
 
-export interface BranchSummary {
-  branch: Branch
-  headcount: number
-  activeCount: number
-  grossPay: number
-  netPay: number
+
+/** The Branches page, backed by `/api/branches`. */
+
+export async function fetchBranches(): Promise<BranchRecord[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/branches')
+  return camelizeKeys<BranchRecord[]>(res.data)
 }
 
-/** Consolidated cross-branch report: headcount plus latest payroll period's totals, scoped per branch. */
-export async function getBranchSummaries(session: SessionUser): Promise<BranchSummary[]> {
-  const branches = scopeToCompany(db.branches, session.companyId)
-  const employees = scopeToCompany(db.employees, session.companyId)
-  const periods = await getPayrollPeriods(session)
-  const latestPeriod = periods[0]
-  const lines = latestPeriod ? await getPayrollLines(session, latestPeriod.id) : []
-  const employeeById = new Map<string, Employee>(employees.map((e) => [e.id, e]))
+export interface BranchInput {
+  name: string
+  isHeadOffice?: boolean
+  code?: string
+  address?: string
+  city?: string
+  contactNumber?: string
+  email?: string
+  /** YYYY-MM-DD */
+  openedDate?: string
+}
 
-  return branches.map((branch) => {
-    const branchEmployees = employees.filter((e) => e.branchId === branch.id)
-    const branchLines = lines.filter((line) => employeeById.get(line.employeeId)?.branchId === branch.id)
-    return {
-      branch,
-      headcount: branchEmployees.length,
-      activeCount: branchEmployees.filter((e) => e.employment.status === 'active').length,
-      grossPay: branchLines.reduce((sum, l) => sum + l.grossPay, 0),
-      netPay: branchLines.reduce((sum, l) => sum + l.netPay, 0),
-    }
-  })
+export async function createBranch(input: BranchInput): Promise<BranchRecord> {
+  const res = await api.post<{ data: unknown }>('/api/branches', snakeizeKeys(input))
+  return camelizeKeys<BranchRecord>(res.data)
+}
+
+export async function updateBranch(id: string, input: BranchInput): Promise<BranchRecord> {
+  const res = await api.put<{ data: unknown }>(`/api/branches/${id}`, snakeizeKeys(input))
+  return camelizeKeys<BranchRecord>(res.data)
+}
+
+/** Headcount per branch. Gross and net pay stay empty until payroll runs exist (P10). */
+export async function getBranchSummaries(): Promise<BranchSummary[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/branches/summaries')
+  return camelizeKeys<BranchSummary[]>(res.data)
 }

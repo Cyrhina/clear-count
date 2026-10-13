@@ -1,21 +1,10 @@
-import { Building2, CalendarDays, Crown, Mail, MapPin, Phone, Search, Users } from 'lucide-react'
-import { useState } from 'react'
+import { Building2, CalendarDays, Mail, MapPin, Phone, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Avatar } from '@ops/components/ui/Avatar'
-import { Badge, StatusBadge } from '@ops/components/ui/Badge'
-import { Button } from '@ops/components/ui/Button'
+import { Badge } from '@ops/components/ui/Badge'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
-import { Input } from '@ops/components/ui/Input'
-import { Select } from '@ops/components/ui/Select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { useToast } from '@ops/components/ui/Toast'
-import { fullName } from '@ops/features/branches/branchUtils'
-import { AssignEmployeesDialog } from '@ops/features/branches/components/AssignEmployeesDialog'
 import { BranchDepartmentsPanel } from '@ops/features/branches/components/BranchDepartmentsPanel'
-import { useSession } from '@ops/hooks/useSession'
-import { reassignEmployeeBranch, updateBranch } from '@ops/lib/services/branchService'
+import type { BranchRecord, DepartmentRecord } from '@ops/features/branches/types'
 import { formatDate } from '@ops/lib/utils/format'
-import type { Branch, BranchDepartment, Employee } from '@ops/types/domain'
 
 function DetailItem({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -38,68 +27,29 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-/** Full branch profile — metadata, address, contact, manager — plus its employees with assign / transfer / set-manager actions. */
+/** Full branch profile — address, contact, headcount — and its departments. */
 export function BranchDetailsDialog({
   branch,
   branches,
-  employees,
   allDepartments,
   canManage,
   onClose,
   onChanged,
 }: {
-  branch: Branch | null
-  branches: Branch[]
-  employees: Employee[]
+  branch: BranchRecord | null
+  branches: BranchRecord[]
   /** Departments configured across every branch. */
-  allDepartments: BranchDepartment[]
+  allDepartments: DepartmentRecord[]
   canManage: boolean
   onClose: () => void
   onChanged: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
-  const [query, setQuery] = useState('')
-
-  const staff = branch ? employees.filter((e) => e.branchId === branch.id) : []
-  const manager = branch?.managerEmployeeId ? employees.find((e) => e.id === branch.managerEmployeeId) : undefined
   const branchDepartments = branch ? allDepartments.filter((d) => d.branchId === branch.id) : []
   const departmentCount = branchDepartments.length
-  const q = query.trim().toLowerCase()
-  const visible = staff
-    .filter((e) => !q || `${fullName(e)} ${e.employeeNumber} ${e.employment.position} ${e.employment.department}`.toLowerCase().includes(q))
-    .sort((a, b) => Number(b.id === branch?.managerEmployeeId) - Number(a.id === branch?.managerEmployeeId) || a.personal.lastName.localeCompare(b.personal.lastName))
-  const otherBranches = branches.filter((b) => b.id !== branch?.id).map((b) => ({ value: b.id, label: b.name }))
-
-  async function moveEmployee(employee: Employee, targetId: string) {
-    const target = branches.find((b) => b.id === targetId)
-    const created = await reassignEmployeeBranch(user, employee.id, targetId)
-    notify({
-      title: 'Employee transferred',
-      description: `${fullName(employee)} moved to ${target?.name ?? 'another branch'}.${created ? ` ${created} was added to that branch's departments.` : ''}`,
-      tone: 'success',
-    })
-    onChanged()
-  }
-
-  async function setManager(employee: Employee) {
-    if (!branch) return
-    await updateBranch(user, branch.id, { managerEmployeeId: employee.id })
-    notify({ title: 'Branch manager updated', description: `${fullName(employee)} now manages ${branch.name}.`, tone: 'success' })
-    onChanged()
-  }
 
   return (
-    <Dialog
-      open={!!branch}
-      onOpenChange={(open) => {
-        if (!open) {
-          setQuery('')
-          onClose()
-        }
-      }}
-    >
-      <DialogContent className="max-w-5xl">
+    <Dialog open={!!branch} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl">
         {branch && (
           <>
             <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
@@ -108,11 +58,11 @@ export function BranchDetailsDialog({
               {branch.isHeadOffice && <Badge tone="brand">Head Office</Badge>}
               {branch.code && <Badge tone="neutral">{branch.code}</Badge>}
             </DialogTitle>
-            <DialogDescription>Branch profile and assigned employees.</DialogDescription>
+            <DialogDescription>Branch profile and departments.</DialogDescription>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Employees" value={staff.length} />
-              <Stat label="Active" value={staff.filter((e) => e.employment.status === 'active').length} />
+              <Stat label="Employees" value={branch.headcount} />
+              <Stat label="Active" value={branch.activeCount} />
               <Stat label="Departments" value={departmentCount} />
               <Stat label="Opened" value={branch.openedDate ? formatDate(branch.openedDate) : '—'} />
             </div>
@@ -128,18 +78,8 @@ export function BranchDetailsDialog({
                   <span className="text-muted-foreground">Not set</span>
                 )}
               </DetailItem>
-              <DetailItem icon={<Crown className="size-4" />} label="Branch Manager">
-                {manager ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar name={fullName(manager)} size="sm" />
-                    <div>
-                      <p>{fullName(manager)}</p>
-                      <p className="text-xs font-normal text-muted-foreground">{manager.employment.position}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">Not assigned</span>
-                )}
+              <DetailItem icon={<CalendarDays className="size-4" />} label="Branch Type">
+                {branch.isHeadOffice ? 'Head Office' : 'Branch'}
               </DetailItem>
               <DetailItem icon={<Phone className="size-4" />} label="Contact Number">
                 {branch.contactNumber ?? <span className="text-muted-foreground">Not set</span>}
@@ -147,89 +87,12 @@ export function BranchDetailsDialog({
               <DetailItem icon={<Mail className="size-4" />} label="Email">
                 {branch.email ?? <span className="text-muted-foreground">Not set</span>}
               </DetailItem>
-              <DetailItem icon={<CalendarDays className="size-4" />} label="Branch Type">
-                {branch.isHeadOffice ? 'Head Office' : 'Branch'}
-              </DetailItem>
               <DetailItem icon={<Users className="size-4" />} label="Headcount">
-                {staff.length} employee{staff.length === 1 ? '' : 's'} across {departmentCount} department{departmentCount === 1 ? '' : 's'}
+                {branch.headcount} employee{branch.headcount === 1 ? '' : 's'} across {departmentCount} department{departmentCount === 1 ? '' : 's'}
               </DetailItem>
             </div>
 
-            <BranchDepartmentsPanel branch={branch} branches={branches} staff={staff} departments={branchDepartments} allDepartments={allDepartments} canManage={canManage} onChanged={onChanged} />
-
-            <div className="mt-5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold">Assigned Employees ({staff.length})</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative w-56">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employees…" className="pl-9" />
-                  </div>
-                  {canManage && <AssignEmployeesDialog branch={branch} branches={branches} employees={employees} onAssigned={onChanged} triggerLabel="Assign Employees" triggerVariant="primary" />}
-                </div>
-              </div>
-
-              {staff.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">No employees assigned to this branch yet.</p>
-              ) : (
-                <Table className="whitespace-nowrap">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
-                      {canManage && <TableHead className="text-right">Manage</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visible.map((e) => {
-                      const isManager = e.id === branch.managerEmployeeId
-                      return (
-                        <TableRow key={e.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <Avatar name={fullName(e)} size="sm" />
-                              <div>
-                                <p className="flex items-center gap-1.5 font-medium">
-                                  {fullName(e)}
-                                  {isManager && (
-                                    <Badge tone="brand" className="gap-1">
-                                      <Crown className="size-3" />
-                                      Manager
-                                    </Badge>
-                                  )}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{e.employeeNumber}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{e.employment.position}</TableCell>
-                          <TableCell className="text-muted-foreground">{e.employment.department}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={e.employment.status} />
-                          </TableCell>
-                          {canManage && (
-                            <TableCell>
-                              <div className="flex items-center justify-end gap-2">
-                                {!isManager && e.employment.status === 'active' && (
-                                  <Button size="sm" variant="ghost" icon={<Crown className="size-3.5" />} onClick={() => setManager(e)}>
-                                    Set as Manager
-                                  </Button>
-                                )}
-                                <div className="w-44">
-                                  <Select value={undefined} onValueChange={(v) => moveEmployee(e, v)} options={otherBranches} placeholder="Transfer to…" disabled={otherBranches.length === 0} />
-                                </div>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
+            <BranchDepartmentsPanel branch={branch} branches={branches} departments={branchDepartments} allDepartments={allDepartments} canManage={canManage} onChanged={onChanged} />
           </>
         )}
       </DialogContent>
