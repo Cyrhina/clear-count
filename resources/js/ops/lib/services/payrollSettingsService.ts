@@ -31,22 +31,6 @@ function stripEmployeeFromOtherGroups(session: SessionUser, employeeId: string, 
   }
 }
 
-/** Replaces a Payroll Group's full membership list in one operation (used by the Assign Employees dialog's bulk save). */
-export async function updatePayrollGroupMembership(session: SessionUser, groupId: string, employeeIds: string[]): Promise<void> {
-  const group = db.payrollGroups.find((g) => g.id === groupId && g.companyId === session.companyId)
-  if (!group) return
-  for (const employeeId of employeeIds) stripEmployeeFromOtherGroups(session, employeeId, groupId)
-  group.employeeIds = employeeIds
-}
-
-/** Moves a single employee to `groupId` (or unassigns entirely when `groupId` is null). Used by reassign/remove actions and the Employee profile's Payroll Group field. */
-export async function setEmployeePayrollGroup(session: SessionUser, employeeId: string, groupId: string | null): Promise<void> {
-  stripEmployeeFromOtherGroups(session, employeeId, groupId ?? undefined)
-  if (!groupId) return
-  const group = db.payrollGroups.find((g) => g.id === groupId && g.companyId === session.companyId)
-  if (group && !group.employeeIds.includes(employeeId)) group.employeeIds.push(employeeId)
-}
-
 // ---- Deductions ----------------------------------------------------------------
 
 export async function getDeductionConfigs(session: SessionUser): Promise<DeductionConfig[]> {
@@ -59,10 +43,3 @@ export async function getPayrollRules(session: SessionUser): Promise<PayrollRule
   return db.payrollRules.find((r) => r.companyId === session.companyId)
 }
 
-/** Moves several employees into `groupId` (or out of every group when null) without touching the group's other members. Returns how many were moved. */
-export async function bulkSetEmployeePayrollGroup(session: SessionUser, employeeIds: string[], groupId: string | null): Promise<number> {
-  const employees = new Set((await getEmployees(session)).map((e) => e.id))
-  const ids = employeeIds.filter((id) => employees.has(id))
-  for (const id of ids) await setEmployeePayrollGroup(session, id, groupId)
-  return ids.length
-}

@@ -24,8 +24,8 @@ import { formatCurrency } from '@ops/lib/utils/format'
 import { useToast } from '@ops/components/ui/Toast'
 import { DepartmentSelect } from '@ops/features/employees/components/DepartmentSelect'
 import { MixedCompensationDialog } from '@ops/features/employees/components/MixedCompensationDialog'
-import { useMixedCompensationStore, summarizeMixedCompensation } from '@ops/features/employees/mixedCompensationStore'
-import type { MixedCompensationStructure } from '@ops/features/employees/mixedCompensationStore'
+import { summarizeMixedCompensation } from '@ops/features/employees/mixedCompensation'
+import type { MixedCompensationStructure } from '@ops/features/employees/mixedCompensation'
 
 const schema = z
   .object({
@@ -63,9 +63,8 @@ const EMPLOYMENT_TYPE_OPTIONS = [
 
 const OUTPUT_UNIT_SELECT_OPTIONS = OUTPUT_UNIT_OPTIONS.map((u) => ({ value: u, label: u }))
 
-/** UI-only addition for this modal — "Mixed Compensation" is never persisted as a real `PayRateType`
- * (the payroll engine, reports, and payslips keep handling exactly the 5 standard types). See
- * `mixedCompensationStore.ts`. */
+/** "Mixed Compensation" is offered here only: it is stored as a base rate plus a variable component (`compensation.mixed`),
+ * and the record's pay type stays one of the 5 standard values the payroll engine handles. */
 const PAY_RATE_TYPE_OPTIONS_WITH_MIXED = [...PAY_RATE_TYPE_OPTIONS, { value: 'mixed' as const, label: 'Mixed Compensation' }]
 
 export function AddEmployeeDialog({ onCreated }: { onCreated?: () => void }) {
@@ -115,13 +114,12 @@ export function AddEmployeeDialog({ onCreated }: { onCreated?: () => void }) {
       personal: { firstName: values.firstName.trim(), lastName: values.lastName.trim(), birthDate: values.birthDate, civilStatus: 'single', address: values.address.trim(), contactNumber: values.contactNumber.trim() },
       employment: { position: values.position, department: values.department, employmentType: values.employmentType, dateHired: values.dateHired, category: 'regular' },
       compensation: mixed
-        ? { payType: mixed.baseType, basicPay: mixed.baseAmount, outputUnit: null, allowances: [] }
+        ? { payType: mixed.baseType, basicPay: mixed.baseAmount, outputUnit: null, allowances: [], mixed }
         : { payType: values.payType as HireInput['compensation']['payType'], basicPay: values.basicPay!, outputUnit: values.payType === 'output_based' ? values.outputUnit : null, allowances: [] },
     }
 
     try {
-      const employee = await hireEmployee(input)
-      if (mixed) useMixedCompensationStore.getState().setStructure(employee.id, mixed)
+      await hireEmployee(input)
     } catch (error) {
       return notify({ title: "Couldn't add the employee", description: apiErrorMessage(error), tone: 'danger' })
     }

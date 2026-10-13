@@ -1,10 +1,10 @@
 // mock: remove in P17. The Employees screens use the API functions at the bottom of this file. Every other module still reads the
-// mock employees through getEmployees, getEmployee, getEmployeeIdsOnLeaveToday and updateEmployeeSelf until its own phase.
-// The mock createEmployee, importEmployees, updateEmployeeStatus and bulk functions stay until P3b.
+// mock employees through getEmployees, getEmployee, getEmployeeIdsOnLeaveToday and updateEmployeeSelf until its own phase;
+// createEmployee stays for the Integrations CSV import (P16).
 import type { EmployeePage, EmployeeListParams, EmployeeRecord } from '@ops/features/employees/types'
 import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
-import { ensureBranchDepartment, releaseSupervisorIfMoved } from '@ops/lib/services/branchDepartmentService'
+import { ensureBranchDepartment } from '@ops/lib/services/branchDepartmentService'
 import { scopeForSession } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type {
@@ -59,6 +59,68 @@ export interface CreateEmployeeExtras {
   accountNumber?: string
 }
 
+export interface SelfServiceProfileUpdate {
+  contactNumber: string
+  personalEmail?: string
+  address: string
+}
+
+/** Employees may only edit their own allowed profile fields — never payroll, government, or employment data. */
+export async function updateEmployeeSelf(session: SessionUser, updates: SelfServiceProfileUpdate): Promise<void> {
+  if (!session.employeeId) return
+  const employee = db.employees.find((e) => e.id === session.employeeId && e.companyId === session.companyId)
+  if (!employee) return
+
+  employee.personal.contactNumber = updates.contactNumber
+  employee.personal.personalEmail = updates.personalEmail
+  employee.personal.address = updates.address
+}
+
+export const SEPARATION_LABEL = {
+  resigned: 'Resigned',
+  terminated: 'Terminated',
+  end_of_contract: 'End of Contract',
+  retired: 'Retired',
+} as const
+
+export interface UpdateEmploymentInfoInput {
+  position: string
+  department: string
+  employmentType: Employee['employment']['employmentType']
+  dateHired: string
+  category: Employee['employment']['category']
+}
+
+export interface UpdateCompensationInput {
+  basicPay: number
+  payType: PayRateType
+  outputUnit?: string | null
+  reason: string
+}
+
+export interface UpdateBenefitsInput {
+  hmoPlan?: string
+  leaveCreditsByType: Record<string, number>
+}
+
+/** Employee ids with an approved leave request covering today — used to derive the "On Leave" filter without touching the core employment.status enum. */
+export async function getEmployeeIdsOnLeaveToday(session: SessionUser): Promise<Set<string>> {
+  const employees = scopeForSession(db.employees, session, { employeeIdField: 'id' })
+  const employeeIds = new Set(employees.map((e) => e.id))
+  const today = new Date().toISOString().slice(0, 10)
+
+  const onLeave = db.leaveRequests.filter(
+    (r) =>
+      r.companyId === session.companyId &&
+      r.status === 'approved' &&
+      employeeIds.has(r.employeeId) &&
+      r.dateFrom <= today &&
+      r.dateTo >= today,
+  )
+  return new Set(onLeave.map((r) => r.employeeId))
+}
+
+/** mock: only the Integrations CSV import (P16) still creates employees this way. */
 export async function createEmployee(session: SessionUser, input: CreateEmployeeInput): Promise<Employee> {
   const sequence = db.employees.filter((e) => e.companyId === session.companyId).length + 1
   const employee: Employee = {
@@ -122,152 +184,6 @@ export async function createEmployee(session: SessionUser, input: CreateEmployee
   // Every employee's department exists in their branch's configuration.
   await ensureBranchDepartment(session, employee.branchId, employee.employment.department)
   return employee
-}
-
-/** Creates every row in order and returns how many were added. Rows are validated beforehand by the import dialog. */
-export async function importEmployees(session: SessionUser, rows: CreateEmployeeInput[]): Promise<number> {
-  for (const row of rows) await createEmployee(session, row)
-  return rows.length
-}
-
-export interface SelfServiceProfileUpdate {
-  contactNumber: string
-  personalEmail?: string
-  address: string
-}
-
-/** Employees may only edit their own allowed profile fields — never payroll, government, or employment data. */
-export async function updateEmployeeSelf(session: SessionUser, updates: SelfServiceProfileUpdate): Promise<void> {
-  if (!session.employeeId) return
-  const employee = db.employees.find((e) => e.id === session.employeeId && e.companyId === session.companyId)
-  if (!employee) return
-
-  employee.personal.contactNumber = updates.contactNumber
-  employee.personal.personalEmail = updates.personalEmail
-  employee.personal.address = updates.address
-}
-
-export const SEPARATION_LABEL = {
-  resigned: 'Resigned',
-  terminated: 'Terminated',
-  end_of_contract: 'End of Contract',
-  retired: 'Retired',
-} as const
-
-export async function updateEmployeeStatus(
-  session: SessionUser,
-  employeeId: string,
-  status: EmploymentStatus,
-  separation?: { reason: NonNullable<Employee['employment']['separationReason']>; date: string; notes?: string },
-): Promise<void> {
-  const employee = db.employees.find((e) => e.id === employeeId && e.companyId === session.companyId)
-  if (!employee) return
-
-  employee.employment.status = status
-  if (separation) {
-    employee.employment.dateSeparated = separation.date
-    employee.employment.separationReason = separation.reason
-  } else if (status === 'active') {
-    // Reactivating (e.g. rehire or a mistaken separation) clears the separation record.
-    delete employee.employment.dateSeparated
-    delete employee.employment.separationReason
-  }
-  if (separation) {
-    // Nothing recurring continues past the last working day; one-time deductions due afterwards are dropped.
-    for (const b of db.employeeBenefits) {
-      if (b.employeeId === employeeId && b.status === 'active' && (!b.endDate || b.endDate > separation.date)) b.endDate = separation.date
-    }
-    for (const d of db.employeeDeductions) {
-      if (d.employeeId !== employeeId || d.status !== 'active') continue
-      if (d.kind === 'recurring' && (!d.endDate || d.endDate > separation.date)) d.endDate = separation.date
-      if (d.kind === 'one_time' && d.dueDate && d.dueDate > separation.date) d.status = 'cancelled'
-    }
-  }
-  employee.history.push({
-    id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
-    actor: session.name,
-    action: separation
-      ? `Separated: ${SEPARATION_LABEL[separation.reason]} — last day ${separation.date}${separation.notes ? ` (${separation.notes})` : ''}`
-      : `Status changed to ${status}`,
-  })
-}
-
-function findCompanyEmployee(session: SessionUser, employeeId: string): Employee | undefined {
-  return db.employees.find((e) => e.id === employeeId && e.companyId === session.companyId)
-}
-
-function logHistory(employee: Employee, actor: string, action: string) {
-  employee.history.push({ id: crypto.randomUUID(), timestamp: new Date().toISOString(), actor, action })
-}
-
-export interface UpdateEmploymentInfoInput {
-  position: string
-  department: string
-  employmentType: Employee['employment']['employmentType']
-  dateHired: string
-  category: Employee['employment']['category']
-}
-
-export interface UpdateCompensationInput {
-  basicPay: number
-  payType: PayRateType
-  outputUnit?: string | null
-  reason: string
-}
-
-export interface UpdateBenefitsInput {
-  hmoPlan?: string
-  leaveCreditsByType: Record<string, number>
-}
-
-/** Employee ids with an approved leave request covering today — used to derive the "On Leave" filter without touching the core employment.status enum. */
-export async function getEmployeeIdsOnLeaveToday(session: SessionUser): Promise<Set<string>> {
-  const employees = scopeForSession(db.employees, session, { employeeIdField: 'id' })
-  const employeeIds = new Set(employees.map((e) => e.id))
-  const today = new Date().toISOString().slice(0, 10)
-
-  const onLeave = db.leaveRequests.filter(
-    (r) =>
-      r.companyId === session.companyId &&
-      r.status === 'approved' &&
-      employeeIds.has(r.employeeId) &&
-      r.dateFrom <= today &&
-      r.dateTo >= today,
-  )
-  return new Set(onLeave.map((r) => r.employeeId))
-}
-
-/** Only employees the session may see (company and branch scope) — every bulk action narrows its ids through this first. */
-async function scopedEmployees(session: SessionUser, employeeIds: string[]): Promise<Employee[]> {
-  const ids = new Set(employeeIds)
-  return (await getEmployees(session)).filter((e) => ids.has(e.id))
-}
-
-/** Moves every selected employee to `department` (their own branch's department list is extended if needed). Returns how many changed. */
-export async function bulkUpdateEmployeeDepartment(session: SessionUser, employeeIds: string[], department: string): Promise<number> {
-  let changed = 0
-  for (const scoped of await scopedEmployees(session, employeeIds)) {
-    const employee = findCompanyEmployee(session, scoped.id)
-    if (!employee || employee.employment.department === department) continue
-    employee.employment.department = department
-    logHistory(employee, session.name, `Department changed to ${department}`)
-    await ensureBranchDepartment(session, employee.branchId, department)
-    releaseSupervisorIfMoved(session, employee.id)
-    changed += 1
-  }
-  return changed
-}
-
-/** Sets the status of every selected employee that isn't already in it (not for separations — those need a reason and last day). */
-export async function bulkUpdateEmployeeStatus(session: SessionUser, employeeIds: string[], status: EmploymentStatus): Promise<number> {
-  let changed = 0
-  for (const employee of await scopedEmployees(session, employeeIds)) {
-    if (employee.employment.status === status) continue
-    await updateEmployeeStatus(session, employee.id, status)
-    changed += 1
-  }
-  return changed
 }
 
 /** The employee record, backed by `/api/employees`. Sections keep the camelCase the server stores. */
@@ -344,3 +260,48 @@ export const saveEmployeeStatus = (id: string, status: EmploymentStatus, separat
   saveSection(id, 'status', { status, separation })
 
 export const createEmployeeAccount = (id: string, email: string, role = 'employee') => api.post(`/api/employees/${id}/account`, { email, role })
+
+/** One row of an import, as the server takes it (see `toImportRow` in lib/payroll/employeeImport.ts). */
+export interface ImportRowPayload {
+  line: number
+  branch_id: string
+  personal: EmployeePersonal
+  employment: Omit<Employee['employment'], 'status'>
+  compensation: Employee['compensation']
+  government?: EmployeeGovernment
+  bank?: EmployeeBank
+}
+
+export interface ImportReport {
+  rows: { line: number; ok: boolean; errors: string[]; warnings: string[] }[]
+  created: number
+  skipped: number
+}
+
+/** `dryRun` validates every row and saves nothing; the real run adds the rows that passed. */
+export async function importEmployees(rows: ImportRowPayload[], dryRun: boolean): Promise<ImportReport> {
+  const res = await api.post<{ data: ImportReport }>('/api/employees/import', { rows, dry_run: dryRun })
+  return res.data
+}
+
+/** Each returns how many employees actually changed. */
+async function bulk(action: string, body: object): Promise<number> {
+  const res = await api.post<{ data: { changed: number } }>(`/api/employees/bulk/${action}`, body)
+  return res.data.changed
+}
+export const bulkSetDepartment = (ids: string[], department: string) => bulk('department', { ids: ids.map(Number), department })
+export const bulkSetBranch = (ids: string[], branchId: string) => bulk('branch', { ids: ids.map(Number), branch_id: Number(branchId) })
+export const bulkSetStatus = (ids: string[], status: EmploymentStatus) => bulk('status', { ids: ids.map(Number), status })
+
+/** Documents of the record. The file is only reached through a link that works for five minutes. */
+export async function uploadEmployeeDocument(id: string, file: File, name?: string): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  if (name) form.append('name', name)
+  await api.upload(`/api/employees/${id}/documents`, form)
+}
+export const deleteEmployeeDocument = (id: string, documentId: string) => api.delete<void>(`/api/employees/${id}/documents/${documentId}`)
+export async function employeeDocumentLink(id: string, documentId: string): Promise<string> {
+  const res = await api.get<{ data: { url: string } }>(`/api/employees/${id}/documents/${documentId}/link`)
+  return res.data.url
+}

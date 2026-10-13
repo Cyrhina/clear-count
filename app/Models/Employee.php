@@ -51,6 +51,12 @@ class Employee extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /** Files on the record (contracts, ID copies ...). */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EmployeeDocument::class)->latest();
+    }
+
     /** Pay history, newest first. */
     public function compensations(): HasMany
     {

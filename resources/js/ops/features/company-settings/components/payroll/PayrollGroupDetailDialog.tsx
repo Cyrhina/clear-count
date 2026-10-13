@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
@@ -6,17 +6,33 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
+import { useToast } from '@ops/components/ui/Toast'
 import { COMPANY_SETTINGS_KEY } from '@ops/features/company-settings/hooks/useCompanySettings'
 import type { PayrollGroup } from '@ops/features/company-settings/types'
-import { getPayrollGroup } from '@ops/lib/services/payrollGroupService'
+import { usePermission } from '@ops/hooks/usePermission'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { assignPayrollGroupEmployees, getPayrollGroup } from '@ops/lib/services/payrollGroupService'
 import { formatDate } from '@ops/lib/utils/format'
 
-/** Read-only view of a group and its members. Moving employees between groups comes with the Employees module. */
+/** A group and its members. People with payroll settings access can take a member out of the group (adding is the Assign dialog). */
 export function PayrollGroupDetailDialog({ group, trigger }: { group: PayrollGroup; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   // Members come with the single-group endpoint; the list endpoint only carries their count.
   const detail = useQuery({ queryKey: [COMPANY_SETTINGS_KEY, 'group', group.id], queryFn: () => getPayrollGroup(group.id), enabled: open })
   const members = detail.data?.employees ?? []
+  const canEdit = usePermission('settings.payroll.edit')
+  const queryClient = useQueryClient()
+  const { notify } = useToast()
+
+  async function remove(employeeId: string, name: string) {
+    try {
+      await assignPayrollGroupEmployees(group.id, [employeeId], 'unassign')
+    } catch (error) {
+      return notify({ title: "Couldn't remove the employee", description: apiErrorMessage(error), tone: 'danger' })
+    }
+    notify({ title: `${name} removed from ${group.name}`, tone: 'success' })
+    void queryClient.invalidateQueries({ queryKey: [COMPANY_SETTINGS_KEY] })
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -81,6 +97,7 @@ export function PayrollGroupDetailDialog({ group, trigger }: { group: PayrollGro
                   <TableHead>Employee</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
+                  {canEdit && <TableHead className="text-right">Manage</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -92,6 +109,13 @@ export function PayrollGroupDetailDialog({ group, trigger }: { group: PayrollGro
                     </TableCell>
                     <TableCell className="text-muted-foreground">{employee.department ?? '—'}</TableCell>
                     <TableCell className="capitalize text-muted-foreground">{employee.status}</TableCell>
+                    {canEdit && (
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => remove(employee.id, employee.name)}>
+                          Remove
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

@@ -7,10 +7,9 @@ use App\Http\Resources\EmployeeDetailResource;
 use App\Http\Resources\EmployeeResource;
 use App\Models\BranchDepartment;
 use App\Models\Employee;
-use App\Models\EmployeeCompensation;
 use App\Models\User;
 use App\Support\ActivityLogger;
-use App\Support\EmployeeNumber;
+use App\Support\EmployeeHiring;
 use App\Support\EmployeeRules;
 use App\Support\ListQuery;
 use App\Support\Roles;
@@ -59,27 +58,7 @@ class EmployeeController extends Controller
 
     public function store(StoreEmployeeRequest $request): JsonResponse
     {
-        $data = $request->validated();
-        $companyId = $request->user()->company_id;
-
-        $employee = DB::transaction(function () use ($data, $companyId, $request) {
-            $employee = Employee::create([
-                'company_id' => $companyId,
-                'branch_id' => $data['branch_id'],
-                'payroll_group_id' => $data['payroll_group_id'] ?? null,
-                'employee_number' => EmployeeNumber::next($companyId),
-                'personal' => $data['personal'],
-                'employment' => [...$data['employment'], 'status' => $data['employment']['status'] ?? 'active'],
-                'compensation' => $this->snapshot($data['compensation']),
-                'benefits' => $data['benefits'] ?? ['leaveCreditsByType' => []],
-                'government' => $data['government'] ?? [],
-                'bank' => $data['bank'] ?? [],
-            ]);
-            $this->recordCompensation($employee, $employee->compensation, 'Initial Hire', $employee->employment['dateHired'], $request->user());
-            BranchDepartment::ensure($employee->branch_id, $employee->department);
-
-            return $employee;
-        });
+        $employee = EmployeeHiring::hire($request->validated(), $request->user());
         ActivityLogger::log(module: 'Employees', action: 'Added', title: 'Employee', description: $employee->name, subject: $employee);
 
         return (new EmployeeDetailResource($employee))->response()->setStatusCode(201);
@@ -131,17 +110,21 @@ class EmployeeController extends Controller
             'reason' => ['required', 'string', 'max:100'],
             'effective_from' => ['nullable', 'date', 'before_or_equal:today'],
         ]);
-        $new = $this->snapshot($data['compensation']);
+        $c = $data['compensation'];
+        if (! array_key_exists('mixed', $c)) {
+            $c['mixed'] = $employee->compensation['mixed'] ?? null;
+        }
+        $new = EmployeeHiring::snapshot($c);
 
         if ($new == $employee->compensation) {
             return (new EmployeeDetailResource($employee))->response();
         }
 
         DB::transaction(function () use ($employee, $new, $data, $request) {
-            $this->recordCompensation($employee, $new, $data['reason'], $data['effective_from'] ?? now()->toDateString(), $request->user());
+            EmployeeHiring::recordCompensation($employee, $new, $data['reason'], $data['effective_from'] ?? now()->toDateString(), $request->user());
             $current = $employee->compensations()->effectiveOn(now()->toDateString())->first();
-            $employee->update(['compensation' => $this->snapshot([
-                'basicPay' => $current->basic_rate, 'payType' => $current->rate_type, 'outputUnit' => $current->output_unit, 'allowances' => $current->allowances,
+            $employee->update(['compensation' => EmployeeHiring::snapshot([
+                'basicPay' => $current->basic_rate, 'payType' => $current->rate_type, 'outputUnit' => $current->output_unit, 'allowances' => $current->allowances, 'mixed' => $current->mixed,
             ])]);
         });
 
@@ -227,37 +210,5 @@ class EmployeeController extends Controller
         ActivityLogger::log(module: 'Employees', action: 'Updated', title: $section, description: $employee->name, subject: $employee);
 
         return (new EmployeeDetailResource($employee))->response();
-    }
-
-    /**
-     * The employee's current pay as stored on the record.
-     *
-     * @param  array<string, mixed>  $c
-     * @return array<string, mixed>
-     */
-    private function snapshot(array $c): array
-    {
-        return [
-            'basicPay' => (float) $c['basicPay'],
-            'payType' => $c['payType'],
-            'outputUnit' => $c['payType'] === 'output_based' ? ($c['outputUnit'] ?? null) : null,
-            'allowances' => array_map(fn ($a) => ['label' => $a['label'], 'amount' => (float) $a['amount']], $c['allowances'] ?? []),
-        ];
-    }
-
-    /** @param array<string, mixed> $pay */
-    private function recordCompensation(Employee $employee, array $pay, string $reason, string $effectiveFrom, User $by): void
-    {
-        EmployeeCompensation::create([
-            'company_id' => $employee->company_id,
-            'employee_id' => $employee->id,
-            'effective_from' => $effectiveFrom,
-            'rate_type' => $pay['payType'],
-            'basic_rate' => $pay['basicPay'],
-            'output_unit' => $pay['outputUnit'] ?? null,
-            'allowances' => $pay['allowances'],
-            'reason' => $reason,
-            'changed_by' => $by->id,
-        ]);
     }
 }

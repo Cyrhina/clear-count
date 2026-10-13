@@ -81,3 +81,6 @@ export async function copyBranchDepartments(fromBranchId: string, toBranchId: st
 export const renameBranchDepartment = (id: string, name: string) => api.put(`/api/branch-departments/${id}`, { name })
 
 export const removeBranchDepartment = (id: string) => api.delete<void>(`/api/branch-departments/${id}`)
+
+/** The direct supervisor of a department; `null` clears it. Only an employee of that department can be chosen. */
+export const setBranchDepartmentSupervisor = (id: string, employeeId: string | null) => api.put(`/api/branch-departments/${id}/supervisor`, { employee_id: employeeId === null ? null : Number(employeeId) })

@@ -9,10 +9,13 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useBranches, useDepartments } from '@ops/features/branches/hooks/useBranches'
 import { AddEmployeeDialog } from '@ops/features/employees/components/AddEmployeeDialog'
+import { BulkEmployeeActions } from '@ops/features/employees/components/BulkEmployeeActions'
+import { ImportEmployeesDialog } from '@ops/features/employees/components/ImportEmployeesDialog'
 import { EmployeeTable } from '@ops/features/employees/components/EmployeeTable'
 import { useEmployeeList } from '@ops/features/employees/hooks/useEmployeeRecords'
 import type { EmployeeListParams } from '@ops/features/employees/types'
 import { usePermission } from '@ops/hooks/usePermission'
+import { useRowSelection } from '@ops/hooks/useRowSelection'
 import { apiErrorMessage } from '@ops/lib/api/http'
 
 const STATUS_OPTIONS = [
@@ -54,7 +57,7 @@ export function EmployeeListPage() {
   // Any change to what is shown starts again from the first page.
   useEffect(() => setPage(1), [debouncedSearch, status, branchId, department, sortBy, sortDirection])
 
-  const { employees, total, lastPage, isLoading, error } = useEmployeeList({
+  const { employees, total, lastPage, isLoading, error, refetch } = useEmployeeList({
     search: debouncedSearch || undefined,
     status: status === 'all' ? undefined : status,
     branchId: branchId === 'all' ? undefined : branchId,
@@ -82,13 +85,23 @@ export function EmployeeListPage() {
   }
 
   const canManageRoster = usePermission('employees.edit')
+  const canBulkEdit = canManageRoster || usePermission('settings.payroll.edit')
+  // Selection covers the page on screen.
+  const selection = useRowSelection(useMemo(() => employees.map((e) => e.id), [employees]))
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={canManageRoster ? 'Employees' : 'My Team'}
         description={canManageRoster ? 'View, add, and manage everyone on the company roster.' : 'Your team — their positions, departments, schedules, and attendance.'}
-        actions={canManageRoster && <AddEmployeeDialog />}
+        actions={
+          canManageRoster && (
+            <div className="flex items-center gap-2">
+              <ImportEmployeesDialog />
+              <AddEmployeeDialog />
+            </div>
+          )
+        }
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -127,8 +140,10 @@ export function EmployeeListPage() {
       ) : isLoading ? (
         <Skeleton className="h-96" />
       ) : (
-        <EmployeeTable employees={employees} branches={branches} />
+        <EmployeeTable employees={employees} branches={branches} selection={canBulkEdit ? selection : undefined} />
       )}
+
+      {canBulkEdit && <BulkEmployeeActions selected={[...selection.selected]} employees={employees} departments={departmentOptions.slice(1).map((o) => o.value)} onClear={selection.clear} onDone={refetch} />}
 
       {lastPage > 1 && (
         <div className="flex items-center justify-end gap-2">

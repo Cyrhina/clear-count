@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Archive, FileText, KeyRound, Pencil, ShieldCheck, UserPlus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowLeft, Archive, Download, FileText, KeyRound, Pencil, ShieldCheck, Trash2, Upload, UserPlus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Avatar } from '@ops/components/ui/Avatar'
@@ -33,9 +33,10 @@ import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { useEmployeeRecord } from '@ops/features/employees/hooks/useEmployeeRecords'
 import { usePermission } from '@ops/hooks/usePermission'
 import { apiErrorMessage } from '@ops/lib/api/http'
-import { SEPARATION_LABEL, assignEmployeePayrollGroup, createEmployeeAccount, saveEmployeeStatus } from '@ops/lib/services/employeeService'
+import { SEPARATION_LABEL, assignEmployeePayrollGroup, createEmployeeAccount, deleteEmployeeDocument, employeeDocumentLink, saveEmployeeStatus, uploadEmployeeDocument } from '@ops/lib/services/employeeService'
 import { Input } from '@ops/components/ui/Input'
 import { useSession } from '@ops/hooks/useSession'
+import { summarizeMixedCompensation } from '@ops/features/employees/mixedCompensation'
 import { categoryLabel } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, estimatedEquivalentFor, formatBaseRate, rateFieldLabel } from '@ops/lib/payroll/payRate'
 import { getPayrollGroups } from '@ops/lib/services/payrollGroupService'
@@ -105,6 +106,7 @@ function EmployeeProfileContent() {
   const account = employee?.account ?? null
   const [resetOpen, setResetOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const documentInput = useRef<HTMLInputElement>(null)
   const [accountEmail, setAccountEmail] = useState('')
   const [tab, setTab] = useState('personal')
   // Same sections as the tab row, in the same order — shown as a dropdown on phones.
@@ -160,6 +162,23 @@ function EmployeeProfileContent() {
     notify({ ...success, tone: 'success' })
     refetch()
     return true
+  }
+
+  async function uploadDocument(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !employee) return
+    await run(() => uploadEmployeeDocument(employee.id, file), { title: 'Document uploaded', description: file.name })
+  }
+
+  async function openDocument(documentId: string) {
+    if (!employee) return
+    try {
+      // A link that works for five minutes; the file itself is never public.
+      window.open(await employeeDocumentLink(employee.id, documentId), '_blank', 'noopener')
+    } catch (error) {
+      notify({ title: "Couldn't open the document", description: apiErrorMessage(error), tone: 'danger' })
+    }
   }
 
   async function applyStatusChange() {
@@ -349,6 +368,7 @@ function EmployeeProfileContent() {
                   {employee.compensation.payType === 'output_based' && (
                     <Field label="Output Unit" value={employee.compensation.outputUnit ?? undefined} />
                   )}
+                  {employee.compensation.mixed && <Field label="Mixed Compensation" value={summarizeMixedCompensation(employee.compensation.mixed)} />}
                 </div>
                 {(() => {
                   const estimate = estimatedEquivalentFor(employee.compensation.payType, employee.compensation.basicPay)
@@ -509,21 +529,43 @@ function EmployeeProfileContent() {
         </TabsContent>
 
         <TabsContent value="documents">
-          {employee.documents.length === 0 ? (
-            <EmptyState icon={FileText} title="No documents uploaded" />
-          ) : (
-            <div className="space-y-2">
-              {employee.documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <FileText className="size-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">{doc.name}</p>
+          <div className="space-y-3">
+            {canEditProfile && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">PDF, image, Word or Excel files up to 5 MB. They are private; opening one uses a link that expires in a few minutes.</p>
+                <Button size="sm" icon={<Upload className="size-3.5" />} onClick={() => documentInput.current?.click()}>
+                  Upload document
+                </Button>
+                <input ref={documentInput} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" className="hidden" onChange={uploadDocument} />
+              </div>
+            )}
+            {employee.documents.length === 0 ? (
+              <EmptyState icon={FileText} title="No documents uploaded" />
+            ) : (
+              <div className="space-y-2">
+                {employee.documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      <p className="truncate text-sm font-medium">{doc.name}</p>
+                      <span className="text-xs uppercase text-muted-foreground">{doc.fileType}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <p className="mr-2 text-xs text-muted-foreground">Uploaded {formatDate(doc.uploadedAt)}</p>
+                      <Button size="sm" variant="ghost" aria-label={`Open ${doc.name}`} onClick={() => openDocument(doc.id)}>
+                        <Download className="size-4" />
+                      </Button>
+                      {canEditProfile && (
+                        <Button size="sm" variant="ghost" aria-label={`Delete ${doc.name}`} onClick={() => run(() => deleteEmployeeDocument(employee.id, doc.id), { title: 'Document deleted' })}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Uploaded {formatDate(doc.uploadedAt)}</p>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="history">

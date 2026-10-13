@@ -1,10 +1,10 @@
 import { OUTPUT_UNIT_OPTIONS } from '@ops/lib/payroll/payRate'
-import type { CreateEmployeeExtras, CreateEmployeeInput } from '@ops/lib/services/employeeService'
-import type { Branch, BranchDepartment, Employee, PayRateType } from '@ops/types/domain'
+import type { CreateEmployeeExtras, CreateEmployeeInput, ImportRowPayload } from '@ops/lib/services/employeeService'
+import type { PayRateType } from '@ops/types/domain'
 
 /**
- * Bulk employee import (CSV). Pure parsing + validation — nothing is saved here; the dialog shows the
- * result as a preview and hands the valid rows to `importEmployees`.
+ * Bulk employee import (CSV). The browser parses the file and checks what it can (formats, the branch and department names);
+ * the dialog then sends the rows to the server, which validates them again, finds duplicate names and saves.
  */
 
 export interface ImportColumn {
@@ -28,11 +28,11 @@ export const IMPORT_COLUMNS: ImportColumn[] = [
   { header: 'Pay Type', required: true, hint: 'monthly, semi_monthly, daily, hourly or output_based', aliases: ['Pay Rate Type', 'Rate Type'] },
   { header: 'Basic Pay', required: true, hint: 'Rate amount for the pay type, numbers only', aliases: ['Base Rate', 'Rate'] },
   { header: 'Output Unit', required: false, hint: `Required for output_based: ${OUTPUT_UNIT_OPTIONS.join(', ')}` },
-  { header: 'Birth Date', required: false, hint: 'YYYY-MM-DD' },
+  { header: 'Birth Date', required: true, hint: 'YYYY-MM-DD (MM/DD/YYYY also accepted)' },
   { header: 'Civil Status', required: false, hint: 'single, married, widowed or separated' },
-  { header: 'Contact Number', required: false, hint: 'e.g. 09171234567' },
+  { header: 'Contact Number', required: true, hint: 'e.g. 09171234567' },
   { header: 'Personal Email', required: false, hint: 'e.g. maria@gmail.com', aliases: ['Email'] },
-  { header: 'Address', required: false, hint: 'Home address' },
+  { header: 'Address', required: true, hint: 'Home address' },
   { header: 'SSS No', required: false, hint: 'e.g. 34-1234567-8' },
   { header: 'PhilHealth No', required: false, hint: 'e.g. 12-345678901-2' },
   { header: 'Pag-IBIG No', required: false, hint: 'e.g. 1234-5678-9012' },
@@ -51,7 +51,7 @@ export function sampleImportRows(branchName: string): string[][] {
     ['Maria', 'Santos', 'Operations', 'Payroll Specialist', branchName, 'regular', '2024-03-04', 'monthly', '32000', '', '1993-06-14', 'married', '09171234567', 'maria.santos@gmail.com', '12 Rizal St., Quezon City', '34-1234567-8', '12-345678901-2', '1234-5678-9012', '123-456-789-000', 'BDO', '001234567890'],
     ['Jose', 'Dela Cruz', 'Finance', 'Accounting Clerk', branchName, 'probationary', '2026-07-01', 'semi_monthly', '14500', '', '1999-11-02', 'single', '09981234567', 'jose.delacruz@gmail.com', '45 Mabini Ave., Pasig City', '', '', '', '', 'BPI', '0987654321'],
     ['Ana', 'Reyes', 'Production', 'Machine Operator', branchName, 'regular', '2023-09-18', 'daily', '610', '', '1991-02-25', 'married', '09201234567', '', 'Block 5 Lot 8, Antipolo', '', '', '', '', '', ''],
-    ['Ramon', 'Garcia', 'Warehouse', 'Utility Helper', branchName, 'part_time', '2026-08-10', 'hourly', '95', '', '2002-08-30', 'single', '', '', '', '', '', '', '', '', ''],
+    ['Ramon', 'Garcia', 'Warehouse', 'Utility Helper', branchName, 'part_time', '2026-08-10', 'hourly', '95', '', '2002-08-30', 'single', '09451234567', '', '8 Bonifacio St., Makati City', '', '', '', '', '', ''],
     ['Liza', 'Mendoza', 'Production', 'Sewer', branchName, 'contractual', '2026-05-02', 'output_based', '18.5', 'Per Piece', '1996-12-09', 'single', '09351234567', '', 'Purok 3, Taytay, Rizal', '', '', '', '', '', ''],
   ]
 }
@@ -89,7 +89,7 @@ function toIsoDate(raw: string): string | null {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-export function parseEmployeeImport(csvRows: string[][], branches: Branch[], existing: Employee[], departments: BranchDepartment[]): ImportParseResult {
+export function parseEmployeeImport(csvRows: string[][], branches: { id: string; name: string }[], departments: { branchId: string; name: string }[]): ImportParseResult {
   const [headerRow = [], ...body] = csvRows
   const headerIndex = new Map<string, number>()
   headerRow.forEach((h, i) => headerIndex.set(normalize(h.replace(/^﻿/, '').replace(/\*/g, '')), i))
@@ -111,7 +111,8 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
   }
 
   const branchByName = new Map(branches.map((b) => [normalize(b.name), b]))
-  const taken = new Set(existing.map((e) => `${normalize(e.personal.firstName)}|${normalize(e.personal.lastName)}`))
+  // A name that already exists in the company is found by the server; this only catches a repeat inside the file.
+  const taken = new Set<string>()
 
   const rows: ImportRow[] = []
   body.forEach((cells, i) => {
@@ -155,12 +156,9 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
     }
 
     const extras: CreateEmployeeExtras = {}
-    const birth = get(cells, 'Birth Date')
-    if (birth) {
-      const iso = toIsoDate(birth)
-      if (iso) extras.birthDate = iso
-      else warnings.push('Birth Date ignored (invalid date)')
-    }
+    const iso = toIsoDate(get(cells, 'Birth Date'))
+    if (iso) extras.birthDate = iso
+    else errors.push('Birth Date must be a valid date (YYYY-MM-DD)')
     const civil = CIVIL_STATUSES.find((s) => s === get(cells, 'Civil Status').toLowerCase())
     if (get(cells, 'Civil Status') && !civil) warnings.push('Civil Status ignored (use single, married, widowed or separated)')
     if (civil) extras.civilStatus = civil
@@ -170,8 +168,6 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
       else warnings.push('Personal Email ignored (invalid)')
     }
     for (const [header, key] of [
-      ['Contact Number', 'contactNumber'],
-      ['Address', 'address'],
       ['SSS No', 'sssNo'],
       ['PhilHealth No', 'philhealthNo'],
       ['Pag-IBIG No', 'pagibigNo'],
@@ -183,10 +179,15 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
       if (value) extras[key] = value
     }
 
+    if (!get(cells, 'Contact Number')) errors.push('Contact Number is required')
+    else extras.contactNumber = get(cells, 'Contact Number')
+    if (!get(cells, 'Address')) errors.push('Address is required')
+    else extras.address = get(cells, 'Address')
+
     if (firstName && lastName) {
       const key = `${normalize(firstName)}|${normalize(lastName)}`
-      if (taken.has(key)) errors.push('An employee with this name already exists')
-      else taken.add(key) // also catches duplicates inside the file itself
+      if (taken.has(key)) errors.push('This name appears twice in the file')
+      else taken.add(key)
     }
 
     rows.push({
@@ -201,4 +202,18 @@ export function parseEmployeeImport(csvRows: string[][], branches: Branch[], exi
     })
   })
   return { rows, missingColumns }
+}
+
+/** A parsed row in the shape the import endpoint takes. */
+export function toImportRow(input: CreateEmployeeInput, line: number): ImportRowPayload {
+  const x = input.extras ?? {}
+  return {
+    line,
+    branch_id: input.branchId,
+    personal: { firstName: input.firstName, lastName: input.lastName, birthDate: x.birthDate ?? '', civilStatus: x.civilStatus ?? 'single', address: x.address ?? '', contactNumber: x.contactNumber ?? '', ...(x.personalEmail ? { personalEmail: x.personalEmail } : {}) },
+    employment: { position: input.position, department: input.department, employmentType: input.employmentType, dateHired: input.dateHired, category: 'regular' },
+    compensation: { basicPay: input.basicPay, payType: input.payType, outputUnit: input.outputUnit ?? null, allowances: [] },
+    government: { sssNo: x.sssNo, philhealthNo: x.philhealthNo, pagibigNo: x.pagibigNo, tinNo: x.tinNo },
+    bank: { bankName: x.bankName, accountNumber: x.accountNumber },
+  }
 }

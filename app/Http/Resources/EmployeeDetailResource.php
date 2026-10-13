@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Controllers\EmployeeDocumentController;
 use App\Models\ActivityLog;
 use App\Models\Employee;
 use App\Models\User;
@@ -23,10 +24,12 @@ class EmployeeDetailResource extends EmployeeResource
         return [
             ...parent::toArray($request),
             'history' => $this->history(),
-            'documents' => [],
             // The sign-in account linked to this employee, for people who manage accounts.
             $this->mergeWhen($request->user()->can('users.manage'), fn () => ['account' => User::where('employee_id', $this->id)->first(['id', 'email', 'is_active'])?->only(['id', 'email', 'is_active'])]),
-            $this->mergeWhen($request->user()->can('employees.pay.view'), fn () => ['compensation_history' => $this->compensationHistory()]),
+            $this->mergeWhen($request->user()->can('employees.pay.view'), fn () => [
+                'compensation_history' => $this->compensationHistory(),
+                'documents' => $this->documents->map(fn ($d) => EmployeeDocumentController::present($d))->all(),
+            ]),
         ];
     }
 

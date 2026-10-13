@@ -18,7 +18,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
 | P1 | Company setup wiring | merged | backend/p01-company-setup | #4 | 2026-10-13 |
 | P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
-| P3 | Employees (a, b) | in progress: P3a in review | backend/p03-employees | | |
+| P3 | Employees (a, b) | in progress: P3a merged (#6), P3b in review | backend/p03-employees, backend/p03b-employees-bulk | #6 (P3a) | 2026-10-13 (P3a) |
 | P4 | Schedules and roster | not started | | | |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | not started | | | |
 | P6 | Leave | not started | | | |
@@ -57,15 +57,13 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | Mock code (file:function) | Still imported by | Remove in | Added in |
 |---|---|---|---|
 | `companyService`: getCompany, getSchedules, getHolidays, addEmployeesToSchedule | attendance, schedules, onboarding, employees, company-settings (dead dialogs) | P2 (company), P4 (schedules), P5 (holidays in attendance) | P1 |
-| `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules, updatePayrollGroupMembership, setEmployeePayrollGroup, bulkSetEmployeePayrollGroup | employees, payroll, payslips, loans-deductions, attendance (late counting), reports | P3 (groups, membership), P9 (deductions), P10 (rules, compensation) | P1 |
-| `features/company-settings/components/payroll/PayrollGroupAssignDialog.tsx`, `AssignEmployeesDialog.tsx` | nothing (kept to be rewired on the API) | P3 (groups), P4 (schedules) | P1 |
+| `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules | payroll, payslips, loans-deductions, attendance (late counting), reports | P9 (deductions), P10 (groups, rules, compensation) | P1 |
+| `features/company-settings/components/payroll/AssignEmployeesDialog.tsx` (generic, for work schedules) | nothing (kept to be rewired on the API) | P4 | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
-| `branchService`: getBranches, reassignEmployeeBranch, assignEmployeesToBranch; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved; `branches/hooks/useBranchDepartments.ts` | employees (bulk actions, import, department select), schedules (teams, roster), integrations, `employeeService` | P3b (import and bulk), P4 (schedules), P16 (integrations) | P2 |
-| `features/branches/components/AssignEmployeesDialog.tsx`, `EmployeeMultiPicker.tsx` | nothing (kept to be rewired on the API) | P3b | P2 |
-| `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee, importEmployees, updateEmployeeStatus, bulkUpdateEmployeeDepartment, bulkUpdateEmployeeStatus | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations, `BulkEmployeeActions` | P3b (create, import, status, bulk); P4-P14 (getEmployees in each module); P13 (self service) | P3a |
+| `branchService`: getBranches; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved | schedules (teams, roster), integrations, `employeeService.createEmployee` | P4 (schedules), P16 (integrations) | P2 |
+| `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
-| `features/employees/components/ImportEmployeesDialog.tsx`, `BulkEmployeeActions.tsx` | nothing (not rendered until P3b) | P3b | P3a |
 
 ## Handoff notes
 
@@ -81,6 +79,22 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P3b - 2026-10-15
+- Branch: backend/p03b-employees-bulk (pushed: no)
+- Done:
+  - Backend: `POST api/employees/import` (rows as JSON, `dry_run`) on the new reusable `ImportKit` (validate, check, commit in one transaction, 500 rows max); bulk department, branch and status (`api/employees/bulk/*`); `employee_documents` table on the private disk (upload, delete, 5-minute signed link, `signed` download route; types and 5 MB limit); mixed compensation stored in `compensation.mixed` and in the pay-history row; hiring logic shared in `EmployeeHiring`. Tests: 174 pass, 4 skipped.
+  - Frontend: Import dialog (the browser parses the CSV, the server does the dry-run preview and the duplicate check, then commits), bulk bar (department, branch, payroll group, deactivate, export) with row selection, Documents tab (upload, open, delete), mixed compensation read from the record (no more in-memory store), department supervisor picker on the Branches page, Assign employees for Payroll Groups (search the roster, assign; members removed from the group details).
+- Next: open the P3b PR, merge it, then start P4 (Schedules and roster). PLAN.md P4.
+- Gotchas:
+  - Import now requires Birth Date, Contact Number and Address (the server needs them to hire); the sample file has them. Government and bank columns are dropped with a warning for roles that cannot edit them.
+  - A mixed structure decides `basicPay` and `payType` (its base). A compensation update that does not send `mixed` keeps it; `mixed: null` clears it.
+  - Bulk bar no longer has Assign Work Schedule, Add to Benefit Plan or Add to Recurring Deduction; they return with Schedules (P4) and Benefits (P9). Work schedule assign on the settings page is still disabled (P4).
+  - The separation action sets the status and logs it. Ending recurring benefits and deductions on the last day is added in P9 (ledger: nothing to remove, it is new code).
+  - Bulk payroll-group assign cannot clear a group (the endpoint assigns to one group); removal is per member in the group details.
+  - Branch cards still show no employee lists and there is no branch manager column; the employee list filtered by branch does the job.
+  - Not browser-tested: the file picker of the import dialog (the endpoint was driven with fetch: dry run, commit, duplicate), bulk branch, bulk deactivate, payroll group assign and remove dialogs, document delete, supervisor select change.
+- Checks: php artisan test 174 passed, 4 skipped; tsc clean; test:samples 13 pass; test:golden 3 pass.
 
 ### P3a - 2026-10-14
 - Branch: backend/p03-employees (pushed: no)
