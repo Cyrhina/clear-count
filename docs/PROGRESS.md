@@ -22,8 +22,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P4 | Schedules and roster | done (merged #8) | backend/p04-schedules | #8 | 2026-10-13 |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | done (merged #9, #10) | backend/p05a-attendance, backend/p05b-wfh | #9, #10 | 2026-10-13 |
 | P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
-| P7 | Overtime, work logs, approvals inbox, notifications | in progress: in review | backend/p07-overtime | | |
-| P8 | Statutory tables and withholding tax | not started | | | |
+| P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
+| P8 | Statutory tables and withholding tax | in progress: in review | backend/p08-statutory | | |
 | P9 | Benefits, loans, deductions, bonuses | not started | | | |
 | P10 | Payroll engine and runs (a, b) | not started | | | |
 | P11 | Payslips, PDF, email | not started | | | |
@@ -70,6 +70,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords`; `features/ess/otApplicationStore.ts` (ESS-only OT applications) | payroll (period detail), dashboards, reports (basic, team), manager service, notifications, ESS overtime page | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P7 |
 | `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, payroll (period detail, work log card, rate basis), dashboards, reports, manager service | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P7 |
 | `notificationService` (mock): getNotifications (team absence, payroll reminders, payslip and loan notices only) | the bell and Notifications page, merged with the stored ones | P10, P11 (payroll, payslips), P14 | P7 |
+| `payrollService` (mock): getStatutoryConfig, updateStatutoryConfig, monthlyStatutoryFor; `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/withholdingTax.ts` | the browser payroll engine (runs, period detail, payslips, 13th month, loans) | P10 (payroll), P12 (13th month) | P8 |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -88,6 +89,20 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P8 - 2026-10-21
+- Branch: backend/p08-statutory (pushed: no)
+- Done:
+  - Backend: four dated tables, `sss_brackets`, `philhealth_rates`, `pagibig_rates`, `tax_brackets` (one bracket table per pay period: annual, monthly, semi-monthly, weekly, daily). `company_id` null is the system default, created on first use (`StatutoryTables::ensureDefaults`, from the mock seed). `StatutoryTables::for(company, date)` resolves each table on its own: the company's latest row set starting on or before the date, else the system's. A save writes the company's rows for an effective date (today by default) and replaces a set saved for the same date, so an edit applies from its date and earlier dates keep their tables. `App\Payroll\Statutory\StatutoryCalculator` (port of `monthlyStatutoryFor`, same half-up rounding) and `App\Payroll\Tax\WithholdingTax` (port of `withholdingTax.ts`). Endpoints under `api/statutory`: show (tables for a date), update (any of the tables), preview (rows of monthly salary, frequency and periods per month to the figures), employees (active employees with pay only, because a payroll role cannot open the employee records). Tests: 233 (229 pass, 4 skipped): the calculator gives the browser engine's figures on all 68 golden rows, every golden tax table sample matches, and the seeded system tables equal the golden configuration.
+  - Frontend: `statutoryApiService` and `useStatutoryConfig` (TanStack Query). The four cards save through the API, and the Employee Contributions tab asks the server to preview (it no longer calls `monthlyStatutoryFor`).
+- Next: open the P8 PR, merge it, then start P9 (Benefits, loans, deductions, bonuses). PLAN.md P9.
+- Gotchas:
+  - **The seeded rates still have to be checked against the official 2026 SSS, PhilHealth, Pag-IBIG and BIR tables before release.** They are the mock's values (SSS 2025 schedule, PhilHealth 5% with a 10,000 floor and 100,000 ceiling, Pag-IBIG 2% up to 10,000, TRAIN tax tables).
+  - The browser payroll engine (payroll runs, payslips) still reads the mock copy of the tables (see the ledger), so a table edit on the Statutory page does not change a payroll run until P10.
+  - There is no effective date field on the Statutory screens yet: every save applies from today. The API already takes any date.
+  - Not browser-tested: saving the SSS, PhilHealth or withholding tax cards (the Pag-IBIG save, the tables loading and the contributions tab were checked).
+- Checks: php artisan test 233 (229 passed, 4 skipped); tsc clean; test:samples; test:golden 3 pass.
+
 
 ### P7 - 2026-10-20
 - Branch: backend/p07-overtime (pushed: no)

@@ -5,8 +5,8 @@ import { Card } from '@ops/components/ui/Card'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateStatutoryConfig } from '@ops/lib/services/payrollService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { saveStatutoryConfig } from '@ops/lib/services/statutoryApiService'
 import type { StatutoryConfig } from '@ops/types/domain'
 
 interface FormValues {
@@ -24,7 +24,6 @@ export function PhilhealthCard({
   canEdit: boolean
   onSaved: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -49,7 +48,11 @@ export function PhilhealthCard({
   }, [config, reset])
 
   async function onSubmit(values: FormValues) {
-    await updateStatutoryConfig(user, values)
+    try {
+      await saveStatutoryConfig(config, values)
+    } catch (error) {
+      return notify({ title: "Couldn't save the table", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'PhilHealth settings updated', tone: 'success' })
     onSaved()
   }

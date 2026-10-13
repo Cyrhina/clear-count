@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getStatutoryConfig } from '@ops/lib/services/payrollService'
-import type { StatutoryConfig } from '@ops/types/domain'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchStatutoryConfig } from '@ops/lib/services/statutoryApiService'
+
+/** Key of the statutory module; a save invalidates the tables and every preview computed from them. */
+export const STATUTORY_KEY = 'statutory'
 
 export function useStatutoryConfig() {
-  const { user } = useSession()
-  const [config, setConfig] = useState<StatutoryConfig | null | undefined>(undefined)
-
-  const refetch = useCallback(() => {
-    getStatutoryConfig(user).then((result) => setConfig(result ?? null))
-  }, [user])
-
-  useEffect(() => {
-    refetch()
-  }, [refetch])
-
-  return { config, isLoading: config === undefined, refetch }
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: [STATUTORY_KEY, 'config'], queryFn: fetchStatutoryConfig })
+  return { config: query.data, isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: [STATUTORY_KEY] }) }
 }

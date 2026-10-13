@@ -17,8 +17,8 @@ import {
   formatPeso,
   useAccordionRows,
 } from '@ops/features/statutory/components/BracketAccordion'
-import { useSession } from '@ops/hooks/useSession'
-import { updateStatutoryConfig } from '@ops/lib/services/payrollService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { saveStatutoryConfig } from '@ops/lib/services/statutoryApiService'
 import { TAX_FREQUENCIES, taxBracketsFor, taxFrequencyLabel, type TaxFrequency } from '@ops/lib/payroll/withholdingTax'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency } from '@ops/lib/utils/format'
@@ -37,7 +37,6 @@ export function WithholdingTaxCard({
   canEdit: boolean
   onSaved: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [frequency, setFrequency] = useState<TaxFrequency>('monthly')
   const brackets = taxBracketsFor(config, frequency) ?? []
@@ -66,8 +65,12 @@ export function WithholdingTaxCard({
   }, [config, frequency, reset])
 
   async function onSubmit(values: FormValues) {
-    if (frequency === 'monthly') await updateStatutoryConfig(user, { taxBrackets: values.taxBrackets })
-    else await updateStatutoryConfig(user, { taxBracketTables: { ...config.taxBracketTables, [frequency]: values.taxBrackets } })
+    try {
+      if (frequency === 'monthly') await saveStatutoryConfig(config, { taxBrackets: values.taxBrackets })
+      else await saveStatutoryConfig(config, { taxBracketTables: { [frequency]: values.taxBrackets } })
+    } catch (error) {
+      return notify({ title: "Couldn't save the table", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: `${taxFrequencyLabel(frequency)} withholding tax brackets updated`, tone: 'success' })
     onSaved()
   }

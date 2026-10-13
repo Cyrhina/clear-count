@@ -590,6 +590,7 @@ export async function finalizePayroll(session: SessionUser, periodId: string): P
   period.status = 'finalized'
 }
 
+// mock: remove in P10. The Statutory page uses statutoryApiService (dated tables on the server); the browser payroll engine still reads this copy.
 export async function getStatutoryConfig(session: SessionUser): Promise<StatutoryConfig | undefined> {
   return db.statutoryConfigs.find((c) => c.companyId === session.companyId)
 }
