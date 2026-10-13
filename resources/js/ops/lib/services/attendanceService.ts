@@ -1,78 +1,113 @@
-import { roleHasCapability } from '@ops/lib/rbac/permissions'
+import { camelizeKeys } from '@ops/lib/api/case'
+import { api } from '@ops/lib/api/http'
 import { statusForPunch } from '@ops/lib/attendance/status'
-import { getEmployees } from '@ops/lib/services/employeeService'
-import { materializeWfhRecords, scheduleOn } from '@ops/lib/services/wfhService'
+import { fetchAllEmployees, getEmployees } from '@ops/lib/services/employeeService'
+import { fetchShiftTemplates } from '@ops/lib/services/scheduleService'
+import { materializeWfhRecords } from '@ops/lib/services/wfhService'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
-import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveRequest, SessionUser } from '@ops/types/domain'
+import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveRequest, Schedule, SessionUser } from '@ops/types/domain'
 
-async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
-  const employees = await getEmployees(session)
-  return new Set(employees.map((e) => e.id))
+// ---- On the API: daily attendance, adjustments, biometrics import -------------------------------------------------------
+
+const hhmm = (time?: string | null) => (time ? time.slice(0, 5) : null)
+
+type ApiRecord = { id: string; employeeId: string; workScheduleId?: string; date: string; timeIn?: string; timeOut?: string; breakOut?: string; breakIn?: string; status: AttendanceRecord['status']; workType?: AttendanceRecord['workType']; autoRecorded?: boolean; wfhId?: string }
+
+/** The API sends HH:MM:SS and no company; the screens use HH:MM and the domain shape. */
+function toAttendanceRecord(r: ApiRecord): AttendanceRecord {
+  return {
+    id: r.id,
+    companyId: '',
+    employeeId: r.employeeId,
+    scheduleId: r.workScheduleId ?? '',
+    date: r.date.slice(0, 10),
+    timeIn: hhmm(r.timeIn),
+    timeOut: hhmm(r.timeOut),
+    breakOut: hhmm(r.breakOut),
+    breakIn: hhmm(r.breakIn),
+    status: r.status,
+    workType: r.workType,
+    autoRecorded: r.autoRecorded || undefined,
+    wfhId: r.wfhId,
+  }
 }
 
-export async function getSchedules(session: SessionUser) {
-  return scopeToCompany(db.schedules, session.companyId)
+async function fetchRecords(params: Record<string, string>): Promise<AttendanceRecord[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/attendance', params)
+  return camelizeKeys<ApiRecord[]>(res.data).map(toAttendanceRecord)
 }
 
-export async function getAttendanceForDate(session: SessionUser, date: string): Promise<AttendanceRecord[]> {
-  materializeWfhRecords()
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && r.date === date && employeeIds.has(r.employeeId))
+export const fetchAttendanceForDate = (date: string) => fetchRecords({ date })
+
+const dayKey = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
+
+/** The last year of records: what an import compares against, and what the weekly and monthly views read. */
+export const fetchAttendanceHistory = () => fetchRecords({ from: dayKey(-365), to: dayKey(0) })
+
+export const fetchAttendanceRange = (from: string, to: string, employeeId?: string) => fetchRecords(employeeId ? { from, to, employee_id: employeeId } : { from, to })
+
+/** Late days of the last two years, in the shape `lateDatesByEmployee` reads. */
+export async function fetchLateRecords(): Promise<{ employeeId: string; date: string; status: 'late' }[]> {
+  const res = await api.get<{ data: { employee_id: number; date: string }[] }>('/api/attendance/late-dates')
+  return res.data.map((r) => ({ employeeId: String(r.employee_id), date: r.date.slice(0, 10), status: 'late' as const }))
 }
 
-/** Every attendance record in scope, unfiltered by date — used to derive Daily/Hourly Basic Pay for a Payroll Run. */
-export async function getAttendanceRecords(session: SessionUser): Promise<AttendanceRecord[]> {
-  materializeWfhRecords()
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
+/**
+ * Work schedules with `assignedEmployeeIds` filled from each employee's default schedule, so the review and leave helpers
+ * keep reading the schedule an employee follows the way they always did.
+ */
+export async function fetchSchedulesWithMembers(): Promise<Schedule[]> {
+  const [templates, employees] = await Promise.all([fetchShiftTemplates(), fetchAllEmployees()])
+  return templates.map((s) => ({ ...s, companyId: '', assignedEmployeeIds: employees.filter((e) => e.workScheduleId === s.id).map((e) => e.id) }))
 }
 
-export async function getAttendanceForEmployee(session: SessionUser, employeeId: string): Promise<AttendanceRecord[]> {
-  materializeWfhRecords()
-  const employeeIds = await scopedEmployeeIds(session)
-  if (!employeeIds.has(employeeId)) return []
-  return db.attendanceRecords
-    .filter((r) => r.employeeId === employeeId)
-    .sort((a, b) => b.date.localeCompare(a.date))
+type ApiAdjustment = { id: string; employeeId: string; attendanceRecordId: string; requestedTimeIn?: string; requestedTimeOut?: string; reason: string; reasonCategory?: string; status: ApprovalStatus; createdAt: string; decidedAt?: string; decider?: { name: string }; record?: { date: string } }
+
+export async function fetchAdjustments(): Promise<AttendanceAdjustment[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/attendance/adjustments')
+  return camelizeKeys<ApiAdjustment[]>(res.data).map((a) => ({
+    id: a.id,
+    companyId: '',
+    employeeId: a.employeeId,
+    attendanceRecordId: a.attendanceRecordId,
+    date: a.record?.date.slice(0, 10),
+    requestedTimeIn: hhmm(a.requestedTimeIn),
+    requestedTimeOut: hhmm(a.requestedTimeOut),
+    reason: a.reason,
+    reasonCategory: a.reasonCategory,
+    status: a.status,
+    requestedAt: a.createdAt,
+    decidedBy: a.decider?.name,
+    decidedAt: a.decidedAt,
+  }))
 }
 
-export async function getAttendanceRecordForEmployeeDate(
-  session: SessionUser,
-  employeeId: string,
-  date: string,
-): Promise<AttendanceRecord | undefined> {
-  return db.attendanceRecords.find((r) => r.companyId === session.companyId && r.employeeId === employeeId && r.date === date)
+export interface AdjustmentRequestInput {
+  employeeId: string
+  date: string
+  requestedTimeIn: string | null
+  requestedTimeOut: string | null
+  reason: string
+  reasonCategory?: string
 }
 
-/** Employee ids with an approved leave request covering the given date — powers the "On Leave" filter option. */
-export async function getEmployeeIdsOnLeaveForDate(session: SessionUser, date: string): Promise<Set<string>> {
-  const employeeIds = await scopedEmployeeIds(session)
-  const onLeave = db.leaveRequests.filter(
-    (r) =>
-      r.companyId === session.companyId &&
-      r.status === 'approved' &&
-      employeeIds.has(r.employeeId) &&
-      r.dateFrom <= date &&
-      r.dateTo >= date,
-  )
-  return new Set(onLeave.map((r) => r.employeeId))
+/** Files a correction for an employee's day; a day with no record yet becomes an absent one the request hangs on. */
+export async function requestAdjustment(input: AdjustmentRequestInput): Promise<void> {
+  await api.post('/api/attendance/adjustments', {
+    employee_id: Number(input.employeeId),
+    date: input.date,
+    requested_time_in: input.requestedTimeIn || null,
+    requested_time_out: input.requestedTimeOut || null,
+    reason: input.reason,
+    reason_category: input.reasonCategory,
+  })
 }
 
-/** Employee ids with a pending adjustment request tied to the given date's attendance record — powers the "Pending Adjustment" filter option. */
-export async function getEmployeeIdsWithPendingAdjustmentForDate(session: SessionUser, date: string): Promise<Set<string>> {
-  const employeeIds = await scopedEmployeeIds(session)
-  const recordIdsForDate = new Set(
-    db.attendanceRecords.filter((r) => r.companyId === session.companyId && r.date === date).map((r) => r.id),
-  )
-  const pending = db.attendanceAdjustments.filter(
-    (a) =>
-      a.companyId === session.companyId &&
-      a.status === 'pending' &&
-      employeeIds.has(a.employeeId) &&
-      recordIdsForDate.has(a.attendanceRecordId),
-  )
-  return new Set(pending.map((a) => a.employeeId))
+/** Approves or rejects the pending requests in `ids`; returns how many were decided. */
+export async function decideAdjustments(ids: string[], decision: Extract<ApprovalStatus, 'approved' | 'rejected'>): Promise<number> {
+  const res = await api.post<{ data: { decided: number } }>('/api/attendance/adjustments/decide', { ids: ids.map(Number), decision })
+  return res.data.decided
 }
 
 export interface BiometricsPunch {
@@ -87,189 +122,28 @@ export interface BiometricsPunch {
   status?: AttendanceRecord['status']
 }
 
-export { statusForPunch }
-
-/** Applies punches parsed from an uploaded biometrics CSV — updates the matching day's record or creates one. */
-export async function applyBiometricsPunches(session: SessionUser, punches: BiometricsPunch[]): Promise<number> {
-  const employeeIds = await scopedEmployeeIds(session)
-  const schedules = await getSchedules(session)
-  const defaultSchedule = schedules[0]
-  if (!defaultSchedule) return 0
-
-  let applied = 0
-  for (const punch of punches) {
-    if (!employeeIds.has(punch.employeeId)) continue
-    const existing = db.attendanceRecords.find(
-      (r) => r.companyId === session.companyId && r.employeeId === punch.employeeId && r.date === punch.date,
-    )
-    const schedule =
-      schedules.find((s) => s.id === punch.scheduleId) ??
-      schedules.find((s) => s.id === existing?.scheduleId) ??
-      schedules.find((s) => s.assignedEmployeeIds?.includes(punch.employeeId)) ??
-      defaultSchedule
-    const status = punch.status ?? statusForPunch(punch.timeIn, punch.timeOut, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
-
-    if (existing) {
-      existing.timeIn = punch.timeIn
-      existing.timeOut = punch.timeOut
-      existing.breakOut = punch.breakOut ?? null
-      existing.breakIn = punch.breakIn ?? null
-      if (existing.autoRecorded) {
-        existing.autoRecorded = false
-        existing.workType = undefined
-        existing.wfhId = undefined
-      }
-      existing.status = status
-      if (punch.scheduleId) existing.scheduleId = punch.scheduleId
-    } else {
-      db.attendanceRecords.push({
-        id: `${punch.employeeId}_att_${punch.date}_import`,
-        companyId: session.companyId,
-        employeeId: punch.employeeId,
-        scheduleId: schedule.id,
-        date: punch.date,
-        timeIn: punch.timeIn,
-        timeOut: punch.timeOut,
-        breakOut: punch.breakOut ?? null,
-        breakIn: punch.breakIn ?? null,
-        status,
-      })
-    }
-    applied++
+/** Saves punches parsed from a biometrics file: the day's record is created or replaced. Returns how many were saved and which rows the server refused. */
+export async function importPunches(punches: BiometricsPunch[]): Promise<{ saved: number; refused: { line: number; errors: string[] }[] }> {
+  const rows = punches.map((p, i) => ({
+    line: i + 1,
+    employee_id: Number(p.employeeId),
+    date: p.date,
+    time_in: p.timeIn,
+    time_out: p.timeOut,
+    break_out: p.breakOut ?? null,
+    break_in: p.breakIn ?? null,
+    work_schedule_id: p.scheduleId ? Number(p.scheduleId) : null,
+    status: p.status ?? null,
+  }))
+  let saved = 0
+  const refused: { line: number; errors: string[] }[] = []
+  // The server takes 500 rows a request.
+  for (let i = 0; i < rows.length; i += 500) {
+    const res = await api.post<{ data: { created: number; rows: { line: number; ok: boolean; errors: string[] }[] } }>('/api/attendance/biometrics', { rows: rows.slice(i, i + 500) })
+    saved += res.data.created
+    refused.push(...res.data.rows.filter((r) => !r.ok).map((r) => ({ line: r.line, errors: r.errors })))
   }
-  return applied
-}
-
-export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.attendanceAdjustments
-    .filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId))
-    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
-}
-
-export interface CreateAdjustmentInput {
-  attendanceRecordId: string
-  requestedTimeIn: string | null
-  requestedTimeOut: string | null
-  reason: string
-  reasonCategory?: string
-}
-
-export async function createAttendanceAdjustment(
-  session: SessionUser,
-  input: CreateAdjustmentInput,
-): Promise<AttendanceAdjustment> {
-  const record = db.attendanceRecords.find((r) => r.id === input.attendanceRecordId)
-  if (!record) throw new Error('Attendance record not found')
-
-  const adjustment: AttendanceAdjustment = {
-    id: crypto.randomUUID(),
-    companyId: session.companyId,
-    employeeId: record.employeeId,
-    attendanceRecordId: record.id,
-    requestedTimeIn: input.requestedTimeIn,
-    requestedTimeOut: input.requestedTimeOut,
-    reason: input.reason,
-    reasonCategory: input.reasonCategory,
-    status: 'pending',
-    requestedAt: new Date().toISOString(),
-  }
-  db.attendanceAdjustments.unshift(adjustment)
-  return adjustment
-}
-
-export interface FileAdjustmentInput {
-  employeeId: string
-  date: string
-  requestedTimeIn: string | null
-  requestedTimeOut: string | null
-  reasonCategory: string
-  remarks: string
-}
-
-/**
- * Backs the standalone "+ File Adjustment" flow, which starts from an employee + date
- * rather than an existing attendance-table row. Resolves (or creates, if the employee
- * has no record yet for that date — e.g. an unlogged absence) the underlying
- * AttendanceRecord so every adjustment still ties back to one, matching the existing
- * per-row request flow's data shape.
- */
-export async function fileAttendanceAdjustment(session: SessionUser, input: FileAdjustmentInput): Promise<AttendanceAdjustment> {
-  let record = db.attendanceRecords.find(
-    (r) => r.companyId === session.companyId && r.employeeId === input.employeeId && r.date === input.date,
-  )
-
-  if (!record) {
-    const schedule = db.schedules.find((s) => s.companyId === session.companyId)
-    record = {
-      id: crypto.randomUUID(),
-      companyId: session.companyId,
-      employeeId: input.employeeId,
-      scheduleId: schedule?.id ?? '',
-      date: input.date,
-      timeIn: null,
-      timeOut: null,
-      status: 'absent',
-    }
-    db.attendanceRecords.push(record)
-  }
-
-  return createAttendanceAdjustment(session, {
-    attendanceRecordId: record.id,
-    requestedTimeIn: input.requestedTimeIn,
-    requestedTimeOut: input.requestedTimeOut,
-    reason: input.remarks,
-    reasonCategory: input.reasonCategory,
-  })
-}
-
-export async function decideAttendanceAdjustment(
-  session: SessionUser,
-  adjustmentId: string,
-  decision: Extract<ApprovalStatus, 'approved' | 'rejected'>,
-): Promise<void> {
-  const adjustment = db.attendanceAdjustments.find((a) => a.id === adjustmentId)
-  if (!adjustment) return
-
-  adjustment.status = decision
-  adjustment.decidedBy = session.name
-  adjustment.decidedAt = new Date().toISOString()
-
-  if (decision === 'approved') {
-    const record = db.attendanceRecords.find((r) => r.id === adjustment.attendanceRecordId)
-    if (record) {
-      record.timeIn = adjustment.requestedTimeIn
-      record.timeOut = adjustment.requestedTimeOut
-      record.status = 'present'
-    }
-  }
-}
-
-/** Approved leave requests overlapping a date range, with their leave type — for leave-aware attendance status. */
-export async function getApprovedLeavesInRange(
-  session: SessionUser,
-  from: string,
-  to: string,
-): Promise<{ request: LeaveRequest; typeName: string; isPaid: boolean }[]> {
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.leaveRequests
-    .filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= to && r.dateTo >= from)
-    .map((request) => {
-      const type = db.leaveTypes.find((t) => t.id === request.leaveTypeId)
-      return { request, typeName: type?.name ?? 'Leave', isPaid: type?.isPaid !== false }
-    })
-}
-
-/** Approves or rejects every pending adjustment in `adjustmentIds`; returns how many were decided. */
-export async function decideAttendanceAdjustments(session: SessionUser, adjustmentIds: string[], decision: Extract<ApprovalStatus, 'approved' | 'rejected'>): Promise<number> {
-  let decided = 0
-  for (const id of adjustmentIds) {
-    const adjustment = db.attendanceAdjustments.find((a) => a.id === id)
-    if (!adjustment || adjustment.status !== 'pending') continue
-    await decideAttendanceAdjustment(session, id, decision)
-    decided += 1
-  }
-  return decided
+  return { saved, refused }
 }
 
 export interface LogAttendanceInput {
@@ -295,66 +169,68 @@ export interface LogAttendanceResult {
 }
 
 /** Logs attendance by hand — for WFH, field work, or a day the biometrics missed. One record per employee per working day in the range. */
-export async function logAttendance(session: SessionUser, input: LogAttendanceInput): Promise<LogAttendanceResult> {
-  if (!roleHasCapability(session.role, 'attendance.adjust')) throw new Error('You cannot log attendance for others.')
-  if (!input.reason.trim()) throw new Error('Add a reason.')
-  if (!input.timeIn) throw new Error('Enter the AM in time.')
-  if (input.dateTo < input.dateFrom) throw new Error('The end date is before the start date.')
-  const allowed = new Map((await getEmployees(session)).map((e) => [e.id, e]))
-  const result: LogAttendanceResult = { created: 0, updated: 0, skipped: 0 }
-  const next = (date: string) => {
-    const d = new Date(`${date}T00:00:00`)
-    d.setDate(d.getDate() + 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-
-  for (const employeeId of input.employeeIds) {
-    const employee = allowed.get(employeeId)
-    if (!employee) continue
-    for (let date = input.dateFrom; date <= input.dateTo; date = next(date)) {
-      const { schedule, rest } = scheduleOn(employee, date)
-      const holiday = db.holidays.some((h) => h.companyId === session.companyId && h.date === date)
-      if (!schedule || rest || holiday) {
-        result.skipped++
-        continue
-      }
-      const existing = db.attendanceRecords.find((r) => r.companyId === session.companyId && r.employeeId === employeeId && r.date === date)
-      if (existing && !existing.autoRecorded && !input.overwrite) {
-        result.skipped++
-        continue
-      }
-      const status = statusForPunch(input.timeIn, input.timeOut || null, schedule.startTime, schedule.endTime, schedule.gracePeriodMinutes ?? 0)
-      const fields = {
-        scheduleId: schedule.id,
-        timeIn: input.timeIn,
-        timeOut: input.timeOut || null,
-        breakOut: input.breakOut || null,
-        breakIn: input.breakIn || null,
-        status,
-        workType: input.workType,
-        autoRecorded: false,
-        wfhId: undefined,
-      }
-      if (existing) {
-        Object.assign(existing, fields)
-        result.updated++
-      } else {
-        db.attendanceRecords.push({ id: `${employeeId}_att_${date}_manual`, companyId: session.companyId, employeeId, date, ...fields })
-        result.created++
-      }
-    }
-  }
-  db.activityLog.unshift({
-    id: crypto.randomUUID(),
-    companyId: session.companyId,
-    timestamp: new Date().toISOString(),
-    actor: session.name,
-    actorRole: session.role,
-    action: `Logged ${input.workType.toUpperCase()} attendance for ${input.employeeIds.length} employee${input.employeeIds.length === 1 ? '' : 's'} (${input.dateFrom}${input.dateTo !== input.dateFrom ? ` to ${input.dateTo}` : ''})`,
-    details: input.reason.trim(),
-    module: 'Attendance',
-    kind: 'Added',
-    title: 'Logged attendance',
+export async function logAttendance(input: LogAttendanceInput): Promise<LogAttendanceResult> {
+  const res = await api.post<{ data: LogAttendanceResult }>('/api/attendance/log', {
+    employee_ids: input.employeeIds.map(Number),
+    date_from: input.dateFrom,
+    date_to: input.dateTo,
+    work_type: input.workType,
+    time_in: input.timeIn,
+    time_out: input.timeOut || null,
+    break_out: input.breakOut || null,
+    break_in: input.breakIn || null,
+    reason: input.reason,
+    overwrite: input.overwrite ?? false,
   })
-  return result
+  return res.data
+}
+
+// ---- Still the mock until their modules move: leave (P6), payroll (P10), ESS (P13), dashboards (P14) --------------------
+
+async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
+  const employees = await getEmployees(session)
+  return new Set(employees.map((e) => e.id))
+}
+
+export async function getSchedules(session: SessionUser) {
+  return scopeToCompany(db.schedules, session.companyId)
+}
+
+/** Every attendance record in scope, unfiltered by date — used to derive Daily/Hourly Basic Pay for a Payroll Run. */
+export async function getAttendanceRecords(session: SessionUser): Promise<AttendanceRecord[]> {
+  materializeWfhRecords()
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
+}
+
+export async function getAttendanceForEmployee(session: SessionUser, employeeId: string): Promise<AttendanceRecord[]> {
+  materializeWfhRecords()
+  const employeeIds = await scopedEmployeeIds(session)
+  if (!employeeIds.has(employeeId)) return []
+  return db.attendanceRecords.filter((r) => r.employeeId === employeeId).sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** Employee ids with an approved leave request covering the given date — powers the "On Leave" filter option. */
+export async function getEmployeeIdsOnLeaveForDate(session: SessionUser, date: string): Promise<Set<string>> {
+  const employeeIds = await scopedEmployeeIds(session)
+  const onLeave = db.leaveRequests.filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= date && r.dateTo >= date)
+  return new Set(onLeave.map((r) => r.employeeId))
+}
+
+export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.attendanceAdjustments.filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId)).sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
+}
+
+export { statusForPunch }
+
+/** Approved leave requests overlapping a date range, with their leave type — for leave-aware attendance status. */
+export async function getApprovedLeavesInRange(session: SessionUser, from: string, to: string): Promise<{ request: LeaveRequest; typeName: string; isPaid: boolean }[]> {
+  const employeeIds = await scopedEmployeeIds(session)
+  return db.leaveRequests
+    .filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= to && r.dateTo >= from)
+    .map((request) => {
+      const type = db.leaveTypes.find((t) => t.id === request.leaveTypeId)
+      return { request, typeName: type?.name ?? 'Leave', isPaid: type?.isPaid !== false }
+    })
 }

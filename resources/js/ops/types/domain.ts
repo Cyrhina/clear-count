@@ -529,6 +529,8 @@ export interface AttendanceAdjustment {
   companyId: string
   employeeId: string
   attendanceRecordId: string
+  /** The day being corrected (set by the API). */
+  date?: string
   requestedTimeIn: string | null
   requestedTimeOut: string | null
   reason: string

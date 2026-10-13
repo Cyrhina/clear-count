@@ -7,9 +7,9 @@ import { EmployeePickerPanel } from '@ops/components/ui/EmployeePickerPanel'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSession } from '@ops/hooks/useSession'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { logAttendance } from '@ops/lib/services/attendanceService'
 import { defaultTimesFor, scheduleOn, todayKey } from '@ops/lib/services/wfhService'
 import type { AttendanceRecord } from '@ops/types/domain'
@@ -37,9 +37,8 @@ export function LogAttendanceDialog({
   onLogged?: () => void
 }) {
   const allowed = usePermission('attendance.adjust')
-  const { user } = useSession()
   const { notify } = useToast()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const active = useMemo(() => employees.filter((e) => e.employment.status === 'active'), [employees])
   const [innerOpen, setInnerOpen] = useState(false)
   const open = openProp ?? innerOpen
@@ -78,7 +77,7 @@ export function LogAttendanceDialog({
     setSaving(true)
     setError(undefined)
     try {
-      const r = await logAttendance(user, {
+      const r = await logAttendance({
         employeeIds: picked,
         dateFrom,
         dateTo,
@@ -96,7 +95,7 @@ export function LogAttendanceDialog({
       setTimes({ timeIn: '', breakOut: '', breakIn: '', timeOut: '' })
       onLogged?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not log attendance.')
+      setError(apiErrorMessage(e))
     } finally {
       setSaving(false)
     }

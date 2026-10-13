@@ -1,10 +1,7 @@
 import { camelizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
-import { getEmployees } from '@ops/lib/services/employeeService'
 import { toSchedule } from '@ops/lib/services/payrollConfigService'
-import { db } from '@ops/mock-data'
 import type { Schedule } from '@ops/features/company-settings/types'
-import type { SessionUser } from '@ops/types/domain'
 
 /** One rostered day. `scheduleId: null` is a rostered rest day; no entry at all means "not yet scheduled". */
 export interface RosterEntry {
@@ -27,10 +24,9 @@ export async function fetchRoster(from: string, to: string): Promise<RosterEntry
   return res.data.map((r) => ({ id: String(r.id), employeeId: String(r.employee_id), date: r.date.slice(0, 10), scheduleId: r.work_schedule_id === null ? null : String(r.work_schedule_id) }))
 }
 
-/** `employeeId|date` → schedule id (null = rest day), for matching imported punches against the roster. Still the mock roster until Attendance (P5). */
-export async function getRosterMap(session: SessionUser, from: string, to: string): Promise<Map<string, string | null>> {
-  const allowed = new Set((await getEmployees(session)).map((e) => e.id))
-  return new Map(db.shiftAssignments.filter((a) => a.companyId === session.companyId && a.date >= from && a.date <= to && allowed.has(a.employeeId)).map((a) => [`${a.employeeId}|${a.date}`, a.scheduleId]))
+/** `employeeId|date` → schedule id (null = rest day), for matching imported punches against the roster. */
+export async function fetchRosterMap(from: string, to: string): Promise<Map<string, string | null>> {
+  return new Map((await fetchRoster(from, to)).map((r) => [`${r.employeeId}|${r.date}`, r.scheduleId]))
 }
 
 export interface AssignShiftInput {

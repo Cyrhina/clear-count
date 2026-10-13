@@ -1,31 +1,30 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import {
-  getAttendanceAdjustments,
+  fetchAdjustments,
+  fetchAttendanceForDate,
+  fetchLateRecords,
+  fetchSchedulesWithMembers,
   getApprovedLeavesInRange,
-  getAttendanceForDate,
-  getAttendanceRecords,
   getEmployeeIdsOnLeaveForDate,
-  getEmployeeIdsWithPendingAdjustmentForDate,
-  getSchedules,
 } from '@ops/lib/services/attendanceService'
 import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import type { ApprovedLeave } from '@ops/features/attendance/leaveStatus'
-import type { AttendanceAdjustment, AttendanceRecord, Schedule } from '@ops/types/domain'
+import type { Schedule } from '@ops/features/company-settings/types'
+import type { AttendanceAdjustment, AttendanceRecord } from '@ops/types/domain'
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
 export function useDailyAttendance(date: string = todayKey()) {
-  const { user } = useSession()
   const [records, setRecords] = useState<AttendanceRecord[] | null>(null)
   const [schedules, setSchedules] = useState<Schedule[]>([])
 
   const refetch = useCallback(() => {
-    getAttendanceForDate(user, date).then(setRecords)
-    getSchedules(user).then(setSchedules)
-  }, [user, date])
+    fetchAttendanceForDate(date).then(setRecords)
+    fetchSchedulesWithMembers().then(setSchedules)
+  }, [date])
 
   useEffect(() => {
     setRecords(null)
@@ -35,27 +34,24 @@ export function useDailyAttendance(date: string = todayKey()) {
   return { records: records ?? [], schedules, isLoading: records === null, refetch }
 }
 
-/** Powers the "On Leave" / "Pending Adjustment" status filter options on the Daily Attendance tab. */
+/** Powers the "On Leave" status filter option on the Daily Attendance tab (leave is still the mock until the Leave module). */
 export function useDateStatusSets(date: string) {
   const { user } = useSession()
   const [onLeaveIds, setOnLeaveIds] = useState<Set<string>>(new Set())
-  const [pendingAdjustmentIds, setPendingAdjustmentIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getEmployeeIdsOnLeaveForDate(user, date).then(setOnLeaveIds)
-    getEmployeeIdsWithPendingAdjustmentForDate(user, date).then(setPendingAdjustmentIds)
   }, [user, date])
 
-  return { onLeaveIds, pendingAdjustmentIds }
+  return { onLeaveIds }
 }
 
 export function useAttendanceAdjustments() {
-  const { user } = useSession()
   const [adjustments, setAdjustments] = useState<AttendanceAdjustment[] | null>(null)
 
   const refetch = useCallback(() => {
-    getAttendanceAdjustments(user).then(setAdjustments)
-  }, [user])
+    fetchAdjustments().then(setAdjustments)
+  }, [])
 
   useEffect(() => {
     setAdjustments(null)
@@ -81,12 +77,11 @@ export function useApprovedLeavesForDate(date: string) {
   return { leaves, refetch }
 }
 
-/** Late dates per employee across all attendance on record — feeds the "Late #n" count. Refreshes when `refreshKey` changes (e.g. after an import). */
+/** Late dates per employee over the last two years — feeds the "Late #n" count. Refreshes when `refreshKey` changes (e.g. after an import). */
 export function useLateDates(refreshKey: unknown) {
-  const { user } = useSession()
   const [lateDates, setLateDates] = useState<Map<string, string[]>>(new Map())
   useEffect(() => {
-    getAttendanceRecords(user).then((records) => setLateDates(lateDatesByEmployee(records)))
-  }, [user, refreshKey])
+    fetchLateRecords().then((records) => setLateDates(lateDatesByEmployee(records)))
+  }, [refreshKey])
   return lateDates
 }

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\BranchDepartment;
 use App\Models\Company;
@@ -12,6 +13,7 @@ use App\Models\PayrollGroup;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Support\AttendanceStatusResolver;
 use App\Support\PayrollDefaults;
 use Illuminate\Database\Seeder;
 
@@ -119,5 +121,41 @@ class DemoSeeder extends Seeder
         });
 
         ShiftAssignment::insert($rows);
+        $this->seedAttendance($company, $schedules);
+    }
+
+    /** The last ten days of punches on each employee's schedule: mostly on time, some late, and a missing day here and there (absent). */
+    private function seedAttendance(Company $company, array $schedules): void
+    {
+        $rows = [];
+
+        Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get()->each(function (Employee $employee, int $i) use ($schedules, $company, &$rows): void {
+            $schedule = $schedules[$i % count($schedules)];
+            for ($back = 1; $back <= 10; $back++) {
+                $date = now()->subDays($back);
+                if (! in_array($date->isoWeekday(), $schedule->days_of_week, true)) {
+                    continue;
+                }
+                if (($i + $back) % 9 === 0) {
+                    $rows[] = ['company_id' => $company->id, 'employee_id' => $employee->id, 'work_schedule_id' => $schedule->id, 'date' => $date->toDateString(), 'status' => 'absent', 'work_type' => 'onsite', 'source' => 'manual', 'late_minutes' => 0, 'undertime_minutes' => 0, 'time_in' => null, 'time_out' => null, 'created_at' => now(), 'updated_at' => now()];
+
+                    continue;
+                }
+                $in = substr($schedule->start_time, 0, 5);
+                if (($i + $back) % 4 === 0) {
+                    $in = date('H:i', strtotime($in) + 25 * 60);
+                }
+                $out = substr($schedule->end_time, 0, 5);
+                $rows[] = [
+                    ...AttendanceStatusResolver::forPunch($in, $out, $schedule->start_time, $schedule->end_time, $schedule->grace_period_minutes),
+                    'company_id' => $company->id, 'employee_id' => $employee->id, 'work_schedule_id' => $schedule->id, 'date' => $date->toDateString(),
+                    'time_in' => $in, 'time_out' => $out, 'work_type' => 'onsite', 'source' => 'biometric', 'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+        });
+
+        foreach (array_chunk($rows, 100) as $chunk) {
+            AttendanceRecord::insert($chunk);
+        }
     }
 }

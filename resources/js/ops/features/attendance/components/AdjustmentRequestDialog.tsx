@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/comp
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createAttendanceAdjustment } from '@ops/lib/services/attendanceService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { requestAdjustment } from '@ops/lib/services/attendanceService'
 import type { AttendanceRecord } from '@ops/types/domain'
 
 const schema = z.object({
@@ -30,7 +30,6 @@ export function AdjustmentRequestDialog({
   onOpenChange: (open: boolean) => void
   onCreated: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [submitting, setSubmitting] = useState(false)
 
@@ -49,7 +48,12 @@ export function AdjustmentRequestDialog({
   async function onSubmit(values: FormValues) {
     if (!record) return
     setSubmitting(true)
-    await createAttendanceAdjustment(user, { attendanceRecordId: record.id, ...values })
+    try {
+      await requestAdjustment({ employeeId: record.employeeId, date: record.date, ...values })
+    } catch (error) {
+      setSubmitting(false)
+      return notify({ title: "Couldn't request the adjustment", description: apiErrorMessage(error), tone: 'danger' })
+    }
     setSubmitting(false)
     notify({ title: 'Adjustment requested', description: 'Sent for manager approval.', tone: 'success' })
     reset()
