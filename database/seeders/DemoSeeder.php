@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\OvertimeController;
 use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\BranchDepartment;
@@ -16,7 +17,6 @@ use App\Models\OvertimeRecord;
 use App\Models\PayrollGroup;
 use App\Models\ShiftAssignment;
 use App\Models\User;
-use App\Http\Controllers\OvertimeController;
 use App\Models\WfhArrangement;
 use App\Models\WorkLog;
 use App\Models\WorkSchedule;
@@ -24,9 +24,12 @@ use App\Support\AttendanceStatusResolver;
 use App\Support\LeaveDefaults;
 use App\Support\LeaveLedger;
 use App\Support\LeavePlanner;
+use App\Support\Notifier;
 use App\Support\PayrollDefaults;
 use App\Support\WfhPlanner;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 class DemoSeeder extends Seeder
 {
@@ -68,6 +71,9 @@ class DemoSeeder extends Seeder
         // The accounts listed on the login page (UserSeeder) belong to the demo company too: without a company
         // they would see no users, no company profile and no activity log. The super admin stays company-less.
         User::whereIn('email', UserSeeder::DEMO_LOGIN_EMAILS)->update(['company_id' => $company->id, 'branch_id' => $head->id]);
+
+        // Last, so the approvers belong to the company by now.
+        $this->notifyPending();
     }
 
     /** Work schedules and payroll groups of the demo company, with its employees spread over the groups. */
@@ -136,6 +142,17 @@ class DemoSeeder extends Seeder
         $this->seedWfh($company);
         $this->seedLeave($company);
         $this->seedOvertime($company);
+    }
+
+    /** The pending requests above wait for their approvers: send the notices once, whatever the model events did while seeding. */
+    private function notifyPending(): void
+    {
+        DB::table('notifications')->delete();
+        // The roles were seeded in this same process: drop the permission list cached before they existed.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        foreach ([LeaveRequest::class, OvertimeRecord::class, WorkLog::class, WfhArrangement::class] as $model) {
+            $model::withoutGlobalScopes()->where('status', 'pending')->get()->each(fn ($request) => Notifier::requested($request));
+        }
     }
 
     /** The default leave types, this year's credits for everyone, and a few requests: one approved (today and tomorrow), one approved and one pending for next week. */

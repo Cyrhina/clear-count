@@ -386,6 +386,8 @@ Frontend: `overtimeService`, `otApplicationStore`, `compensationApprovalService`
 
 Done when: every approval type shows in the inbox, and the requester gets a notification on the decision.
 
+**P7 status:** done in branch `backend/p07-overtime` (see PROGRESS.md). The Notifier hooks model creation and `Approval::decide`, so P5, P6 and P7 approvals all notify. The ESS overtime and work output pages move with P13.
+
 ---
 
 ### P8. Statutory tables and withholding tax (M)

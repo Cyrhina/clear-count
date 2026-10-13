@@ -21,8 +21,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P3 | Employees (a, b) | done (merged #6, #7) | backend/p03-employees, backend/p03b-employees-bulk | #6, #7 | 2026-10-13 |
 | P4 | Schedules and roster | done (merged #8) | backend/p04-schedules | #8 | 2026-10-13 |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | done (merged #9, #10) | backend/p05a-attendance, backend/p05b-wfh | #9, #10 | 2026-10-13 |
-| P6 | Leave | in progress: in review | backend/p06-leave | | |
-| P7 | Overtime, work logs, approvals inbox, notifications | not started | | | |
+| P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
+| P7 | Overtime, work logs, approvals inbox, notifications | in progress: in review | backend/p07-overtime | | |
 | P8 | Statutory tables and withholding tax | not started | | | |
 | P9 | Benefits, loans, deductions, bonuses | not started | | | |
 | P10 | Payroll engine and runs (a, b) | not started | | | |
@@ -67,6 +67,9 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
 | `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: getWfhArrangements, createWfhBatch, cancelWfh, scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | payroll, reports (late and absence, team), dashboards, manager service, notifications, ESS (WFH request page), leave, `LogAttendanceDialog` (default times) | P6 (leave), P10 (payroll), P13 (ESS, WFH request), P14 (dashboards, reports) | P5a |
 | `leaveService` (mock): getLeaveTypes, getLeaveRequests, getLeaveBalance, planLeaveRequest, submitLeaveRequest; `features/leave/hooks/useLeave.ts`; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | ESS leave pages, dashboards, notifications, manager service, payroll (inputs, 13th month), reports (late and absence, team) | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P6 |
+| `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords`; `features/ess/otApplicationStore.ts` (ESS-only OT applications) | payroll (period detail), dashboards, reports (basic, team), manager service, notifications, ESS overtime page | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P7 |
+| `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, payroll (period detail, work log card, rate basis), dashboards, reports, manager service | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P7 |
+| `notificationService` (mock): getNotifications (team absence, payroll reminders, payslip and loan notices only) | the bell and Notifications page, merged with the stored ones | P10, P11 (payroll, payslips), P14 | P7 |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -85,6 +88,23 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P7 - 2026-10-20
+- Branch: backend/p07-overtime (pushed: no)
+- Done:
+  - Backend: `overtime_records` (server computes the hours, also across midnight; the multiplier is copied from `overtime_rates` when filed, so a later rate edit does not change a filed record) and `work_logs` (hourly or output; the server sets rate and amount from the employee's pay; `payroll_period_id` locks a paid log). Both use the Approval kit and the employee scope, so a manager sees only their branch and an employee only their own. Endpoints: `api/overtime` (list, file, bulk decide) and `api/work-logs` (list, file, withdraw a pending one, bulk decide). Notifier: `notifications` table, `ApprovalNotice`, `Notifier`. A new pending request (leave, attendance adjustment, WFH, overtime, work log) notifies the people who can approve it (a manager only for their own branch, never the person who filed it); `Approval::decide` notifies whoever filed it and the employee after the commit. So P5 and P6 approvals are covered in one place. A WFH request of many dates notifies once. `api/notifications` (list with unread count, mark read, mark all read) and `api/approvals/summary` (pending count per type the user may approve). Tests: 226 (222 pass, 4 skipped).
+  - Frontend: `overtimeApiService`, `workLogApiService`, `notificationApiService`. The Overtime page (list, file, approve, bulk, metric cards worked out from the loaded records, CSV export) and the Work and Output Approvals page read the API. The bell and the Notifications page show the stored notifications first (polled every 60 seconds, mark read and mark all read), then the few client-side reminders. The Approvals page has a "Waiting for you" strip: one tile per type with its count, linking to the screen. DemoSeeder: 4 overtime requests (2 pending), work logs for hourly or output employees if any exist, and the notices for the pending requests.
+- Next: open the P7 PR, merge it, then start P8 (Statutory tables and withholding tax). PLAN.md P8.
+- Gotchas:
+  - The demo company has no hourly or output-based employee, so the work log list is empty until one is hired or edited that way.
+  - Roles are seeded in the same process as DemoSeeder: the notices are sent at the end of `DemoSeeder::run` (users must belong to the company first, and the permission cache is cleared).
+  - The period link ("Open Approvals" on a payroll period) still reads the mock payroll period (P10): it takes the date range from it and selects the real pending logs in that range, not by payroll group.
+  - The ESS overtime page and the ESS work output page still use the mock (P13). An ESS application does not reach the API yet, but `api/overtime` and `api/work-logs` already accept an employee filing their own (404 for anyone else).
+  - Overtime types in the new-request dialog are still the three that payroll can compute (regular, rest day, night differential). The API accepts any key of the company's rate table.
+  - The "team absent" and "missing time" reminders still read the mock attendance.
+  - Not browser-tested: filing overtime in the dialog, bulk decide, reject, the Approvals period link, a manager or employee login.
+- Checks: php artisan test 226 (222 passed, 4 skipped); tsc clean; test:samples; test:golden 3 pass.
+
 
 ### P6 - 2026-10-19
 - Branch: backend/p06-leave (pushed: no)

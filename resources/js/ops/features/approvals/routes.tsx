@@ -16,6 +16,7 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
+import { ApprovalsInbox } from '@ops/features/approvals/components/ApprovalsInbox'
 import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { useSession } from '@ops/hooks/useSession'
 import { apiErrorMessage } from '@ops/lib/api/http'
@@ -201,6 +202,8 @@ export function CompensationApprovalsPage() {
         title="Work & Output Approvals"
         description="Review timecard hours and piece-rate output submitted for employees paid by the hour or by output before they reach payroll."
       />
+
+      <ApprovalsInbox />
 
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
