@@ -7,9 +7,8 @@ import { useOnboardingChecklist } from '@ops/features/onboarding/hooks/useOnboar
 import { cn } from '@ops/lib/utils/cn'
 
 export function OnboardingPage() {
-  const steps = useOnboardingChecklist()
+  const { steps, readyForPayroll: allDone } = useOnboardingChecklist()
   const completed = steps.filter((s) => s.done).length
-  const allDone = steps.length > 0 && completed === steps.length
 
   return (
     <div className="space-y-5">

@@ -1,3 +1,4 @@
+// mock: remove in P3. Still read by the mock employee import; the Branches page uses useDepartments in useBranches.ts.
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import { getBranchDepartments } from '@ops/lib/services/branchDepartmentService'

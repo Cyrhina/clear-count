@@ -261,11 +261,11 @@ Done when: every Company Settings tab saves to the database and survives a page 
 Backend:
 - Branch CRUD on the existing `branches` table and `Branch` model, under `branches.manage`.
 - New `branch_departments` table (`branch_id`, `name`, `supervisor_employee_id` nullable), with add, copy between branches, rename, remove (blocked while it has employees) and set supervisor.
-- **Confirm with the owner:** replace the `employees.department` string with a `department_id` foreign key. A rename then changes one row instead of cascading to every employee. The resource still emits the department name, so the frontend does not change.
+- Department stays a name on the employee for now (owner decision 2026-10-13): a rename updates the employees in that branch, a delete is blocked while any employee has the name. P3 replaces the string with a `department_id` foreign key.
 - `GET api/onboarding`: a checklist computed from the data (company info complete, at least one branch, a payroll group, a work schedule, employees, holidays imported, statutory set) with `readyForPayroll`. No new table.
 - Branch summaries (`getBranchSummaries`) return headcount now. Latest-run totals return `null` until P10; mark that with a `shortcut:` comment.
 
-Frontend: `branchService`, `branchDepartmentService`, the Branches page and the Onboarding page.
+Frontend (done): `branchService`, `branchDepartmentService`, `onboardingService`, the Branches page and the Onboarding page. The branch cards show headcount and departments; the employee lists, branch manager, department supervisor and assign/transfer actions come back in P3.
 
 Done when: branches and departments persist, and the checklist reflects real data.
 

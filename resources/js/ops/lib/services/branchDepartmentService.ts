@@ -1,5 +1,10 @@
+// mock: remove in P3. getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor and releaseSupervisorIfMoved
+// still serve the mock Employees, Schedules and import screens. The Branches page uses the API functions at the bottom.
+import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
+import { api } from '@ops/lib/api/http'
 import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
+import type { DepartmentRecord } from '@ops/features/branches/types'
 import type { BranchDepartment, SessionUser } from '@ops/types/domain'
 
 export type DepartmentResult = { ok: true; department: BranchDepartment } | { ok: false; error: string }
@@ -36,44 +41,6 @@ export async function ensureBranchDepartment(session: SessionUser, branchId: str
   return (await addBranchDepartment(session, branchId, clean)).ok
 }
 
-/** Adds every department of `fromBranchId` that `toBranchId` doesn't have yet (supervisors are not copied). Returns how many were added. */
-export async function copyBranchDepartments(session: SessionUser, fromBranchId: string, toBranchId: string): Promise<number> {
-  let added = 0
-  for (const department of await getBranchDepartments(session, fromBranchId)) {
-    if (await ensureBranchDepartment(session, toBranchId, department.name)) added += 1
-  }
-  return added
-}
-
-/** Renames a department and the department of every employee in it, so the two never drift apart. */
-export async function renameBranchDepartment(session: SessionUser, departmentId: string, name: string): Promise<DepartmentResult> {
-  const department = db.branchDepartments.find((d) => d.id === departmentId && d.companyId === session.companyId)
-  const clean = normalize(name)
-  if (!department) return { ok: false, error: 'Department not found.' }
-  if (!clean) return { ok: false, error: 'Enter a department name.' }
-  if (db.branchDepartments.some((d) => d.id !== department.id && d.branchId === department.branchId && sameName(d.name, clean))) return { ok: false, error: `${clean} already exists in this branch.` }
-  for (const employee of db.employees) {
-    if (employee.companyId === session.companyId && employee.branchId === department.branchId && employee.employment.department === department.name) employee.employment.department = clean
-  }
-  department.name = clean
-  return { ok: true, department }
-}
-
-/** Number of employees (any status) currently in the department. */
-export function countDepartmentEmployees(session: SessionUser, department: BranchDepartment): number {
-  return db.employees.filter((e) => e.companyId === session.companyId && e.branchId === department.branchId && e.employment.department === department.name).length
-}
-
-/** Removes a department — refused while employees are still in it. */
-export async function removeBranchDepartment(session: SessionUser, departmentId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const department = db.branchDepartments.find((d) => d.id === departmentId && d.companyId === session.companyId)
-  if (!department) return { ok: false, error: 'Department not found.' }
-  const count = countDepartmentEmployees(session, department)
-  if (count > 0) return { ok: false, error: `${department.name} still has ${count} employee${count === 1 ? '' : 's'}. Move them to another department or branch first.` }
-  db.branchDepartments = db.branchDepartments.filter((d) => d.id !== department.id)
-  return { ok: true }
-}
-
 /** Sets the direct supervisor; only an active employee of that department in that branch can be chosen. */
 export async function setDepartmentSupervisor(session: SessionUser, departmentId: string, employeeId: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
   const department = db.branchDepartments.find((d) => d.id === departmentId && d.companyId === session.companyId)
@@ -94,3 +61,23 @@ export function releaseSupervisorIfMoved(session: SessionUser, employeeId: strin
     if (d.supervisorEmployeeId === employeeId && (d.branchId !== employee.branchId || d.name !== employee.employment.department)) d.supervisorEmployeeId = null
   }
 }
+
+/** Departments on the Branches page, backed by `/api/branch-departments`. */
+
+export async function fetchBranchDepartments(): Promise<DepartmentRecord[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/branch-departments')
+  return camelizeKeys<DepartmentRecord[]>(res.data)
+}
+
+export const createBranchDepartment = (branchId: string, name: string) => api.post('/api/branch-departments', snakeizeKeys({ branchId, name }))
+
+/** Returns how many departments were added. */
+export async function copyBranchDepartments(fromBranchId: string, toBranchId: string): Promise<number> {
+  const res = await api.post<{ meta: { added: number } }>('/api/branch-departments/copy', snakeizeKeys({ fromBranchId, toBranchId }))
+  return res.meta.added
+}
+
+/** Also renames the department on the employees in it. */
+export const renameBranchDepartment = (id: string, name: string) => api.put(`/api/branch-departments/${id}`, { name })
+
+export const removeBranchDepartment = (id: string) => api.delete<void>(`/api/branch-departments/${id}`)

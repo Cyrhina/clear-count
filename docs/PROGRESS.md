@@ -16,8 +16,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | Phase | Name | Status | Branch | PR | Merged on |
 |---|---|---|---|---|---|
 | P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
-| P1 | Company setup wiring | in review | backend/p01-company-setup | | |
-| P2 | Branches, departments, onboarding | not started | | | |
+| P1 | Company setup wiring | merged | backend/p01-company-setup | #4 | 2026-10-13 |
+| P2 | Branches, departments, onboarding | in review | backend/p02-branches-departments | | |
 | P3 | Employees (a, b) | not started | | | |
 | P4 | Schedules and roster | not started | | | |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | not started | | | |
@@ -47,6 +47,7 @@ Decisions made during the phases (PLAN.md marks each one with **Confirm with the
 | 2026-10-12 | P0 | Turn off open registration? | Yes. Fortify registration, the register page and CreateNewUser are removed. |
 | 2026-10-12 | P1 | Payroll Groups: screen or backend leads? | Backend leads. Real cutoff and pay-date pickers, server calendar, 4 frequencies, group points at a Compensation Type record. |
 | 2026-10-12 | P1 | What do the Assign employees actions do before P3/P4? | Disabled with a note; they come back with the Employees and Schedules modules. |
+| 2026-10-13 | P2 | Department: foreign key now or in P3? | In P3. P2 keeps the department as a name on the employee; a rename updates the employees, a delete is blocked while any employee has the name. |
 | 2026-10-12 | P0 | Give company_admin, super_admin and manager `profile.view`? | Yes, on the server and in the client copy. `ess.view` was not added to admins. |
 
 ## Mock-removal ledger
@@ -59,7 +60,9 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules, updatePayrollGroupMembership, setEmployeePayrollGroup, bulkSetEmployeePayrollGroup | employees, payroll, payslips, loans-deductions, attendance (late counting), reports | P3 (groups, membership), P9 (deductions), P10 (rules, compensation) | P1 |
 | `features/company-settings/components/payroll/PayrollGroupAssignDialog.tsx`, `AssignEmployeesDialog.tsx` | nothing (kept to be rewired on the API) | P3 (groups), P4 (schedules) | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
-| `useTenant` (mock company) | layout, dashboards | P2 | P1 |
+| `useTenant` (mock company) | layout, dashboards | P14 | P1 |
+| `branchService`: getBranches, reassignEmployeeBranch, assignEmployeesToBranch; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved; `branches/hooks/useBranchDepartments.ts` | employees (bulk actions, import, department select), schedules (teams, roster), integrations, `employeeService` | P3 (employees), P4 (schedules), P16 (integrations) | P2 |
+| `features/branches/components/AssignEmployeesDialog.tsx`, `EmployeeMultiPicker.tsx` | nothing (kept to be rewired on the API) | P3 | P2 |
 
 ## Handoff notes
 
@@ -75,6 +78,21 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P2 - 2026-10-13
+- Branch: backend/p02-branches-departments (pushed: no)
+- Done:
+  - Backend: `branch_departments` table, `BranchController` (list with headcount, create, update, delete blocked while employees exist, summaries), `BranchDepartmentController` (add, copy between branches, rename with cascade to employees, remove blocked while employees exist, set supervisor), `OnboardingController` (`GET api/onboarding`, computed). Routes in `routes/ops/branches.php`. Tests: 149 pass, 4 skipped.
+  - Frontend: Branches page and Onboarding page on the API (`branchService`, `branchDepartmentService`, `onboardingService`, TanStack hooks in `features/branches/hooks/useBranches.ts`).
+  - DemoSeeder: head office departments from the demo employees.
+  - Checked in the browser as the demo company admin: list, add branch (and the duplicate-name 422), department remove refused with the server message, department rename with the employee count kept, onboarding checklist.
+- Next: open the P2 PR, merge it, then start P3 (employees: list and record, sections, compensation history, import, lifecycle).
+- Gotchas:
+  - The Branches cards no longer list employees, and the branch manager, department supervisor, assign and transfer actions are gone from the screen until P3 (the mock employee IDs cannot be sent to the API). The backend supervisor endpoint (`PUT api/branch-departments/{id}/supervisor`) is done and tested; P3 adds the picker. There is no branch manager column yet (P3).
+  - Onboarding `statutory` step is a stand-in: it checks that the government deductions exist and are on. P8 replaces it with the real statutory tables. `readyForPayroll` ignores the `users` step.
+  - Consolidated Report gross and net pay are empty ("—") until payroll runs exist (P10).
+  - Other screens (employee forms, schedules, import) still read departments and branches from the mock services, so a department added on the Branches page does not show there until P3.
+- Checks: php artisan test 149 passed, 4 skipped; tsc clean; test:samples 13 pass; test:golden 3 pass.
 
 ### P1 - 2026-10-12
 - Branch: backend/p01-company-setup (pushed: yes)
