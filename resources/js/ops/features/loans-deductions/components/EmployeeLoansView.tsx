@@ -11,7 +11,7 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { AddEmployeesToLoanTypeDialog } from '@ops/features/loans-deductions/components/AddEmployeesToLoanTypeDialog'
 import { AddLoanDialog } from '@ops/features/loans-deductions/components/AddLoanDialog'
 import { LoanDetailsDialog } from '@ops/features/loans-deductions/components/LoanDetailsDialog'
@@ -22,8 +22,7 @@ import { useLoans } from '@ops/features/loans-deductions/hooks/useLoans'
 import { fullName, nextDeduction, projectInstallments } from '@ops/features/loans-deductions/loanUtils'
 import { usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSession } from '@ops/hooks/useSession'
-import { setLoanStatus } from '@ops/lib/services/loanService'
+import { setLoanStatus } from '@ops/lib/services/loanApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { LoanRecord, LoanTypeConfig } from '@ops/types/domain'
 
@@ -70,12 +69,11 @@ function ScheduleLine({ loan, next }: { loan: LoanRecord; next: ReturnType<typeo
  */
 export function EmployeeLoansView() {
   const { loans, isLoading, refetch } = useLoans()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const { types, labelFor, refetch: refetchTypes } = useLoanTypes()
   const { periods } = usePayrollPeriods()
   const { groups } = usePayrollGroups()
   const canManage = usePermission('loans.manage')
-  const { user } = useSession()
   const { notify } = useToast()
   const employeeById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])
   const [selectedLoan, setSelectedLoan] = useState<LoanRecord | null>(null)
@@ -92,7 +90,7 @@ export function EmployeeLoansView() {
   }
 
   async function changeStatus(loan: LoanRecord, next: LoanRecord['status'], message: string) {
-    await setLoanStatus(user, loan.id, next)
+    await setLoanStatus(loan.id, next)
     notify({ title: `${labelFor(loan.type, loan.label)} ${message}`, tone: 'success' })
     refetch()
   }

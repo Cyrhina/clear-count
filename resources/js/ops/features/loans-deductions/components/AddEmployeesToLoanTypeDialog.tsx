@@ -8,9 +8,8 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
-import { createLoansForType } from '@ops/lib/services/loanService'
+import { createLoansForType } from '@ops/lib/services/loanApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { Employee, LoanRecord, LoanTypeConfig } from '@ops/types/domain'
 
@@ -40,7 +39,6 @@ export function AddEmployeesToLoanTypeDialog({
   onClose: () => void
   onAdded: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const { branches } = useTenant()
   const fixed = type.amountType === 'fixed'
@@ -93,7 +91,7 @@ export function AddEmployeesToLoanTypeDialog({
   async function save() {
     setSaving(true)
     const entries = chosen.map((e) => ({ employeeId: e.id, principal: Number(amountsFor(e.id).principal), monthlyDeduction: Number(amountsFor(e.id).monthly) }))
-    const result = await createLoansForType(user, type, entries, startDate)
+    const result = await createLoansForType(type, entries, startDate)
     setSaving(false)
     notify({
       title: `${result.added} loan${result.added === 1 ? '' : 's'} added to ${type.label}`,

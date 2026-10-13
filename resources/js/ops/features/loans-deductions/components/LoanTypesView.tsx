@@ -9,9 +9,8 @@ import { LoanTypeDialog } from '@ops/features/loans-deductions/components/LoanTy
 import { useDeductionConfigs, useLoanTypes } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { useLoans } from '@ops/features/loans-deductions/hooks/useLoans'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSession } from '@ops/hooks/useSession'
 import { loanConfigNameFor } from '@ops/lib/payroll/payFrequency'
-import { deleteLoanType, updateLoanType } from '@ops/lib/services/loanTypeService'
+import { deleteLoanType, updateLoanType } from '@ops/lib/services/loanApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { DeductionConfig, LoanTypeConfig } from '@ops/types/domain'
 
@@ -30,17 +29,16 @@ export function LoanTypesView() {
   const { types, refetch } = useLoanTypes()
   const configs = useDeductionConfigs()
   const canManage = usePermission('loans.manage')
-  const { user } = useSession()
   const { notify } = useToast()
 
   async function toggle(type: LoanTypeConfig) {
-    await updateLoanType(user, type.id, { isActive: !type.isActive })
+    await updateLoanType(type.id, { isActive: !type.isActive })
     notify({ title: type.isActive ? `${type.label} deactivated` : `${type.label} reactivated`, description: type.isActive ? 'It can no longer be picked for new loans. Existing loans are unaffected.' : undefined, tone: 'success' })
     refetch()
   }
 
   async function remove(type: LoanTypeConfig) {
-    if (await deleteLoanType(user, type.id)) {
+    if (await deleteLoanType(type.id)) {
       notify({ title: `${type.label} deleted`, tone: 'success' })
       refetch()
     }

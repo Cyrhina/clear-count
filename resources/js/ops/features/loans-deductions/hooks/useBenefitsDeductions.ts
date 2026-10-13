@@ -2,9 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import { fetchBenefitPlans, fetchDeductionPlans, fetchEmployeeBenefits, fetchEmployeeDeductions } from '@ops/lib/services/benefitsApiService'
-import { getLoanTypes } from '@ops/lib/services/loanTypeService'
+import { fetchLoanTypes } from '@ops/lib/services/loanApiService'
 import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
-import type { BenefitCategory, DeductionConfig, LoanTypeConfig } from '@ops/types/domain'
+import type { BenefitCategory, DeductionConfig } from '@ops/types/domain'
 
 /** Key of benefits and deductions; a save invalidates plans and enrolments together. */
 export const BENEFITS_KEY = 'benefits-deductions'
@@ -50,16 +50,9 @@ export function useDeductionConfigs() {
 
 /** The company's loan types — the single list behind the Loan Types tab, the Add Loan modal, loan cards and schedules. */
 export function useLoanTypes() {
-  const { user } = useSession()
-  const [types, setTypes] = useState<LoanTypeConfig[]>([])
-
-  const refetch = useCallback(() => {
-    getLoanTypes(user).then(setTypes)
-  }, [user])
-
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const refetch = useInvalidate()
+  const query = useQuery({ queryKey: [BENEFITS_KEY, 'loan-types'], queryFn: fetchLoanTypes })
+  const types = query.data ?? []
 
   /** A loan type's label by key, falling back to the loan's own label for types that no longer exist. */
   const labelFor = useCallback((key: string, fallback?: string) => types.find((t) => t.key === key)?.label ?? fallback ?? key, [types])
