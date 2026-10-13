@@ -24,7 +24,7 @@ import { useDeductionPlans, useEmployeeDeductions } from '@ops/features/loans-de
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
 import { StatTile } from '@ops/features/reports/components/shared'
 import { useSession } from '@ops/hooks/useSession'
-import { setDeductionPlanStatus, updateEmployeeDeduction } from '@ops/lib/services/benefitsService'
+import { setDeductionPlanStatus, updateEmployeeDeduction } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { DeductionPlan, Employee, EmployeeDeduction } from '@ops/types/domain'
 
@@ -80,7 +80,7 @@ export function RecurringDeductionsView({ employees, canManage }: { employees: E
   const membersOf = (planId: string) => rowsOf(planId).filter(isLive).flatMap((d) => (employeeById.get(d.employeeId) ? [employeeById.get(d.employeeId)!] : []))
 
   async function change(d: EmployeeDeduction, updates: Partial<EmployeeDeduction>, message: string) {
-    await updateEmployeeDeduction(user, d.id, updates)
+    await updateEmployeeDeduction(d.id, updates)
     notify({ title: `${d.name} ${message}`, tone: 'success' })
     refetch()
   }
@@ -348,7 +348,7 @@ function PlanDetailsDialog({
     .sort((a, b) => Number(!isLive(a)) - Number(!isLive(b)) || fullName(employeeById.get(a.employeeId)).localeCompare(fullName(employeeById.get(b.employeeId))))
 
   async function toggleArchive() {
-    const result = await setDeductionPlanStatus(user, plan.id, plan.status === 'active' ? 'archived' : 'active')
+    const result = await setDeductionPlanStatus(plan.id, plan.status === 'active' ? 'archived' : 'active')
     notify(result.ok ? { title: plan.status === 'active' ? 'Deduction archived' : 'Deduction restored', tone: 'success' } : { title: "Couldn't change the deduction", description: result.error, tone: 'danger' })
     onChanged()
   }

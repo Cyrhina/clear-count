@@ -23,8 +23,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | done (merged #9, #10) | backend/p05a-attendance, backend/p05b-wfh | #9, #10 | 2026-10-13 |
 | P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
 | P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
-| P8 | Statutory tables and withholding tax | in progress: in review | backend/p08-statutory | | |
-| P9 | Benefits, loans, deductions, bonuses | not started | | | |
+| P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
+| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a in review | backend/p09-benefits-loans | | |
 | P10 | Payroll engine and runs (a, b) | not started | | | |
 | P11 | Payslips, PDF, email | not started | | | |
 | P12 | 13th month and separate bonus payslips | not started | | | |
@@ -71,6 +71,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, payroll (period detail, work log card, rate basis), dashboards, reports, manager service | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P7 |
 | `notificationService` (mock): getNotifications (team absence, payroll reminders, payslip and loan notices only) | the bell and Notifications page, merged with the stored ones | P10, P11 (payroll, payslips), P14 | P7 |
 | `payrollService` (mock): getStatutoryConfig, updateStatutoryConfig, monthlyStatutoryFor; `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/withholdingTax.ts` | the browser payroll engine (runs, period detail, payslips, 13th month, loans) | P10 (payroll), P12 (13th month) | P8 |
+| `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | the browser payroll engine (earnings, deductions, one-time deductions settled on finalize), tax and compliance report | P10 (payroll), P14 (reports) | P9a |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -89,6 +90,21 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P9a - 2026-10-22
+- Branch: backend/p09-benefits-loans (pushed: no)
+- Scope: P9 is split like P5. P9a is benefits and deductions; P9b is loans; P9c is bonuses. The PR is open after P9a, and P9b and P9c follow on a new branch from master.
+- Done:
+  - Backend: `benefit_plans` and `employee_benefits` (HMO is one plan per employee; a plan edit is copied onto the live enrolments, except a custom plan's per-employee amount; a transfer ends the old enrolment the day before the effective date and starts the new one on it; a plan with enrolled employees cannot be archived), `deduction_plans` and `employee_deductions` (recurring or one-time; `settled_in_period_id` is for the payroll run, P10). Endpoints `api/benefits` and `api/deductions`: list, add, edit or change status (pause, resume, cancel; a cancelled or completed record is final), plans (list, add, edit, archive), bulk enrol, bulk transfer. Permissions `loans.view` to read and `loans.manage` to change. `EndEmployeeBenefits` runs on a separation: benefits and recurring deductions end on the last day (history kept); one-time deductions stay for the final pay. Tests: 241 (237 pass, 4 skipped).
+  - Frontend: `benefitsApiService` (same function names as the mock, no session argument) and TanStack hooks; the mock `benefitsService` is deleted. The Benefits, Allowances, Insurance, Other and Deductions tabs read and write the API. DemoSeeder: two HMO plans, a rice allowance, a cooperative savings plan and one one-time deduction.
+- Next: P9b loans (`loan_types`, `loans`, `loan_repayments`, ledger pattern, the ESS loans page stays mock until P13), then P9c bonuses (Approval kit), then P10. PLAN.md P9.
+- Gotchas:
+  - Deduction plans are not versioned (the plan said versioned with `EffectiveDated`). The screens copy a plan edit to the live enrolments, so versions were not needed; add them if payroll needs the old amount for a past period.
+  - The browser payroll engine (payroll runs, payslips, tax report) still reads the mock benefits and deductions (see the ledger), so a change here does not reach a payroll run until P10.
+  - The Loans tab still reads the mock employees and loans (P9b).
+  - Not browser-tested: enrol, transfer, edit and pause dialogs. Checked: the lists load from the API, the duplicate plan name is refused with the server message, and adding a plan works.
+- Checks: php artisan test 241 (237 passed, 4 skipped); tsc clean; build clean.
+
 
 ### P8 - 2026-10-21
 - Branch: backend/p08-statutory (pushed: no)

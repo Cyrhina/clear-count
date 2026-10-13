@@ -14,8 +14,7 @@ import { AddEmployeesToPlanDialog } from '@ops/features/loans-deductions/compone
 import { BenefitPlanDialog } from '@ops/features/loans-deductions/components/BenefitPlanDialog'
 import { TransferPlanDialog } from '@ops/features/loans-deductions/components/TransferPlanDialog'
 import { BENEFIT_CATEGORY_META, fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { setBenefitPlanStatus } from '@ops/lib/services/benefitsService'
+import { setBenefitPlanStatus } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { BenefitCategory, BenefitPlan, Employee, EmployeeBenefit } from '@ops/types/domain'
 
@@ -233,7 +232,6 @@ function PlanDetailsDialog<R extends EnrollmentRow>({
   onClose: () => void
   onChanged: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [query, setQuery] = useState('')
   const PlanIcon = PLAN_ICON[plan.category]
@@ -245,7 +243,7 @@ function PlanDetailsDialog<R extends EnrollmentRow>({
     .sort((a, b) => Number(a.status === 'cancelled') - Number(b.status === 'cancelled') || fullName(a.employee).localeCompare(fullName(b.employee)))
 
   async function toggleArchive() {
-    const result = await setBenefitPlanStatus(user, plan.id, plan.status === 'active' ? 'archived' : 'active')
+    const result = await setBenefitPlanStatus(plan.id, plan.status === 'active' ? 'archived' : 'active')
     notify(result.ok ? { title: plan.status === 'active' ? 'Plan archived' : 'Plan restored', tone: 'success' } : { title: "Couldn't change the plan", description: result.error, tone: 'danger' })
     onChanged()
   }

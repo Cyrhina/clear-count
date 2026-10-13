@@ -13,8 +13,7 @@ import { RecordDetailsDialog } from '@ops/features/loans-deductions/components/R
 import { useEmployeeDeductions } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
 import { StatTile } from '@ops/features/reports/components/shared'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeDeduction } from '@ops/lib/services/benefitsService'
+import { updateEmployeeDeduction } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Employee, EmployeeDeduction } from '@ops/types/domain'
 
@@ -46,7 +45,6 @@ function scheduleText(d: EmployeeDeduction): string {
 
 export function DeductionsView({ kind, employees, canManage }: { kind: DeductionsViewKind; employees: Employee[]; canManage: boolean }) {
   const { deductions, isLoading, refetch } = useEmployeeDeductions()
-  const { user } = useSession()
   const { notify } = useToast()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
@@ -66,7 +64,7 @@ export function DeductionsView({ kind, employees, canManage }: { kind: Deduction
   const pendingOneTime = scoped.filter((d) => d.kind === 'one_time' && d.status === 'active')
 
   async function change(d: EmployeeDeduction, updates: Partial<EmployeeDeduction>, message: string) {
-    await updateEmployeeDeduction(user, d.id, updates)
+    await updateEmployeeDeduction(d.id, updates)
     notify({ title: `${d.name} ${message}`, tone: 'success' })
     refetch()
   }

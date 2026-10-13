@@ -16,8 +16,7 @@ import { RecordDetailsDialog } from '@ops/features/loans-deductions/components/R
 import { useBenefitPlans, useEmployeeBenefits } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { BENEFIT_CATEGORY_META, fullName } from '@ops/features/loans-deductions/loanUtils'
 import { StatTile } from '@ops/features/reports/components/shared'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeBenefit } from '@ops/lib/services/benefitsService'
+import { updateEmployeeBenefit } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { BenefitCategory, Employee, EmployeeBenefit } from '@ops/types/domain'
 
@@ -62,7 +61,6 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
     refetch()
     refetchPlans()
   }
-  const { user } = useSession()
   const { notify } = useToast()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -107,7 +105,7 @@ export function BenefitsView({ category, employees, canManage }: { category: Ben
 
   async function change(row: Row, updates: Partial<EmployeeBenefit>, message: string) {
     if (!row.benefit) return
-    await updateEmployeeBenefit(user, row.benefit.id, updates)
+    await updateEmployeeBenefit(row.benefit.id, updates)
     notify({ title: `${row.name} ${message}`, tone: 'success' })
     refetch()
   }

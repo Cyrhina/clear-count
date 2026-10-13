@@ -7,8 +7,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { enrollEmployeesInDeductionPlan } from '@ops/lib/services/benefitsService'
+import { enrollEmployeesInDeductionPlan } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { DeductionPlan, Employee, EmployeeDeduction } from '@ops/types/domain'
 
@@ -29,7 +28,6 @@ export function AddEmployeesToDeductionPlanDialog({
   onClose: () => void
   onAdded: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const custom = plan.amountType === 'custom'
   const [startDate, setStartDate] = useState(today())
@@ -52,7 +50,7 @@ export function AddEmployeesToDeductionPlanDialog({
 
   async function save() {
     setSaving(true)
-    const result = await enrollEmployeesInDeductionPlan(user, plan.id, [...selected], startDate, Object.fromEntries(chosen.map((e) => [e.id, amountOf(e.id)])))
+    const result = await enrollEmployeesInDeductionPlan(plan.id, [...selected], startDate, Object.fromEntries(chosen.map((e) => [e.id, amountOf(e.id)])))
     setSaving(false)
     notify({
       title: `${result.added} employee${result.added === 1 ? '' : 's'} added to ${plan.name}`,

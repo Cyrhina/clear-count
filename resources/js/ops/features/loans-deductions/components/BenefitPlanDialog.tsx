@@ -9,8 +9,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createBenefitPlan, updateBenefitPlan } from '@ops/lib/services/benefitsService'
+import { createBenefitPlan, updateBenefitPlan } from '@ops/lib/services/benefitsApiService'
 import { BENEFIT_CATEGORY_META } from '@ops/features/loans-deductions/loanUtils'
 import type { BenefitCategory, BenefitPlan } from '@ops/types/domain'
 
@@ -61,7 +60,6 @@ export function BenefitPlanDialog({
   const noun = BENEFIT_CATEGORY_META[category].singular
   const isAllowance = category === 'allowance'
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(plan)
 
@@ -90,7 +88,7 @@ export function BenefitPlanDialog({
       amountType: isAllowance ? values.amountType : undefined,
       notes: values.notes?.trim() || undefined,
     }
-    const result = plan ? await updateBenefitPlan(user, plan.id, payload) : await createBenefitPlan(user, { category, ...payload })
+    const result = plan ? await updateBenefitPlan(plan.id, payload) : await createBenefitPlan({ category, ...payload })
     if (!result.ok) return setError('name', { message: result.error })
     notify({
       title: isEdit ? `${cap(noun)} updated` : `${cap(noun)} added`,

@@ -10,8 +10,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
 import { BENEFIT_CATEGORY_META, fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { createEmployeeBenefit, updateEmployeeBenefit } from '@ops/lib/services/benefitsService'
+import { createEmployeeBenefit, updateEmployeeBenefit } from '@ops/lib/services/benefitsApiService'
 import type { BenefitCategory, Employee, EmployeeBenefit } from '@ops/types/domain'
 
 const schema = z
@@ -63,7 +62,6 @@ export function BenefitDialog({
   trigger?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const meta = BENEFIT_CATEGORY_META[category]
   const isEdit = Boolean(benefit)
@@ -95,10 +93,10 @@ export function BenefitDialog({
       notes: values.notes?.trim() || undefined,
     }
     if (benefit) {
-      await updateEmployeeBenefit(user, benefit.id, payload)
+      await updateEmployeeBenefit(benefit.id, payload)
       notify({ title: `${meta.title} updated`, tone: 'success' })
     } else {
-      await createEmployeeBenefit(user, payload)
+      await createEmployeeBenefit(payload)
       const employee = employees.find((e) => e.id === values.employeeId)
       notify({ title: `${values.name} added`, description: employee ? `Assigned to ${fullName(employee)}. It will be included in the next payroll run.` : undefined, tone: 'success' })
     }

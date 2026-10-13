@@ -4,12 +4,16 @@ namespace Database\Seeders;
 
 use App\Http\Controllers\OvertimeController;
 use App\Models\AttendanceRecord;
+use App\Models\BenefitPlan;
 use App\Models\Branch;
 use App\Models\BranchDepartment;
 use App\Models\Company;
 use App\Models\CompensationType;
+use App\Models\DeductionPlan;
 use App\Models\Employee;
+use App\Models\EmployeeBenefit;
 use App\Models\EmployeeCompensation;
+use App\Models\EmployeeDeduction;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\OvertimeRate;
@@ -142,6 +146,7 @@ class DemoSeeder extends Seeder
         $this->seedWfh($company);
         $this->seedLeave($company);
         $this->seedOvertime($company);
+        $this->seedBenefits($company);
     }
 
     /** The pending requests above wait for their approvers: send the notices once, whatever the model events did while seeding. */
@@ -177,6 +182,30 @@ class DemoSeeder extends Seeder
             if ($status === 'approved') {
                 LeaveLedger::record($employee, $vacation, 'used', -$days, 'Approved leave', null, $request, $from->toDateString());
             }
+        }
+    }
+
+    /** Two HMO plans and a rice allowance with some employees enrolled, a cooperative savings plan, and one one-time deduction. */
+    private function seedBenefits(Company $company): void
+    {
+        $employees = Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get();
+        $start = now()->startOfYear()->toDateString();
+        $plan = fn (array $attributes) => BenefitPlan::create(['company_id' => $company->id, ...$attributes]);
+        $enroll = fn (BenefitPlan $p, $people) => $people->each(fn (Employee $e) => EmployeeBenefit::create([
+            'company_id' => $company->id, 'employee_id' => $e->id, 'benefit_plan_id' => $p->id, 'category' => $p->category, 'name' => $p->name, 'provider' => $p->provider,
+            'coverage' => $p->coverage, 'monthly_value' => $p->monthly_value, 'employee_share' => $p->employee_share, 'start_date' => $start,
+        ]));
+
+        $enroll($plan(['category' => 'hmo', 'name' => 'HMO Plan A', 'provider' => 'MaxiCare', 'coverage' => 'Employee only', 'monthly_value' => 1500, 'employee_share' => 0]), $employees->slice(0, 4));
+        $enroll($plan(['category' => 'hmo', 'name' => 'HMO Plan B', 'provider' => 'MaxiCare', 'coverage' => 'Employee + 1 dependent', 'monthly_value' => 2800, 'employee_share' => 400]), $employees->slice(4, 3));
+        $enroll($plan(['category' => 'allowance', 'name' => 'Rice Subsidy', 'monthly_value' => 1000, 'employee_share' => 0]), $employees->slice(0, 8));
+
+        $coop = DeductionPlan::create(['company_id' => $company->id, 'name' => 'Cooperative Savings', 'amount' => 500, 'reason' => 'Monthly share capital']);
+        $employees->slice(2, 4)->each(fn (Employee $e) => EmployeeDeduction::create([
+            'company_id' => $company->id, 'employee_id' => $e->id, 'deduction_plan_id' => $coop->id, 'name' => $coop->name, 'kind' => 'recurring', 'amount' => 500, 'start_date' => $start, 'reason' => $coop->reason,
+        ]));
+        if ($employees->has(1)) {
+            EmployeeDeduction::create(['company_id' => $company->id, 'employee_id' => $employees[1]->id, 'name' => 'Uniform', 'kind' => 'one_time', 'amount' => 900, 'due_date' => now()->addDays(10)->toDateString(), 'reason' => 'Company uniform']);
         }
     }
 
