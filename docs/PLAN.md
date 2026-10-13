@@ -368,6 +368,8 @@ Frontend: `leaveService`; `lib/leave/leaveDays.ts`, which reads the mock store d
 
 Done when: filing, approving and cancelling a request moves the balance correctly, and accrual is tested over a year.
 
+**P6 status:** done in branch `backend/p06-leave` (see PROGRESS.md). Owner chose full credits at once, so there is no `leave:accrue`; `leave:year-end` is built and tested over three years.
+
 ---
 
 ### P7. Overtime, work logs, approvals inbox, notifications (L)

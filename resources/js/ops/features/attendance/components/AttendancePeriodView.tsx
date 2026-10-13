@@ -10,8 +10,9 @@ import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import { dayMonth, fromDateKey, monthDays, rangeLabel, shiftAnchor, todayKey, viewRange, weekDays } from '@ops/features/schedules/dateUtil'
 import { useSession } from '@ops/hooks/useSession'
 import { cn } from '@ops/lib/utils/cn'
-import { fetchAttendanceHistory, fetchSchedulesWithMembers, getApprovedLeavesInRange } from '@ops/lib/services/attendanceService'
+import { fetchAttendanceHistory, fetchSchedulesWithMembers } from '@ops/lib/services/attendanceService'
 import { formatDate } from '@ops/lib/utils/format'
+import { fetchApprovedLeaves } from '@ops/lib/services/leaveApiService'
 import type { AttendanceRecord, Employee, Schedule } from '@ops/types/domain'
 
 type DayCode = 'present' | 'late' | 'undertime' | 'absent' | 'leave' | 'rest' | 'none'
@@ -43,7 +44,7 @@ export function AttendancePeriodView({ employees }: { employees: Employee[] }) {
   const [anchor, setAnchor] = useState(todayKey)
   const [records, setRecords] = useState<AttendanceRecord[] | null>(null)
   const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [leaves, setLeaves] = useState<Awaited<ReturnType<typeof getApprovedLeavesInRange>>>([])
+  const [leaves, setLeaves] = useState<Awaited<ReturnType<typeof fetchApprovedLeaves>>>([])
   const lateCounting = useLateCounting()
 
   const days = useMemo(() => (view === 'week' ? weekDays(anchor) : monthDays(anchor)), [view, anchor])
@@ -54,7 +55,7 @@ export function AttendancePeriodView({ employees }: { employees: Employee[] }) {
     fetchSchedulesWithMembers().then(setSchedules)
   }, [])
   useEffect(() => {
-    getApprovedLeavesInRange(user, from, to).then(setLeaves)
+    fetchApprovedLeaves(from, to).then(setLeaves)
   }, [user, from, to])
 
   const rows = useMemo(() => {

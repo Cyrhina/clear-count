@@ -7,7 +7,7 @@ import { GrantLeaveCreditsDialog } from '@ops/features/leave/components/GrantLea
 import { LeaveTypeDialog } from '@ops/features/leave/components/LeaveTypeDialog'
 import { HIERARCHY_LABEL, HIERARCHY_LEVELS } from '@ops/features/leave/hierarchyUtil'
 import { usePermission } from '@ops/hooks/usePermission'
-import { getLeaveBalance } from '@ops/lib/services/leaveService'
+import { useLeaveBalances } from '@ops/features/leave/hooks/useLeaveData'
 import type { Employee, LeaveType } from '@ops/types/domain'
 
 export function LeaveTypesPanel({
@@ -22,6 +22,7 @@ export function LeaveTypesPanel({
   onCreditsGranted: () => void
 }) {
   const canManageTypes = usePermission('leave.manage_types')
+  const { balances } = useLeaveBalances()
 
   return (
     <div className="space-y-6">
@@ -34,8 +35,9 @@ export function LeaveTypesPanel({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {leaveTypes.map((leaveType) => {
-          const totalCredits = employees.reduce((sum, e) => sum + (e.benefits.leaveCreditsByType[leaveType.name] ?? 0), 0)
-          const totalUsed = employees.reduce((sum, e) => sum + getLeaveBalance(e.id, leaveType.id).used, 0)
+          const mine = balances.filter((b) => b.leaveTypeId === leaveType.id)
+          const totalCredits = mine.reduce((sum, b) => sum + b.credits, 0)
+          const totalUsed = mine.reduce((sum, b) => sum + b.used, 0)
 
           return (
             <Card key={leaveType.id}>

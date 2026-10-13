@@ -9,8 +9,8 @@ import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckbo
 import { useToast } from '@ops/components/ui/Toast'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useRowSelection } from '@ops/hooks/useRowSelection'
-import { useSession } from '@ops/hooks/useSession'
-import { decideLeaveRequest, decideLeaveRequests } from '@ops/lib/services/leaveService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { cancelLeave, decideLeave } from '@ops/lib/services/leaveApiService'
 import { cn } from '@ops/lib/utils/cn'
 import { portionSuffix } from '@ops/lib/leave/leaveDays'
 import { formatDate } from '@ops/lib/utils/format'
@@ -30,14 +30,28 @@ export function LeaveRequestsList({
   highlightId?: string
 }) {
   const canApprove = usePermission('leave.approve')
-  const { user } = useSession()
+  const canRequest = usePermission('leave.request')
   const { notify } = useToast()
   const employeeById = new Map(employees.map((e) => [e.id, e]))
   const leaveTypeById = new Map(leaveTypes.map((lt) => [lt.id, lt]))
 
   async function decide(id: string, decision: 'approved' | 'rejected') {
-    await decideLeaveRequest(user, id, decision)
-    notify({ title: `Leave request ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
+    try {
+      await decideLeave([id], decision)
+      notify({ title: `Leave request ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
+    } catch (error) {
+      notify({ title: "Couldn't decide the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
+    onDecided()
+  }
+
+  async function cancel(id: string) {
+    try {
+      await cancelLeave(id)
+      notify({ title: 'Leave request cancelled', tone: 'default' })
+    } catch (error) {
+      notify({ title: "Couldn't cancel the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     onDecided()
   }
 
@@ -45,8 +59,12 @@ export function LeaveRequestsList({
   const selection = useRowSelection(pendingIds)
 
   async function decideSelected(decision: 'approved' | 'rejected') {
-    const n = await decideLeaveRequests(user, [...selection.selected], decision)
-    notify({ title: `${n} request${n === 1 ? '' : 's'} ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
+    try {
+      const n = await decideLeave([...selection.selected], decision)
+      notify({ title: `${n} request${n === 1 ? '' : 's'} ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
+    } catch (error) {
+      notify({ title: "Couldn't decide the requests", description: apiErrorMessage(error), tone: 'danger' })
+    }
     selection.clear()
     onDecided()
   }
@@ -85,6 +103,11 @@ export function LeaveRequestsList({
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={request.status} />
+                {canRequest && (request.status === 'pending' || request.status === 'approved') && (
+                  <Button size="sm" variant="ghost" onClick={() => cancel(request.id)}>
+                    Cancel
+                  </Button>
+                )}
                 {canApprove && request.status === 'pending' && (
                   <>
                     <Button size="sm" variant="secondary" icon={<X className="size-3.5" />} onClick={() => decide(request.id, 'rejected')}>

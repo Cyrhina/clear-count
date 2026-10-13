@@ -11,8 +11,8 @@ import { LeaveDurationField } from '@ops/features/leave/components/LeaveDuration
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { submitLeaveRequest } from '@ops/lib/services/leaveService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fileLeave } from '@ops/lib/services/leaveApiService'
 import type { Employee, LeaveType } from '@ops/types/domain'
 
 const schema = z.object({
@@ -36,7 +36,6 @@ export function LeaveRequestDialog({
   onCreated: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -56,8 +55,11 @@ export function LeaveRequestDialog({
     const dateTo = isHalf ? values.dateFrom : values.dateTo
     if (!dateTo) return setError('dateTo', { message: 'Required' })
     if (dateTo < values.dateFrom) return setError('dateTo', { message: 'Must be on or after the start date' })
-    const result = await submitLeaveRequest(user, { ...values, dateTo })
-    if (!result.ok) return // the live preview above already shows why
+    try {
+      await fileLeave({ ...values, dateTo })
+    } catch (error) {
+      return notify({ title: "Couldn't file the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Leave request submitted', tone: 'success' })
     reset({ dayPortion: 'full' })
     setOpen(false)

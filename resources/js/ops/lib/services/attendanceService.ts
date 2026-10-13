@@ -210,13 +210,6 @@ export async function getAttendanceForEmployee(session: SessionUser, employeeId:
   return db.attendanceRecords.filter((r) => r.employeeId === employeeId).sort((a, b) => b.date.localeCompare(a.date))
 }
 
-/** Employee ids with an approved leave request covering the given date — powers the "On Leave" filter option. */
-export async function getEmployeeIdsOnLeaveForDate(session: SessionUser, date: string): Promise<Set<string>> {
-  const employeeIds = await scopedEmployeeIds(session)
-  const onLeave = db.leaveRequests.filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= date && r.dateTo >= date)
-  return new Set(onLeave.map((r) => r.employeeId))
-}
-
 export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {
   const employeeIds = await scopedEmployeeIds(session)
   return db.attendanceAdjustments.filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId)).sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
