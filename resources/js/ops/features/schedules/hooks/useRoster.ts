@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { approvedLeaveOn } from '@ops/features/attendance/leaveStatus'
 import { useSession } from '@ops/hooks/useSession'
 import { getApprovedLeavesInRange } from '@ops/lib/services/attendanceService'
-import { getEmployees } from '@ops/lib/services/employeeService'
-import { getBranchDepartments } from '@ops/lib/services/branchDepartmentService'
-import { getShiftAssignments, getShiftTemplates } from '@ops/lib/services/scheduleService'
-import type { BranchDepartment, Employee, Schedule, ShiftAssignment } from '@ops/types/domain'
+import type { DepartmentRecord } from '@ops/features/branches/types'
+import { fetchBranchDepartments } from '@ops/lib/services/branchDepartmentService'
+import { fetchAllEmployees } from '@ops/lib/services/employeeService'
+import { fetchRoster, fetchShiftTemplates, type RosterEntry } from '@ops/lib/services/scheduleService'
+import type { Schedule } from '@ops/features/company-settings/types'
+import type { Employee } from '@ops/types/domain'
 
 type Leaves = Awaited<ReturnType<typeof getApprovedLeavesInRange>>
 
@@ -19,7 +21,7 @@ export interface RosterData {
   employees: Employee[]
   templates: Schedule[]
   /** Departments configured per branch, each with its direct supervisor. */
-  departments: BranchDepartment[]
+  departments: DepartmentRecord[]
   isLoading: boolean
   refetch: () => void
   /** What an employee is doing on a date: approved leave wins, then the rostered shift or rest day. */
@@ -29,10 +31,11 @@ export interface RosterData {
 /** Loads everything the roster needs for a date range (employees, shift templates, assignments, approved leave, supervisors). */
 export function useRoster(from: string, to: string): RosterData {
   const { user } = useSession()
-  const [data, setData] = useState<{ employees: Employee[]; templates: Schedule[]; assignments: ShiftAssignment[]; leaves: Leaves; departments: BranchDepartment[] } | null>(null)
+  const [data, setData] = useState<{ employees: Employee[]; templates: Schedule[]; assignments: RosterEntry[]; leaves: Leaves; departments: DepartmentRecord[] } | null>(null)
 
   const refetch = useCallback(() => {
-    Promise.all([getEmployees(user), getShiftTemplates(user), getShiftAssignments(user, from, to), getApprovedLeavesInRange(user, from, to), getBranchDepartments(user)]).then(
+    // Leave is still the mock until the Leave module (P6), so it does not match real employees yet.
+    Promise.all([fetchAllEmployees(), fetchShiftTemplates(), fetchRoster(from, to), getApprovedLeavesInRange(user, from, to), fetchBranchDepartments()]).then(
       ([employees, templates, assignments, leaves, departments]) => setData({ employees, templates, assignments, leaves, departments }),
     )
   }, [user, from, to])

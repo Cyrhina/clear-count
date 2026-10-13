@@ -19,6 +19,11 @@ class WorkSchedule extends Model
         return ['days_of_week' => 'array', 'rest_days' => 'array', 'break_minutes' => 'integer', 'grace_period_minutes' => 'integer'];
     }
 
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
+
     public function payrollGroups(): HasMany
     {
         return $this->hasMany(PayrollGroup::class);

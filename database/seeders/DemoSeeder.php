@@ -9,6 +9,7 @@ use App\Models\CompensationType;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
 use App\Models\PayrollGroup;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\PayrollDefaults;
@@ -94,5 +95,29 @@ class DemoSeeder extends Seeder
 
         Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get()
             ->each(fn (Employee $employee, int $i) => $employee->update(['payroll_group_id' => $created[$i % count($created)]->id]));
+
+        $this->seedRoster($company, array_values($schedules));
+    }
+
+    /** A default work schedule per employee (spread over the three templates) and this week's roster: the shift on its working days, rest on the others. */
+    private function seedRoster(Company $company, array $schedules): void
+    {
+        $monday = now()->startOfWeek();
+        $rows = [];
+
+        Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get()->each(function (Employee $employee, int $i) use ($schedules, $monday, $company, &$rows): void {
+            $schedule = $schedules[$i % count($schedules)];
+            Employee::withoutGlobalScopes()->whereKey($employee->id)->update(['work_schedule_id' => $schedule->id]);
+
+            for ($d = 0; $d < 7; $d++) {
+                $works = in_array($d + 1, $schedule->days_of_week, true);
+                $rows[] = [
+                    'company_id' => $company->id, 'employee_id' => $employee->id, 'date' => $monday->addDays($d)->toDateString(),
+                    'work_schedule_id' => $works ? $schedule->id : null, 'is_rest_day' => ! $works, 'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+        });
+
+        ShiftAssignment::insert($rows);
     }
 }

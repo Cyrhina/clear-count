@@ -53,4 +53,5 @@ Route::prefix('api/payroll-settings')->name('payroll-settings.')->middleware('pe
     Route::post('work-schedules', [PayrollSettingsController::class, 'storeWorkSchedule'])->name('work-schedules.store');
     Route::put('work-schedules/{workSchedule}', [PayrollSettingsController::class, 'updateWorkSchedule'])->name('work-schedules.update');
     Route::delete('work-schedules/{workSchedule}', [PayrollSettingsController::class, 'destroyWorkSchedule'])->name('work-schedules.destroy');
+    Route::post('work-schedules/{workSchedule}/employees', [PayrollSettingsController::class, 'assignWorkScheduleEmployees'])->name('work-schedules.employees');
 });

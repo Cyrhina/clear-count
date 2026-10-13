@@ -26,7 +26,7 @@ import { useRoster, type DayState } from '@ops/features/schedules/hooks/useRoste
 import { SHIFT_COLOR_CLASSES, colorFor } from '@ops/features/schedules/shiftColors'
 import { useSession } from '@ops/hooks/useSession'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useTenant } from '@ops/hooks/useTenant'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { copyWeek } from '@ops/lib/services/scheduleService'
 import { cn } from '@ops/lib/utils/cn'
 import type { Employee } from '@ops/types/domain'
@@ -43,7 +43,7 @@ const initials = (e: Employee) => `${e.personal.firstName[0] ?? ''}${e.personal.
 export function RosterTab() {
   const { user } = useSession()
   const { notify } = useToast()
-  const { branches: companyBranches } = useTenant()
+  const { branches: companyBranches } = useBranches()
   // Branch-scoped users (managers) only ever see their own branch.
   const branches = useMemo(() => (user.branchId ? companyBranches.filter((b) => b.id === user.branchId) : companyBranches), [companyBranches, user.branchId])
   const canManage = usePermission('schedules.manage')
@@ -115,7 +115,7 @@ export function RosterTab() {
 
   async function handleCopyLastWeek() {
     const toStart = startOfWeek(anchor)
-    const copied = await copyWeek(user, { employeeIds: filtered.map((e) => e.id), fromStart: addDays(toStart, -7), toStart })
+    const copied = await copyWeek({ employeeIds: filtered.map((e) => e.id), fromStart: addDays(toStart, -7), toStart })
     notify({
       title: copied > 0 ? 'Last week copied' : 'Nothing to copy',
       description: copied > 0 ? `${copied} roster day${copied === 1 ? '' : 's'} copied onto this week.` : 'The previous week has no roster for these employees.',
@@ -505,7 +505,7 @@ function TodayList({
   allEmployees: Employee[]
   stateFor: (employeeId: string, date: string) => DayState
   date: string
-  departments: { name: string; branchId: string; supervisorEmployeeId: string | null }[]
+  departments: { name: string; branchId: string; supervisorEmployeeId?: string | null }[]
   branches: { id: string; name: string; managerEmployeeId?: string }[]
   colorIndex: Map<string, number>
 }) {

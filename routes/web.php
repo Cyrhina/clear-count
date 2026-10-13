@@ -54,7 +54,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     });
 
     // JSON API modules: one file per module in routes/ops/ (shared middleware comes from this group).
-    foreach (['employees', 'payroll-settings', 'holidays', 'company-info', 'activity-logs', 'permission-map', 'users', 'branches'] as $module) {
+    foreach (['employees', 'payroll-settings', 'holidays', 'company-info', 'activity-logs', 'permission-map', 'users', 'branches', 'schedules'] as $module) {
         require __DIR__."/ops/{$module}.php";
     }
 });

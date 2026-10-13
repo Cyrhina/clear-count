@@ -103,7 +103,7 @@ export type ScheduleInput = Pick<Schedule, 'name' | 'startTime' | 'endTime' | 'd
 const fromApiDay = (d: number) => (d === 7 ? 0 : d)
 const toApiDay = (d: number) => (d === 0 ? 7 : d)
 
-const toSchedule = (s: Schedule): Schedule => ({
+export const toSchedule = (s: Schedule): Schedule => ({
   ...s,
   startTime: s.startTime.slice(0, 5),
   endTime: s.endTime.slice(0, 5),
@@ -127,6 +127,12 @@ export async function updateSchedule(id: string, input: ScheduleInput): Promise<
 }
 
 export const deleteSchedule = (id: string) => api.delete<void>(`${BASE}/work-schedules/${id}`)
+
+/** Makes this the default schedule of the employees (an employee has one, so they leave any other). Returns how many changed. */
+export async function assignScheduleEmployees(id: string, employeeIds: string[]): Promise<number> {
+  const res = await api.post<{ data: { changed: number } }>(`${BASE}/work-schedules/${id}/employees`, { employee_ids: employeeIds.map(Number) })
+  return res.data.changed
+}
 
 // ---- Compliance deadlines ------------------------------------------------------------------------------------------
 

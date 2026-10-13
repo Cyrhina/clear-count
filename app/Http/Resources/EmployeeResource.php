@@ -26,6 +26,7 @@ class EmployeeResource extends JsonResource
             'company_id' => $this->company_id,
             'branch_id' => $this->branch_id,
             'payroll_group_id' => $this->payroll_group_id,
+            'work_schedule_id' => $this->work_schedule_id,
             'employee_number' => $this->employee_number,
             'personal' => $this->personal,
             'employment' => $this->employment,
