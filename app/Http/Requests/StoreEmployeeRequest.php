@@ -2,9 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Support\EmployeeRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Hires an employee: the personal and job details, the starting pay, and optionally the government IDs, bank account and
+ * benefits. The employee number is handed out by the server. Government IDs and bank details are only taken from users
+ * who may edit them (a user without that right simply cannot set them here).
+ */
 class StoreEmployeeRequest extends FormRequest
 {
     public function authorize(): bool
@@ -18,29 +24,18 @@ class StoreEmployeeRequest extends FormRequest
     public function rules(): array
     {
         $companyId = $this->user()->company_id;
+        $user = $this->user();
 
         return [
             'branch_id' => ['required', Rule::exists('branches', 'id')->where('company_id', $companyId)],
-            'employee_number' => ['required', 'string', 'max:30', Rule::unique('employees')->where('company_id', $companyId)],
-            'personal.firstName' => ['required', 'string', 'max:100'],
-            'personal.lastName' => ['required', 'string', 'max:100'],
-            'personal.birthDate' => ['required', 'date'],
-            'personal.civilStatus' => ['required', Rule::in(['single', 'married', 'widowed', 'separated'])],
-            'personal.address' => ['required', 'string', 'max:255'],
-            'personal.contactNumber' => ['required', 'string', 'max:30'],
-            'personal.personalEmail' => ['nullable', 'email'],
-            'employment.position' => ['required', 'string', 'max:100'],
-            'employment.department' => ['required', 'string', 'max:100'],
-            'employment.employmentType' => ['required', Rule::in(['regular', 'probationary', 'contractual', 'part_time'])],
-            'employment.dateHired' => ['required', 'date'],
-            'employment.status' => ['required', Rule::in(['active', 'inactive', 'archived'])],
-            'employment.category' => ['required', 'string', 'max:50'],
-            'compensation.basicPay' => ['required', 'numeric', 'min:0'],
-            'compensation.payType' => ['required', Rule::in(['monthly', 'semi_monthly', 'daily', 'hourly', 'output_based'])],
-            'compensation.allowances' => ['array'],
-            'benefits' => ['nullable', 'array'],
-            'government' => ['nullable', 'array'],
-            'bank' => ['nullable', 'array'],
+            'payroll_group_id' => ['nullable', Rule::exists('payroll_groups', 'id')->where('company_id', $companyId)],
+            ...EmployeeRules::personal(),
+            ...EmployeeRules::employment(),
+            'employment.status' => ['sometimes', Rule::in(['active', 'inactive', 'archived'])],
+            ...EmployeeRules::compensation(),
+            ...EmployeeRules::benefits(),
+            ...($user->can('employees.government.edit') ? EmployeeRules::government() : []),
+            ...($user->can('employees.bank.edit') ? EmployeeRules::bank() : []),
         ];
     }
 }

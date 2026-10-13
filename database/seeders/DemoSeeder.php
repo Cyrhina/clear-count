@@ -7,6 +7,7 @@ use App\Models\BranchDepartment;
 use App\Models\Company;
 use App\Models\CompensationType;
 use App\Models\Employee;
+use App\Models\EmployeeCompensation;
 use App\Models\PayrollGroup;
 use App\Models\User;
 use App\Models\WorkSchedule;
@@ -24,6 +25,11 @@ class DemoSeeder extends Seeder
 
         Employee::factory()->count(12)->create(['company_id' => $company->id, 'branch_id' => $head->id]);
         $this->seedPayrollSetup($company);
+        // The pay history starts with the hire, like a real hire through the API.
+        Employee::withoutGlobalScopes()->where('company_id', $company->id)->get()->each(fn (Employee $e) => EmployeeCompensation::create([
+            'company_id' => $company->id, 'employee_id' => $e->id, 'effective_from' => $e->employment['dateHired'], 'rate_type' => $e->compensation['payType'],
+            'basic_rate' => $e->compensation['basicPay'], 'allowances' => $e->compensation['allowances'], 'reason' => 'Initial Hire',
+        ]));
         Employee::withoutGlobalScopes()->where('branch_id', $head->id)->distinct()->pluck('department')->filter()
             ->each(fn ($name) => BranchDepartment::create(['company_id' => $company->id, 'branch_id' => $head->id, 'name' => $name]));
         $own = Employee::withoutGlobalScopes()->where('company_id', $company->id)->first();

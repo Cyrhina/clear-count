@@ -240,6 +240,8 @@ export interface Employee {
   id: string
   companyId: string
   branchId: string
+  /** Set by the API (the mock data keeps group membership on the group). */
+  payrollGroupId?: string
   employeeNumber: string
   personal: EmployeePersonal
   employment: EmployeeEmployment

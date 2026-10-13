@@ -10,7 +10,6 @@ import { SEPARATION_LABEL } from '@ops/lib/services/employeeService'
 import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useTenant } from '@ops/hooks/useTenant'
 import { useMixedCompensationStore, summarizeMixedCompensationShort } from '@ops/features/employees/mixedCompensationStore'
 import { formatBaseRateShort } from '@ops/lib/payroll/payRate'
 import type { Employee } from '@ops/types/domain'
@@ -22,9 +21,8 @@ export interface EmployeeSelection {
   headerState: boolean | 'indeterminate'
 }
 
-export function EmployeeTable({ employees, selection }: { employees: Employee[]; selection?: EmployeeSelection }) {
+export function EmployeeTable({ employees, branches, selection }: { employees: Employee[]; branches: { id: string; name: string }[]; selection?: EmployeeSelection }) {
   const navigate = useNavigate()
-  const { branches } = useTenant()
   const mixedStructures = useMixedCompensationStore((s) => s.structures)
   const canViewPay = usePermission('employees.pay.view')
 

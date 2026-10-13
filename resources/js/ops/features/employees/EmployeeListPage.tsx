@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
@@ -7,59 +7,69 @@ import { FilterField, FiltersPopover, SortControl, type SortDirection } from '@o
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { useBranches, useDepartments } from '@ops/features/branches/hooks/useBranches'
 import { AddEmployeeDialog } from '@ops/features/employees/components/AddEmployeeDialog'
-import { ImportEmployeesDialog } from '@ops/features/employees/components/ImportEmployeesDialog'
-import { BulkEmployeeActions } from '@ops/features/employees/components/BulkEmployeeActions'
 import { EmployeeTable } from '@ops/features/employees/components/EmployeeTable'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useEmployeeList } from '@ops/features/employees/hooks/useEmployeeRecords'
+import type { EmployeeListParams } from '@ops/features/employees/types'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useRowSelection } from '@ops/hooks/useRowSelection'
-import { useTenant } from '@ops/hooks/useTenant'
-import { useSession } from '@ops/hooks/useSession'
-import { getEmployeeIdsOnLeaveToday } from '@ops/lib/services/employeeService'
+import { apiErrorMessage } from '@ops/lib/api/http'
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
   { value: 'active', label: 'Active' },
-  { value: 'on_leave', label: 'On Leave' },
   { value: 'inactive', label: 'Inactive' },
   { value: 'archived', label: 'Archived' },
 ]
 
+/** Sort options of the screen, mapped to the columns the server sorts by. "Date hired" is the date the record was added. */
+const SORT_COLUMN: Record<string, NonNullable<EmployeeListParams['sort']>> = { name: 'name', department: 'department', hired: 'created_at' }
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
   { value: 'department', label: 'Department' },
-  { value: 'branch', label: 'Branch' },
-  { value: 'hired', label: 'Date hired' },
+  { value: 'hired', label: 'Date added' },
 ]
 
+const PAGE_SIZE = 25
+
 export function EmployeeListPage() {
-  const { user } = useSession()
-  const { employees, isLoading, refetch } = useEmployees()
-  const { branches } = useTenant()
+  const { branches } = useBranches()
+  const { departments } = useDepartments()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status, setStatus] = useState('active')
   const [branchId, setBranchId] = useState('all')
   const [department, setDepartment] = useState('all')
-  const [onLeaveIds, setOnLeaveIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
   // The dashboard's "Recent Employees" links here with ?sort=hired&dir=desc to show the newest hires first.
   const [searchParams] = useSearchParams()
-  const [sortBy, setSortBy] = useState(() => (SORT_OPTIONS.some((o) => o.value === searchParams.get('sort')) ? (searchParams.get('sort') as string) : 'name'))
+  const [sortBy, setSortBy] = useState(() => (searchParams.get('sort') && SORT_COLUMN[searchParams.get('sort')!] ? (searchParams.get('sort') as string) : 'name'))
   const [sortDirection, setSortDirection] = useState<SortDirection>(() => (searchParams.get('dir') === 'desc' ? 'desc' : 'asc'))
 
   useEffect(() => {
-    getEmployeeIdsOnLeaveToday(user).then(setOnLeaveIds)
-  }, [user])
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
-  const branchOptions = useMemo(
-    () => [{ value: 'all', label: 'All branches' }, ...branches.map((b) => ({ value: b.id, label: b.name }))],
-    [branches],
-  )
+  // Any change to what is shown starts again from the first page.
+  useEffect(() => setPage(1), [debouncedSearch, status, branchId, department, sortBy, sortDirection])
 
+  const { employees, total, lastPage, isLoading, error } = useEmployeeList({
+    search: debouncedSearch || undefined,
+    status: status === 'all' ? undefined : status,
+    branchId: branchId === 'all' ? undefined : branchId,
+    department: department === 'all' ? undefined : department,
+    sort: SORT_COLUMN[sortBy],
+    direction: sortDirection,
+    page,
+    perPage: PAGE_SIZE,
+  })
+
+  const branchOptions = useMemo(() => [{ value: 'all', label: 'All branches' }, ...branches.map((b) => ({ value: b.id, label: b.name }))], [branches])
   const departmentOptions = useMemo(() => {
-    const unique = Array.from(new Set(employees.map((e) => e.employment.department))).sort()
+    const unique = Array.from(new Set(departments.map((d) => d.name))).sort()
     return [{ value: 'all', label: 'All departments' }, ...unique.map((d) => ({ value: d, label: d }))]
-  }, [employees])
+  }, [departments])
 
   const activeFilterCount = [status !== 'active', branchId !== 'all', department !== 'all'].filter(Boolean).length
   const hasActiveFilters = search.trim() !== '' || activeFilterCount > 0
@@ -71,65 +81,20 @@ export function EmployeeListPage() {
     setDepartment('all')
   }
 
-  const branchNameById = useMemo(() => new Map(branches.map((b) => [b.id, b.name])), [branches])
-
-  const filtered = employees
-    .filter((e) => {
-      if (status === 'on_leave') {
-        if (!onLeaveIds.has(e.id)) return false
-      } else if (status !== 'all' && e.employment.status !== status) {
-        return false
-      }
-      if (branchId !== 'all' && e.branchId !== branchId) return false
-      if (department !== 'all' && e.employment.department !== department) return false
-
-      const query = search.trim().toLowerCase()
-      if (query) {
-        const fullName = `${e.personal.firstName} ${e.personal.lastName}`.toLowerCase()
-        const haystack = [fullName, e.employeeNumber, e.personal.personalEmail ?? '', e.employment.position].join(' ').toLowerCase()
-        if (!haystack.includes(query)) return false
-      }
-
-      return true
-    })
-    .sort((a, b) => {
-      let result = 0
-      if (sortBy === 'department') result = a.employment.department.localeCompare(b.employment.department)
-      else if (sortBy === 'hired') result = a.employment.dateHired.localeCompare(b.employment.dateHired)
-      else if (sortBy === 'branch') result = (branchNameById.get(a.branchId) ?? '').localeCompare(branchNameById.get(b.branchId) ?? '')
-      else result = `${a.personal.firstName} ${a.personal.lastName}`.localeCompare(`${b.personal.firstName} ${b.personal.lastName}`)
-      return sortDirection === 'asc' ? result : -result
-    })
-
   const canManageRoster = usePermission('employees.edit')
-  const canBulkEdit = canManageRoster || usePermission('settings.payroll.edit')
-  const selection = useRowSelection(useMemo(() => filtered.map((e) => e.id), [filtered]))
-  const allDepartments = useMemo(() => [...new Set(employees.map((e) => e.employment.department))].sort(), [employees])
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={canManageRoster ? 'Employees' : 'My Team'}
         description={canManageRoster ? 'View, add, and manage everyone on the company roster.' : 'Your team — their positions, departments, schedules, and attendance.'}
-        actions={
-          canManageRoster && (
-            <div className="flex items-center gap-2">
-              <ImportEmployeesDialog onImported={refetch} />
-              <AddEmployeeDialog onCreated={refetch} />
-            </div>
-          )
-        }
+        actions={canManageRoster && <AddEmployeeDialog />}
       />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, ID, email, position…"
-            className="pl-9"
-          />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, ID, department…" className="pl-9" />
         </div>
         <FiltersPopover
           activeCount={activeFilterCount}
@@ -150,22 +115,35 @@ export function EmployeeListPage() {
           <FilterField label="Branch">
             <Select value={branchId} onValueChange={setBranchId} options={branchOptions} />
           </FilterField>
-          <SortControl
-            value={sortBy}
-            onValueChange={setSortBy}
-            options={SORT_OPTIONS}
-            direction={sortDirection}
-            onDirectionChange={setSortDirection}
-          />
+          <SortControl value={sortBy} onValueChange={setSortBy} options={SORT_OPTIONS} direction={sortDirection} onDirectionChange={setSortDirection} />
         </FiltersPopover>
         <p className="ml-auto self-center text-sm text-muted-foreground">
-          {filtered.length} of {employees.length} employees
+          {total} employee{total === 1 ? '' : 's'}
         </p>
       </div>
 
-      {isLoading ? <Skeleton className="h-96" /> : <EmployeeTable employees={filtered} selection={canBulkEdit ? selection : undefined} />}
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{apiErrorMessage(error)}</p>
+      ) : isLoading ? (
+        <Skeleton className="h-96" />
+      ) : (
+        <EmployeeTable employees={employees} branches={branches} />
+      )}
 
-      {canBulkEdit && <BulkEmployeeActions selected={[...selection.selected]} employees={filtered} departments={allDepartments} onClear={selection.clear} onDone={refetch} />}
+      {lastPage > 1 && (
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="secondary" icon={<ChevronLeft className="size-4" />} disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {lastPage}
+          </span>
+          <Button size="sm" variant="secondary" disabled={page >= lastPage} onClick={() => setPage(page + 1)}>
+            Next
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

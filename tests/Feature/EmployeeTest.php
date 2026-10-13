@@ -67,8 +67,8 @@ test('hr admin can create an employee and denormalised columns are set', functio
     $branch = Branch::factory()->create(['company_id' => $company->id]);
 
     $this->actingAs(userFor($company, 'hr_admin'))
-        ->post(route('employees.store'), employeePayload($branch))
-        ->assertRedirect();
+        ->postJson('/api/employees', employeePayload($branch))
+        ->assertCreated();
 
     $employee = Employee::withoutGlobalScopes()->firstOrFail();
     expect($employee->company_id)->toBe($company->id)
@@ -81,7 +81,7 @@ test('payroll admin cannot edit employees', function () {
     $branch = Branch::factory()->create(['company_id' => $company->id]);
 
     $this->actingAs(userFor($company, 'payroll_admin'))
-        ->post(route('employees.store'), employeePayload($branch))
+        ->postJson('/api/employees', employeePayload($branch))
         ->assertForbidden();
 });
 
@@ -90,8 +90,8 @@ test('cannot assign employee to another company branch', function () {
     $foreignBranch = Branch::factory()->create();
 
     $this->actingAs(userFor($company, 'company_admin'))
-        ->post(route('employees.store'), employeePayload($foreignBranch))
-        ->assertSessionHasErrors('branch_id');
+        ->postJson('/api/employees', employeePayload($foreignBranch))
+        ->assertJsonValidationErrors('branch_id');
 });
 
 test('inactive user is logged out', function () {

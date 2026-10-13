@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Nested sections (personal, employment, ...) are JSON and mirror frontend-ops `Employee`.
@@ -48,5 +49,11 @@ class Employee extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /** Pay history, newest first. */
+    public function compensations(): HasMany
+    {
+        return $this->hasMany(EmployeeCompensation::class)->orderByDesc('effective_from')->orderByDesc('id');
     }
 }

@@ -209,7 +209,9 @@ test('calendar endpoint returns the year of periods; other companies cannot see 
 test('payroll settings need settings.payroll.edit', function () {
     $hr = User::factory()->create(['company_id' => $this->company->id])->assignRole('hr_admin');
 
-    $this->actingAs($hr)->getJson('/api/payroll-settings/payroll-groups')->assertForbidden();
+    // HR reads the groups (the employee profile shows and assigns them) but cannot change them or read the other settings.
+    $this->actingAs($hr)->getJson('/api/payroll-settings/payroll-groups')->assertOk();
+    $this->actingAs($hr)->postJson('/api/payroll-settings/payroll-groups', [])->assertForbidden();
     $this->actingAs($hr)->getJson('/api/payroll-settings/earnings')->assertForbidden();
 });
 

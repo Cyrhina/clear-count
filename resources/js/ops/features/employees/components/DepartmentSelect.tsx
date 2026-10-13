@@ -1,22 +1,15 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Select } from '@ops/components/ui/Select'
-import { useSession } from '@ops/hooks/useSession'
-import { getBranchDepartments } from '@ops/lib/services/branchDepartmentService'
-import type { BranchDepartment } from '@ops/types/domain'
+import { useDepartments } from '@ops/features/branches/hooks/useBranches'
 
 /**
  * Department picker limited to the departments configured for a branch (Branches → Departments).
  * A value that isn't configured (older records) stays selectable and is marked, so editing never silently drops it.
  */
 export function DepartmentSelect({ branchId, value, onChange, disabled }: { branchId: string | undefined; value: string | undefined; onChange: (department: string) => void; disabled?: boolean }) {
-  const { user } = useSession()
-  const [departments, setDepartments] = useState<BranchDepartment[] | null>(null)
-
-  useEffect(() => {
-    setDepartments(null)
-    if (branchId) getBranchDepartments(user, branchId).then(setDepartments)
-  }, [user, branchId])
+  const { departments: all, isLoading } = useDepartments()
+  const departments = isLoading ? null : all.filter((d) => d.branchId === branchId)
 
   const options = useMemo(() => {
     const list = (departments ?? []).map((d) => ({ value: d.name, label: d.name }))

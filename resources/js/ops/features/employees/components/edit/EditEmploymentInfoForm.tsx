@@ -1,12 +1,13 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { DepartmentSelect } from '@ops/features/employees/components/DepartmentSelect'
 import { Select } from '@ops/components/ui/Select'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeeEmploymentInfo, type UpdateEmploymentInfoInput } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeeEmployment, type UpdateEmploymentInfoInput } from '@ops/lib/services/employeeService'
 import type { Employee } from '@ops/types/domain'
 
 const EMPLOYMENT_TYPE_OPTIONS = [
@@ -33,8 +34,10 @@ export function EditEmploymentInfoForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
+  const { branches } = useBranches()
+  // Moving to another branch means picking one of that branch's departments.
+  const [branchId, setBranchId] = useState(employee.branchId)
 
   const {
     register,
@@ -53,9 +56,7 @@ export function EditEmploymentInfoForm({
   })
 
   async function onSubmit(values: UpdateEmploymentInfoInput) {
-    await updateEmployeeEmploymentInfo(user, employee.id, values)
-    notify({ title: 'Employment information updated', tone: 'success' })
-    onSaved()
+    await save(() => saveEmployeeEmployment(employee.id, values, branchId !== employee.branchId ? { branchId } : {}), 'Employment information updated')
   }
 
   return (
@@ -63,8 +64,18 @@ export function EditEmploymentInfoForm({
       <FormField label="Position" required error={errors.position?.message}>
         <Input {...register('position', { required: 'Required' })} />
       </FormField>
+      <FormField label="Branch">
+        <Select
+          value={branchId}
+          onValueChange={(v) => {
+            setBranchId(v)
+            setValue('department', '')
+          }}
+          options={branches.map((b) => ({ value: b.id, label: b.name }))}
+        />
+      </FormField>
       <FormField label="Department" required error={errors.department?.message}>
-        <DepartmentSelect branchId={employee.branchId} value={watch('department')} onChange={(v) => setValue('department', v, { shouldValidate: true })} />
+        <DepartmentSelect branchId={branchId} value={watch('department')} onChange={(v) => setValue('department', v, { shouldValidate: true })} />
       </FormField>
       <FormField label="Employment type">
         <Select

@@ -7,14 +7,12 @@ use App\Http\Requests\UpdateUserRoleRequest;
 use App\Http\Requests\UpdateUserStatusRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Notifications\UserInvitation;
 use App\Support\ActivityLogger;
 use App\Support\Roles;
+use App\Support\UserInvites;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -63,24 +61,13 @@ class UserController extends Controller
         $data = $request->validated();
         $companyId = $actor->hasRole(Roles::SUPER_ADMIN) ? ($data['company_id'] ?? $actor->company_id) : $actor->company_id;
 
-        $user = DB::transaction(function () use ($data, $companyId) {
-            $user = new User([
-                'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'email' => $data['email'],
-                // Unusable random password; the hashed cast stores it hashed. The invite link replaces it.
-                'password' => Str::random(40),
-                'company_id' => $companyId,
-                'is_active' => ($data['status'] ?? 'active') === 'active',
-            ]);
-            // Admin-provisioned, so the address counts as verified (otherwise the `verified` middleware would lock them out after reset).
-            $user->forceFill(['email_verified_at' => now(), 'invited_at' => now()])->save();
-            $user->assignRole($data['role']);
-
-            return $user;
-        });
-
-        $this->sendInvite($user);
+        $user = UserInvites::create([
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'email' => $data['email'],
+            'company_id' => $companyId,
+            'is_active' => ($data['status'] ?? 'active') === 'active',
+        ], $data['role']);
         ActivityLogger::log(module: 'User Access', action: 'Invited', title: 'User invitation', description: "{$user->email} as ".Roles::LABELS[$data['role']], subject: $user);
 
         return (new UserResource($user->load('roles')))->response()->setStatusCode(201);
@@ -118,7 +105,7 @@ class UserController extends Controller
         }
 
         $user->forceFill(['invited_at' => now()])->save();
-        $this->sendInvite($user);
+        UserInvites::send($user);
         ActivityLogger::log(module: 'User Access', action: 'Invited', title: 'Invitation resent', description: $user->email, subject: $user);
 
         return (new UserResource($user->load('roles')))->response();
@@ -145,11 +132,5 @@ class UserController extends Controller
             $like = '%'.addcslashes($word, '%_\\').'%';
             $query->where(fn ($w) => $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('email', 'like', $like));
         }
-    }
-
-    private function sendInvite(User $user): void
-    {
-        $token = Password::broker()->createToken($user);
-        $user->notify(new UserInvitation($token, Roles::LABELS[$user->getRoleNames()->first()] ?? 'a team member'));
     }
 }

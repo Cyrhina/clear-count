@@ -1,4 +1,5 @@
-import { ArrowLeft, Archive, FileText, KeyRound, Pencil, ShieldCheck } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, Archive, FileText, KeyRound, Pencil, ShieldCheck, UserPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
@@ -28,28 +29,20 @@ import { EditGovernmentInfoForm } from '@ops/features/employees/components/edit/
 import { EditPersonalInfoForm } from '@ops/features/employees/components/edit/EditPersonalInfoForm'
 import { ApplyWfhDialog } from '@ops/features/attendance/components/ApplyWfhDialog'
 import { WfhArrangementCards } from '@ops/features/ess/components/WfhArrangementCards'
-import { useEmployee } from '@ops/features/employees/hooks/useEmployee'
-import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
+import { useEmployeeRecord } from '@ops/features/employees/hooks/useEmployeeRecords'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useTenant } from '@ops/hooks/useTenant'
-import { SEPARATION_LABEL, updateEmployeeStatus } from '@ops/lib/services/employeeService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { SEPARATION_LABEL, assignEmployeePayrollGroup, createEmployeeAccount, saveEmployeeStatus } from '@ops/lib/services/employeeService'
 import { Input } from '@ops/components/ui/Input'
 import { useSession } from '@ops/hooks/useSession'
-import { categoryLabel, findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
+import { categoryLabel } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, estimatedEquivalentFor, formatBaseRate, rateFieldLabel } from '@ops/lib/payroll/payRate'
-import { setEmployeePayrollGroup } from '@ops/lib/services/payrollSettingsService'
+import { getPayrollGroups } from '@ops/lib/services/payrollGroupService'
 import { getWfhArrangements } from '@ops/lib/services/wfhService'
-import { getUsers, resetUserPassword } from '@ops/lib/services/userService'
+import { sendAccessPasswordReset } from '@ops/lib/services/userAccessService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { EmploymentStatus, SessionUser, WfhArrangement } from '@ops/types/domain'
-
-const FREQUENCY_LABEL: Record<string, string> = {
-  weekly: 'Weekly',
-  biweekly: 'Bi-weekly',
-  semi_monthly: 'Semi-monthly',
-  monthly: 'Monthly',
-  custom: 'Custom',
-}
+import type { EmploymentStatus, WfhArrangement } from '@ops/types/domain'
 
 function Field({ label, value }: { label: string; value: string | undefined }) {
   return (
@@ -81,9 +74,10 @@ export function EmployeeProfilePage() {
 
 function EmployeeProfileContent() {
   const { id } = useParams<{ id: string }>()
-  const { employee, isLoading, refetch } = useEmployee(id)
-  const { branches } = useTenant()
-  const { groups, compensationTypes, refetch: refetchPayrollGroups } = usePayrollGroups()
+  const { employee, isLoading, refetch } = useEmployeeRecord(id)
+  const { branches } = useBranches()
+  const groupsQuery = useQuery({ queryKey: ['employees', 'payroll-groups'], queryFn: getPayrollGroups })
+  const groups = groupsQuery.data ?? []
   const { user } = useSession()
   const { notify } = useToast()
   const [wfh, setWfh] = useState<WfhArrangement[]>([])
@@ -108,12 +102,10 @@ function EmployeeProfileContent() {
   const canAdjustAttendance = usePermission('attendance.adjust')
   const canManageUsers = usePermission('users.manage')
   // The sign-in account linked to this employee, if they have one — only then is there a password to reset.
-  const [account, setAccount] = useState<SessionUser | null>(null)
+  const account = employee?.account ?? null
   const [resetOpen, setResetOpen] = useState(false)
-  useEffect(() => {
-    if (!canManageUsers || !id) return
-    getUsers(user).then((users) => setAccount(users.find((u) => u.employeeId === id) ?? null))
-  }, [canManageUsers, id, user])
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [accountEmail, setAccountEmail] = useState('')
   const [tab, setTab] = useState('personal')
   // Same sections as the tab row, in the same order — shown as a dropdown on phones.
   const tabOptions = [
@@ -155,40 +147,55 @@ function EmployeeProfileContent() {
 
   const fullName = `${employee.personal.firstName} ${employee.personal.lastName}`
   const branch = branches.find((b) => b.id === employee.branchId)
-  const currentGroup = findEmployeePayrollGroup(groups, employee.id)
-  const compensationType = compensationTypes.find((c) => c.id === currentGroup?.compensationTypeId)
+  const currentGroup = groups.find((g) => g.id === employee.payrollGroupId)
   const pendingGroup = pendingGroupId ? groups.find((g) => g.id === pendingGroupId) : undefined
+
+  /** Runs a change on the record: the success toast and a refresh, or the server's message. */
+  async function run(change: () => Promise<unknown>, success: { title: string; description?: string }) {
+    try {
+      await change()
+    } catch (error) {
+      return notify({ title: "Couldn't save the change", description: apiErrorMessage(error), tone: 'danger' })
+    }
+    notify({ ...success, tone: 'success' })
+    refetch()
+    return true
+  }
 
   async function applyStatusChange() {
     if (!statusDialog || !employee) return
-    await updateEmployeeStatus(user, employee.id, statusDialog)
-    notify({ title: `Employee ${statusDialog}`, tone: 'success' })
-    setStatusDialog(null)
-    refetch()
+    if (await run(() => saveEmployeeStatus(employee.id, statusDialog), { title: `Employee ${statusDialog}` })) setStatusDialog(null)
   }
 
   async function applyPasswordReset() {
     if (!account) return
-    await resetUserPassword(user, account.id)
-    notify({ title: 'Password reset sent', description: `A reset link was sent to ${account.email}.`, tone: 'success' })
-    setResetOpen(false)
+    if (await run(() => sendAccessPasswordReset(Number(account.id)), { title: 'Password reset sent', description: `A reset link was sent to ${account.email}.` })) setResetOpen(false)
+  }
+
+  async function applyAccountCreate() {
+    if (!employee || !accountEmail.trim()) return
+    if (await run(() => createEmployeeAccount(employee.id, accountEmail.trim()), { title: 'Login created', description: `An invite link was sent to ${accountEmail.trim()}.` })) setAccountOpen(false)
   }
 
   async function applySeparation() {
     if (!employee || !separationDate) return
-    await updateEmployeeStatus(user, employee.id, 'archived', { reason: separationReason, date: separationDate, notes: separationNotes.trim() || undefined })
-    notify({ title: `${fullName} marked as ${SEPARATION_LABEL[separationReason].toLowerCase()}`, description: `Last working day ${formatDate(separationDate)}`, tone: 'success' })
-    setSeparateOpen(false)
-    setSeparationNotes('')
-    refetch()
+    const done = await run(() => saveEmployeeStatus(employee.id, 'archived', { reason: separationReason, date: separationDate, notes: separationNotes.trim() || undefined }), {
+      title: `${fullName} marked as ${SEPARATION_LABEL[separationReason].toLowerCase()}`,
+      description: `Last working day ${formatDate(separationDate)}`,
+    })
+    if (done) {
+      setSeparateOpen(false)
+      setSeparationNotes('')
+    }
   }
 
   async function applyGroupChange() {
     if (pendingGroupId === undefined || !employee) return
-    await setEmployeePayrollGroup(user, employee.id, pendingGroupId)
-    notify({ title: pendingGroupId ? `Reassigned to ${pendingGroup?.name}` : 'Removed from Payroll Group', tone: 'success' })
-    setPendingGroupId(undefined)
-    refetchPayrollGroups()
+    const done = await run(() => assignEmployeePayrollGroup(employee, pendingGroupId), { title: pendingGroupId ? `Reassigned to ${pendingGroup?.name}` : 'Removed from Payroll Group' })
+    if (done) {
+      setPendingGroupId(undefined)
+      void groupsQuery.refetch()
+    }
   }
 
   return (
@@ -209,6 +216,11 @@ function EmployeeProfileContent() {
               </Badge>
             ) : (
               <StatusBadge status={employee.employment.status} />
+            )}
+            {canManageUsers && !account && (
+              <Button size="sm" variant="secondary" icon={<UserPlus className="size-4" />} onClick={() => { setAccountEmail(employee.personal.personalEmail ?? ''); setAccountOpen(true) }}>
+                Create login
+              </Button>
             )}
             {account && account.isActive !== false && (
               <Button size="sm" variant="secondary" icon={<KeyRound className="size-4" />} onClick={() => setResetOpen(true)}>
@@ -394,8 +406,8 @@ function EmployeeProfileContent() {
                   <p className="mt-1 text-sm font-medium text-foreground">{currentGroup?.name ?? 'Unassigned'}</p>
                 )}
               </div>
-              <Field label="Compensation Type" value={compensationType?.name ?? PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />
-              <Field label="Payroll Frequency" value={currentGroup ? FREQUENCY_LABEL[currentGroup.frequency] : '—'} />
+              <Field label="Compensation Type" value={currentGroup?.compensation ?? PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />
+              <Field label="Payroll Frequency" value={currentGroup?.frequency ?? '—'} />
               {canViewPay && <Field label="Pay Rate Type" value={PAY_RATE_TYPE_LABEL[employee.compensation.payType]} />}
               {canViewPay && (
                 <Field
@@ -517,8 +529,6 @@ function EmployeeProfileContent() {
         <TabsContent value="history">
           <div className="space-y-3">
             {employee.history
-              .slice()
-              .reverse()
               .map((entry) => (
                 <div key={entry.id} className="flex gap-3 border-l-2 border-border pl-4">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -550,6 +560,25 @@ function EmployeeProfileContent() {
             </Button>
             <Button variant={statusDialog === 'archived' ? 'destructive' : 'primary'} onClick={applyStatusChange}>
               Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Create a login for {fullName}?</DialogTitle>
+          <DialogDescription>An invite link is sent to this email so they can set their own password. They sign in as an Employee.</DialogDescription>
+          <div className="mt-4">
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Email</p>
+            <Input type="email" value={accountEmail} onChange={(e) => setAccountEmail(e.target.value)} placeholder="name@example.com" />
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setAccountOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" disabled={!accountEmail.trim()} onClick={applyAccountCreate}>
+              Send invite
             </Button>
           </div>
         </DialogContent>

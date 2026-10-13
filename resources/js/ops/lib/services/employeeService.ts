@@ -1,3 +1,9 @@
+// mock: remove in P17. The Employees screens use the API functions at the bottom of this file. Every other module still reads the
+// mock employees through getEmployees, getEmployee, getEmployeeIdsOnLeaveToday and updateEmployeeSelf until its own phase.
+// The mock createEmployee, importEmployees, updateEmployeeStatus and bulk functions stay until P3b.
+import type { EmployeePage, EmployeeListParams, EmployeeRecord } from '@ops/features/employees/types'
+import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
+import { api } from '@ops/lib/api/http'
 import { ensureBranchDepartment, releaseSupervisorIfMoved } from '@ops/lib/services/branchDepartmentService'
 import { scopeForSession } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
@@ -195,38 +201,12 @@ function logHistory(employee: Employee, actor: string, action: string) {
   employee.history.push({ id: crypto.randomUUID(), timestamp: new Date().toISOString(), actor, action })
 }
 
-export async function updateEmployeePersonalInfo(
-  session: SessionUser,
-  employeeId: string,
-  updates: EmployeePersonal,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  employee.personal = updates
-  logHistory(employee, session.name, 'Personal information updated')
-}
-
 export interface UpdateEmploymentInfoInput {
   position: string
   department: string
   employmentType: Employee['employment']['employmentType']
   dateHired: string
   category: Employee['employment']['category']
-}
-
-export async function updateEmployeeEmploymentInfo(
-  session: SessionUser,
-  employeeId: string,
-  updates: UpdateEmploymentInfoInput,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  Object.assign(employee.employment, updates)
-  logHistory(employee, session.name, 'Employment information updated')
-  await ensureBranchDepartment(session, employee.branchId, employee.employment.department)
-  releaseSupervisorIfMoved(session, employee.id)
 }
 
 export interface UpdateCompensationInput {
@@ -236,73 +216,9 @@ export interface UpdateCompensationInput {
   reason: string
 }
 
-/** Records a Compensation History entry only when the base pay actually changes. */
-export async function updateEmployeeCompensation(
-  session: SessionUser,
-  employeeId: string,
-  updates: UpdateCompensationInput,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  const previousSalary = employee.compensation.basicPay
-  employee.compensation.basicPay = updates.basicPay
-  employee.compensation.payType = updates.payType
-  employee.compensation.outputUnit = updates.payType === 'output_based' ? updates.outputUnit ?? null : null
-
-  if (updates.basicPay !== previousSalary) {
-    employee.compensationHistory.push({
-      id: crypto.randomUUID(),
-      effectiveDate: new Date().toISOString().slice(0, 10),
-      type: updates.reason,
-      previousSalary,
-      newSalary: updates.basicPay,
-      approvedBy: session.name,
-    })
-  }
-
-  logHistory(employee, session.name, 'Compensation updated')
-}
-
 export interface UpdateBenefitsInput {
   hmoPlan?: string
   leaveCreditsByType: Record<string, number>
-}
-
-export async function updateEmployeeBenefits(
-  session: SessionUser,
-  employeeId: string,
-  updates: UpdateBenefitsInput,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  employee.benefits = updates
-  logHistory(employee, session.name, 'Benefits updated')
-}
-
-export async function updateEmployeeGovernmentInfo(
-  session: SessionUser,
-  employeeId: string,
-  updates: EmployeeGovernment,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  employee.government = updates
-  logHistory(employee, session.name, 'Government information updated')
-}
-
-export async function updateEmployeeBankInfo(
-  session: SessionUser,
-  employeeId: string,
-  updates: EmployeeBank,
-): Promise<void> {
-  const employee = findCompanyEmployee(session, employeeId)
-  if (!employee) return
-
-  employee.bank = updates
-  logHistory(employee, session.name, 'Bank/payment information updated')
 }
 
 /** Employee ids with an approved leave request covering today — used to derive the "On Leave" filter without touching the core employment.status enum. */
@@ -353,3 +269,78 @@ export async function bulkUpdateEmployeeStatus(session: SessionUser, employeeIds
   }
   return changed
 }
+
+/** The employee record, backed by `/api/employees`. Sections keep the camelCase the server stores. */
+
+const SECTIONS = ['personal', 'employment', 'benefits', 'government', 'compensation', 'bank']
+
+/** Pay and bank fields are missing for people who may not see pay; give the screens an empty shape so they render. */
+function toEmployee(raw: unknown): EmployeeRecord {
+  const e = camelizeKeys<EmployeeRecord>(raw, SECTIONS)
+  return {
+    ...e,
+    compensation: e.compensation ?? { basicPay: 0, payType: 'monthly', allowances: [] },
+    bank: e.bank ?? {},
+    government: e.government ?? {},
+    documents: e.documents ?? [],
+    history: e.history ?? [],
+    compensationHistory: e.compensationHistory ?? [],
+  }
+}
+
+export async function fetchEmployees(params: EmployeeListParams = {}): Promise<EmployeePage> {
+  const { perPage, ...rest } = params
+  const res = await api.get<{ data: unknown[]; meta: { total: number; current_page: number; last_page: number } }>('/api/employees', snakeizeKeys({ ...rest, perPage }) as Record<string, string | number>)
+  return { employees: res.data.map(toEmployee), total: res.meta.total, page: res.meta.current_page, lastPage: res.meta.last_page }
+}
+
+export async function fetchEmployee(id: string): Promise<EmployeeRecord> {
+  const res = await api.get<{ data: unknown }>(`/api/employees/${id}`)
+  return toEmployee(res.data)
+}
+
+export interface HireInput {
+  branchId: string
+  payrollGroupId?: string | null
+  personal: EmployeePersonal
+  employment: Omit<Employee['employment'], 'status'>
+  compensation: Employee['compensation']
+  benefits?: Employee['benefits']
+  government?: EmployeeGovernment
+  bank?: EmployeeBank
+}
+
+export async function hireEmployee(input: HireInput): Promise<EmployeeRecord> {
+  const { branchId, payrollGroupId, ...sections } = input
+  const res = await api.post<{ data: unknown }>('/api/employees', { branch_id: branchId, payroll_group_id: payrollGroupId, ...sections })
+  return toEmployee(res.data)
+}
+
+async function saveSection(id: string, section: string, body: unknown): Promise<EmployeeRecord> {
+  const res = await api.put<{ data: unknown }>(`/api/employees/${id}/${section}`, body)
+  return toEmployee(res.data)
+}
+
+export const saveEmployeePersonal = (id: string, personal: EmployeePersonal) => saveSection(id, 'personal', { personal })
+export const saveEmployeeBenefits = (id: string, benefits: UpdateBenefitsInput) => saveSection(id, 'benefits', { benefits })
+export const saveEmployeeGovernment = (id: string, government: EmployeeGovernment) => saveSection(id, 'government', { government })
+export const saveEmployeeBank = (id: string, bank: EmployeeBank) => saveSection(id, 'bank', { bank })
+
+/** Job details; the branch and payroll group are sent only when given. `payrollGroupId: null` removes the employee from their group. */
+export const saveEmployeeEmployment = (id: string, employment: UpdateEmploymentInfoInput, extras: { branchId?: string; payrollGroupId?: string | null } = {}) =>
+  saveSection(id, 'employment', { employment, ...(snakeizeKeys(extras) as object) })
+
+/** A pay change: the server records a new compensation-history row. */
+export const saveEmployeeCompensation = (id: string, { reason, ...compensation }: UpdateCompensationInput) => saveSection(id, 'compensation', { compensation, reason })
+
+/** Moves an employee to a payroll group (or out of any with `null`), keeping their job details as they are. */
+export function assignEmployeePayrollGroup(employee: Employee, payrollGroupId: string | null) {
+  const { status: _status, dateSeparated: _date, separationReason: _reason, managerId: _manager, ...employment } = employee.employment
+  return saveEmployeeEmployment(employee.id, employment, { payrollGroupId })
+}
+
+/** Status change. A separation (reason, last day) goes with a non-active status; `active` clears it. */
+export const saveEmployeeStatus = (id: string, status: EmploymentStatus, separation?: { reason: NonNullable<Employee['employment']['separationReason']>; date: string; notes?: string }) =>
+  saveSection(id, 'status', { status, separation })
+
+export const createEmployeeAccount = (id: string, email: string, role = 'employee') => api.post(`/api/employees/${id}/account`, { email, role })

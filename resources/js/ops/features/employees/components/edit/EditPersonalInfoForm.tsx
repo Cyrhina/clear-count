@@ -3,9 +3,8 @@ import { Button } from '@ops/components/ui/Button'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
-import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { updateEmployeePersonalInfo } from '@ops/lib/services/employeeService'
+import { useSectionSave } from '@ops/features/employees/hooks/useSectionSave'
+import { saveEmployeePersonal } from '@ops/lib/services/employeeService'
 import type { Employee, EmployeePersonal } from '@ops/types/domain'
 
 const CIVIL_STATUS_OPTIONS = [
@@ -24,8 +23,7 @@ export function EditPersonalInfoForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
-  const { notify } = useToast()
+  const save = useSectionSave(onSaved)
 
   const {
     register,
@@ -36,9 +34,7 @@ export function EditPersonalInfoForm({
   } = useForm<EmployeePersonal>({ defaultValues: employee.personal })
 
   async function onSubmit(values: EmployeePersonal) {
-    await updateEmployeePersonalInfo(user, employee.id, values)
-    notify({ title: 'Personal information updated', tone: 'success' })
-    onSaved()
+    await save(() => saveEmployeePersonal(employee.id, values), 'Personal information updated')
   }
 
   return (

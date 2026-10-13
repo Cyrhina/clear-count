@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Settings2 } from 'lucide-react'
-import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@ops/components/ui/Button'
@@ -8,9 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
-import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
-import { createEmployee } from '@ops/lib/services/employeeService'
+import { BRANCHES_KEY, useBranches } from '@ops/features/branches/hooks/useBranches'
+import { EMPLOYEES_KEY } from '@ops/features/employees/hooks/useEmployeeRecords'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { hireEmployee, type HireInput } from '@ops/lib/services/employeeService'
 import {
   OUTPUT_UNIT_OPTIONS,
   PAY_RATE_TYPE_OPTIONS,
@@ -29,6 +31,9 @@ const schema = z
   .object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
+    birthDate: z.string().min(1, 'Birth date is required'),
+    contactNumber: z.string().min(1, 'Contact number is required'),
+    address: z.string().min(1, 'Address is required'),
     department: z.string().min(1, 'Department is required'),
     position: z.string().min(1, 'Position is required'),
     branchId: z.string().min(1, 'Branch is required'),
@@ -63,12 +68,12 @@ const OUTPUT_UNIT_SELECT_OPTIONS = OUTPUT_UNIT_OPTIONS.map((u) => ({ value: u, l
  * `mixedCompensationStore.ts`. */
 const PAY_RATE_TYPE_OPTIONS_WITH_MIXED = [...PAY_RATE_TYPE_OPTIONS, { value: 'mixed' as const, label: 'Mixed Compensation' }]
 
-export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
+export function AddEmployeeDialog({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false)
   const [mixedDialogOpen, setMixedDialogOpen] = useState(false)
   const [mixedStructure, setMixedStructure] = useState<MixedCompensationStructure | undefined>(undefined)
-  const { user } = useSession()
-  const { branches } = useTenant()
+  const { branches } = useBranches()
+  const queryClient = useQueryClient()
   const { notify } = useToast()
 
   const {
@@ -78,11 +83,17 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
     watch,
     reset,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { employmentType: 'regular', branchId: branches[0]?.id ?? '', payType: 'monthly' },
+    defaultValues: { employmentType: 'regular', branchId: '', payType: 'monthly' },
   })
+
+  // The branches arrive from the API after the form opens; start on the first one.
+  useEffect(() => {
+    if (!getValues('branchId') && branches[0]) setValue('branchId', branches[0].id)
+  }, [branches, getValues, setValue])
 
   const payType = watch('payType')
   const basicPay = watch('basicPay')
@@ -91,42 +102,35 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
     payType !== 'mixed' && basicPay && basicPay > 0 ? estimatedEquivalentFor(payType, basicPay) : null
 
   function resetAll() {
-    reset()
+    reset({ employmentType: 'regular', branchId: branches[0]?.id ?? '', payType: 'monthly' })
     setMixedStructure(undefined)
   }
 
   async function onSubmit(values: FormValues) {
-    const base = {
-      firstName: values.firstName,
-      lastName: values.lastName,
-      department: values.department,
-      position: values.position,
+    const mixed = values.payType === 'mixed' ? mixedStructure : undefined
+    if (values.payType === 'mixed' && !mixed) return
+
+    const input: HireInput = {
       branchId: values.branchId,
-      employmentType: values.employmentType,
-      dateHired: values.dateHired,
+      personal: { firstName: values.firstName.trim(), lastName: values.lastName.trim(), birthDate: values.birthDate, civilStatus: 'single', address: values.address.trim(), contactNumber: values.contactNumber.trim() },
+      employment: { position: values.position, department: values.department, employmentType: values.employmentType, dateHired: values.dateHired, category: 'regular' },
+      compensation: mixed
+        ? { payType: mixed.baseType, basicPay: mixed.baseAmount, outputUnit: null, allowances: [] }
+        : { payType: values.payType as HireInput['compensation']['payType'], basicPay: values.basicPay!, outputUnit: values.payType === 'output_based' ? values.outputUnit : null, allowances: [] },
     }
 
-    if (values.payType === 'mixed') {
-      if (!mixedStructure) return
-      const employee = await createEmployee(user, {
-        ...base,
-        payType: mixedStructure.baseType,
-        basicPay: mixedStructure.baseAmount,
-        outputUnit: null,
-      })
-      useMixedCompensationStore.getState().setStructure(employee.id, mixedStructure)
-    } else {
-      await createEmployee(user, {
-        ...base,
-        payType: values.payType,
-        basicPay: values.basicPay!,
-        outputUnit: values.payType === 'output_based' ? values.outputUnit : null,
-      })
+    try {
+      const employee = await hireEmployee(input)
+      if (mixed) useMixedCompensationStore.getState().setStructure(employee.id, mixed)
+    } catch (error) {
+      return notify({ title: "Couldn't add the employee", description: apiErrorMessage(error), tone: 'danger' })
     }
     notify({ title: 'Employee added', description: `${values.firstName} ${values.lastName} was added to the roster.`, tone: 'success' })
     resetAll()
     setOpen(false)
-    onCreated()
+    void queryClient.invalidateQueries({ queryKey: [EMPLOYEES_KEY] })
+    void queryClient.invalidateQueries({ queryKey: [BRANCHES_KEY] })
+    onCreated?.()
   }
 
   return (
@@ -153,6 +157,15 @@ export function AddEmployeeDialog({ onCreated }: { onCreated: () => void }) {
           </FormField>
           <FormField label="Last name" required error={errors.lastName?.message}>
             <Input {...register('lastName')} placeholder="Dela Cruz" />
+          </FormField>
+          <FormField label="Birth date" required error={errors.birthDate?.message}>
+            <Input type="date" {...register('birthDate')} />
+          </FormField>
+          <FormField label="Contact number" required error={errors.contactNumber?.message}>
+            <Input {...register('contactNumber')} placeholder="09171234567" />
+          </FormField>
+          <FormField label="Address" required error={errors.address?.message} className="col-span-2">
+            <Input {...register('address')} placeholder="Street, barangay, city" />
           </FormField>
           <FormField label="Position" required error={errors.position?.message}>
             <Input {...register('position')} placeholder="Associate" />
