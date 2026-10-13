@@ -16,8 +16,8 @@ import {
   formatPeso,
   useAccordionRows,
 } from '@ops/features/statutory/components/BracketAccordion'
-import { useSession } from '@ops/hooks/useSession'
-import { updateStatutoryConfig } from '@ops/lib/services/payrollService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { saveStatutoryConfig } from '@ops/lib/services/statutoryApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { SssBracket, StatutoryConfig } from '@ops/types/domain'
 
@@ -36,7 +36,6 @@ export function SssBracketCard({
   canEdit: boolean
   onSaved: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -64,7 +63,11 @@ export function SssBracketCard({
   }
 
   async function onSubmit(values: FormValues) {
-    await updateStatutoryConfig(user, { sssBrackets: values.sssBrackets })
+    try {
+      await saveStatutoryConfig(config, { sssBrackets: values.sssBrackets })
+    } catch (error) {
+      return notify({ title: "Couldn't save the table", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'SSS contribution table updated', tone: 'success' })
     onSaved()
   }

@@ -51,7 +51,7 @@ export function StatutoryPage() {
         </TabsContent>
 
         <TabsContent value="employees" className="pt-4 lg:pt-6">
-          <EmployeeContributionsTable config={config} />
+          <EmployeeContributionsTable />
         </TabsContent>
       </Tabs>
     </div>

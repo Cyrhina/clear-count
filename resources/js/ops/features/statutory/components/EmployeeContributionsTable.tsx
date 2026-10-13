@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Card } from '@ops/components/ui/Card'
 import { Input } from '@ops/components/ui/Input'
@@ -6,12 +7,13 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useCompanySettings } from '@ops/features/company-settings/hooks/useCompanySettings'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { periodsPerCycleForFrequency, periodsPerMonthFor, workingDaysPerMonthFor } from '@ops/lib/payroll/payFrequency'
-import { monthlyStatutoryFor } from '@ops/lib/services/payrollService'
+import { monthlyEquivalentFor } from '@ops/lib/payroll/rateBasis'
+import { fetchStatutoryEmployees, previewStatutory } from '@ops/lib/services/statutoryApiService'
+import { STATUTORY_KEY } from '@ops/features/statutory/hooks/useStatutoryConfig'
 import { formatCurrency } from '@ops/lib/utils/format'
-import type { PayrollFrequency, StatutoryConfig } from '@ops/types/domain'
+import type { PayrollFrequency } from '@ops/types/domain'
 
 const FREQUENCY_LABEL: Record<PayrollFrequency, string> = {
   daily: 'Daily',
@@ -27,17 +29,17 @@ function Money({ value, muted }: { value: number; muted?: boolean }) {
 }
 
 /**
- * Every active employee's statutory contributions under the current configuration — computed by the
- * same function the payroll engine uses, so these figures always match Payroll Runs and payslips and
- * update immediately when the brackets/rates on the other tabs are edited.
+ * Every active employee's statutory contributions under the tables in force today — worked out by the server with the
+ * same calculation the payroll engine uses, so these figures match Payroll Runs and payslips and
+ * update when the brackets/rates on the other tabs are saved.
  */
-export function EmployeeContributionsTable({ config }: { config: StatutoryConfig }) {
-  const { employees, isLoading } = useEmployees()
+export function EmployeeContributionsTable() {
+  const { data: employees = [], isPending: employeesLoading } = useQuery({ queryKey: [STATUTORY_KEY, 'employees'], queryFn: fetchStatutoryEmployees })
   const { groups } = usePayrollGroups()
   const { schedules } = useCompanySettings()
   const [search, setSearch] = useState('')
 
-  const rows = useMemo(
+  const inputs = useMemo(
     () =>
       employees
         .filter((e) => e.employment.status === 'active')
@@ -48,21 +50,35 @@ export function EmployeeContributionsTable({ config }: { config: StatutoryConfig
           const workingDays = workingDaysPerMonthFor(workSchedule)
           // Split divisor: ÷1 monthly, ÷2 semi-monthly, ÷4 weekly, ÷22/26 daily, periods-in-month for bi-weekly/custom.
           const periodsPerMonth = periodsPerCycleForFrequency(frequency, periodsPerMonthFor(frequency, group, workSchedule), workingDays)
-          const m = monthlyStatutoryFor(config, employee, frequency, periodsPerMonthFor(frequency, group, workSchedule))
-          const employeeTotal = m.sssEmployee + m.philhealthEmployee + m.pagibigEmployee + m.withholdingTax
-          return {
-            employee,
-            groupName: group?.name,
-            frequency,
-            periodsPerMonth,
-            m,
-            employeeTotal,
-            employerTotal: m.sssEmployer + m.philhealthEmployer + m.pagibigEmployer,
-            perCutoff: Math.round((employeeTotal / periodsPerMonth) * 100) / 100,
-          }
+          return { employee, groupName: group?.name, frequency, periodsPerMonth, ratePeriodsPerMonth: periodsPerMonthFor(frequency, group, workSchedule) }
         })
         .sort((a, b) => a.employee.personal.lastName.localeCompare(b.employee.personal.lastName)),
-    [employees, groups, schedules, config],
+    [employees, groups, schedules],
+  )
+
+  const { data: figures } = useQuery({
+    queryKey: [STATUTORY_KEY, 'preview', inputs.map((i) => [i.employee.id, i.employee.compensation.basicPay, i.employee.compensation.payType, i.frequency, i.ratePeriodsPerMonth])],
+    queryFn: () =>
+      previewStatutory(
+        inputs.map((i) => ({
+          monthlySalary: monthlyEquivalentFor(i.employee),
+          frequency: i.frequency,
+          periodsPerMonth: i.ratePeriodsPerMonth,
+          pagibigVoluntary: i.employee.government.pagibigEmployeeContribution ?? 0,
+        })),
+      ),
+    enabled: inputs.length > 0,
+  })
+  const isLoading = employeesLoading || (inputs.length > 0 && !figures)
+
+  const rows = useMemo(
+    () =>
+      inputs.map((i, n) => {
+        const m = figures?.[n]
+        const employeeTotal = m ? m.sssEmployee + m.philhealthEmployee + m.pagibigEmployee + m.withholdingTax : 0
+        return { ...i, m, employeeTotal, employerTotal: m ? m.sssEmployer + m.philhealthEmployer + m.pagibigEmployer : 0, perCutoff: Math.round((employeeTotal / i.periodsPerMonth) * 100) / 100 }
+      }).filter((r): r is typeof r & { m: NonNullable<typeof r.m> } => !!r.m),
+    [inputs, figures],
   )
 
   const query = search.trim().toLowerCase()

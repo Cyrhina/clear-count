@@ -404,6 +404,8 @@ Frontend: the Statutory page; `getStatutoryConfig` and `updateStatutoryConfig` f
 
 Done when: the PHP results match the golden fixtures for every row.
 
+**P8 status:** done in branch `backend/p08-statutory` (see PROGRESS.md). The PHP calculator matches all 68 golden rows and every tax table sample. The seeded rates are the mock's and still need the official check.
+
 ---
 
 ### P9. Benefits, loans, deductions, bonuses (L)
