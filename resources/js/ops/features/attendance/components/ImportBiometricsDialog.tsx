@@ -37,7 +37,7 @@ import { apiErrorMessage } from '@ops/lib/api/http'
 import { fetchAttendanceHistory, fetchSchedulesWithMembers, getApprovedLeavesInRange, importPunches, statusForPunch } from '@ops/lib/services/attendanceService'
 import { fetchAllEmployees } from '@ops/lib/services/employeeService'
 import { fetchRosterMap } from '@ops/lib/services/scheduleService'
-import { getWfhDayLookup } from '@ops/lib/services/wfhService'
+import { fetchWfhDayLookup } from '@ops/lib/services/wfhArrangementService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
 import { xlsxToCsv } from '@ops/lib/utils/xlsxRead'
@@ -290,7 +290,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     const leaves = spanFrom ? await getApprovedLeavesInRange(user, spanFrom, spanTo) : []
     const leave = annotateImportWithLeaves(result.records, leaves, employees, schedules)
     const roster = spanFrom ? await fetchRosterMap(spanFrom, spanTo) : new Map<string, string | null>()
-    const wfhDays = spanFrom ? await getWfhDayLookup(user, spanFrom, spanTo) : new Set<string>()
+    const wfhDays = spanFrom ? await fetchWfhDayLookup(spanFrom, spanTo) : new Set<string>()
     setParseError(null)
     setMappingDraft(null)
     setOverrides(new Map())

@@ -40,7 +40,7 @@ import { summarizeMixedCompensation } from '@ops/features/employees/mixedCompens
 import { categoryLabel } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, estimatedEquivalentFor, formatBaseRate, rateFieldLabel } from '@ops/lib/payroll/payRate'
 import { getPayrollGroups } from '@ops/lib/services/payrollGroupService'
-import { getWfhArrangements } from '@ops/lib/services/wfhService'
+import { fetchWfh } from '@ops/lib/services/wfhArrangementService'
 import { sendAccessPasswordReset } from '@ops/lib/services/userAccessService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { EmploymentStatus, WfhArrangement } from '@ops/types/domain'
@@ -83,7 +83,7 @@ function EmployeeProfileContent() {
   const { notify } = useToast()
   const [wfh, setWfh] = useState<WfhArrangement[]>([])
   useEffect(() => {
-    if (id) getWfhArrangements(user).then((l) => setWfh(l.filter((a) => a.employeeId === id)))
+    if (id) fetchWfh().then((l) => setWfh(l.arrangements.filter((a) => a.employeeId === id)))
   }, [user, id])
   const navigate = useNavigate()
   const [statusDialog, setStatusDialog] = useState<EmploymentStatus | null>(null)

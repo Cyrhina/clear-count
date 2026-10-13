@@ -12,9 +12,11 @@ use App\Models\EmployeeCompensation;
 use App\Models\PayrollGroup;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Models\WfhArrangement;
 use App\Models\WorkSchedule;
 use App\Support\AttendanceStatusResolver;
 use App\Support\PayrollDefaults;
+use App\Support\WfhPlanner;
 use Illuminate\Database\Seeder;
 
 class DemoSeeder extends Seeder
@@ -122,6 +124,18 @@ class DemoSeeder extends Seeder
 
         ShiftAssignment::insert($rows);
         $this->seedAttendance($company, $schedules);
+        $this->seedWfh($company);
+    }
+
+    /** Two employees work from home on Wednesdays (a standing arrangement), and the days that have come are filled in. */
+    private function seedWfh(Company $company): void
+    {
+        Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->take(2)->get()->each(fn (Employee $employee) => WfhArrangement::create([
+            'company_id' => $company->id, 'employee_id' => $employee->id, 'kind' => 'standing', 'date_from' => now()->subDays(30)->toDateString(), 'date_to' => null,
+            'days_of_week' => [3], 'times' => 'default', 'reason' => 'Standing mid-week WFH', 'status' => 'approved', 'decided_at' => now(),
+        ]));
+
+        WfhPlanner::materialize();
     }
 
     /** The last ten days of punches on each employee's schedule: mostly on time, some late, and a missing day here and there (absent). */

@@ -20,7 +20,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
 | P3 | Employees (a, b) | done (merged #6, #7) | backend/p03-employees, backend/p03b-employees-bulk | #6, #7 | 2026-10-13 |
 | P4 | Schedules and roster | done (merged #8) | backend/p04-schedules | #8 | 2026-10-13 |
-| P5 | Attendance, adjustments, biometrics, WFH (a, b) | in progress: P5a in review, P5b not started | backend/p05a-attendance | | |
+| P5 | Attendance, adjustments, biometrics, WFH (a, b) | P5a merged (#9); P5b in review | backend/p05a-attendance, backend/p05b-wfh | #9 (P5a) | 2026-10-13 (P5a) |
 | P6 | Leave | not started | | | |
 | P7 | Overtime, work logs, approvals inbox, notifications | not started | | | |
 | P8 | Statutory tables and withholding tax | not started | | | |
@@ -62,7 +62,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
-| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService` (all); `db.attendanceRecords`, `db.attendanceAdjustments` | payroll, reports (late and absence, team), dashboards, manager service, notifications, ESS, leave, `WfhPanel`, `ApplyWfhDialog` | P5b (WFH), P6 (leave), P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P5a |
+| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: getWfhArrangements, createWfhBatch, cancelWfh, scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | payroll, reports (late and absence, team), dashboards, manager service, notifications, ESS (WFH request page), leave, `LogAttendanceDialog` (default times) | P6 (leave), P10 (payroll), P13 (ESS, WFH request), P14 (dashboards, reports) | P5a |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -81,6 +81,21 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P5b - 2026-10-18
+- Branch: backend/p05b-wfh (pushed: no)
+- Done:
+  - Backend: `wfh_arrangements` (one row per employee; a bulk apply shares a batch id) and `companies.wfh_monthly_limit` (the old in-memory limit is now a company setting that only warns). `WfhPlanner` ports the rules: a temporary arrangement beats a standing one, the newest wins a tie; rest days, holidays and real punches are never changed. `WfhPlanner::materialize` fills the day's attendance (source wfh, auto-recorded) and takes over days an older arrangement filled when a newer one now decides them. Command `attendance:materialize-wfh` runs daily at 00:30 and also catches up the last 92 days; approving or applying an arrangement backfills at once. Endpoints: list, preview, apply (people with `attendance.adjust` save approved; an employee with `ess.view` can only ask for themselves, saved pending), cancel, end after a day, decide (approve or reject, on the Approval kit), set the monthly limit (`attendance.approve`). Tests: 203 (199 pass, 4 skipped).
+  - Frontend: `wfhArrangementService` and `useWfh`; the WFH tab, Apply WFH dialog (server preview, overlaps, limit warning), approve and reject, End after, Cancel, the monthly limit field, the employee profile WFH card and the Import Biometrics WFH day lookup read the API. `wfhLimitStore` removed. DemoSeeder: two standing Wednesday arrangements.
+- Next: open the P5b PR, merge it, then start P6 (Leave). PLAN.md P6.
+- Gotchas:
+  - The ESS WFH request page still uses the mock `wfhService`, so a request from ESS does not reach the API until Self-service (P13). The API already accepts it.
+  - Leave is not checked yet when WFH is filled in or previewed (leave counts are 0 until P6).
+  - A day that already has a real record (punch, hand-logged, adjustment) is never replaced by WFH, even by a later temporary arrangement.
+  - Pending WFH decisions are gated on `attendance.adjust` (as the mock panel did), so a manager can decide their branch's requests.
+  - Not browser-tested: Apply WFH dialog flow (the endpoints were driven with fetch), approve and reject, Cancel, the limit field, the manager view.
+- Checks: php artisan test 203 (199 passed, 4 skipped); tsc clean; test:samples 13 pass; test:golden 3 pass.
+
 
 ### P5a - 2026-10-17
 - Branch: backend/p05a-attendance (pushed: no)

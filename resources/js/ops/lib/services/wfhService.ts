@@ -2,7 +2,8 @@ import { statusForPunch } from '@ops/lib/attendance/status'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { db } from '@ops/mock-data'
-import type { Employee, Schedule, SessionUser, WfhArrangement, WfhKind, WfhTimes } from '@ops/types/domain'
+import { validateWfhInput, type WfhInput } from '@ops/lib/services/wfhArrangementService'
+import type { Employee, Schedule, SessionUser, WfhArrangement } from '@ops/types/domain'
 
 /*
  * Work-from-home arrangements. One record per employee, made one at a time or in bulk (a batch id ties a bulk apply together).
@@ -56,17 +57,6 @@ export function wfhOwnerFor(employeeId: string, date: string, list: WfhArrangeme
   return matches.sort((a, b) => Number(b.kind === 'temporary') - Number(a.kind === 'temporary') || b.createdAt.localeCompare(a.createdAt))[0]
 }
 
-/** `employeeId|date` of every WFH day (any times option) between two dates — lets the biometrics import tell "WFH" from "no punch". */
-export async function getWfhDayLookup(session: SessionUser, from: string, to: string): Promise<Set<string>> {
-  const ids = new Set((await getEmployees(session)).map((e) => e.id))
-  const out = new Set<string>()
-  const mine = db.wfhArrangements.filter((a) => a.companyId === session.companyId && ids.has(a.employeeId) && a.status === 'approved')
-  for (const employeeId of new Set(mine.map((a) => a.employeeId))) {
-    for (let d = from; d <= to; d = addDays(d, 1)) if (wfhOwnerFor(employeeId, d, mine)) out.add(`${employeeId}|${d}`)
-  }
-  return out
-}
-
 function defaultSchedule(companyId: string): Schedule | undefined {
   const list = db.schedules.filter((s) => s.companyId === companyId)
   return list.find((s) => s.id.endsWith('_sched_default')) ?? list[0]
@@ -94,95 +84,14 @@ export function scheduleOn(employee: Pick<Employee, 'id' | 'companyId'>, date: s
 const isHoliday = (companyId: string, date: string) => db.holidays.some((h) => h.companyId === companyId && h.date === date)
 const hasLeave = (employeeId: string, date: string) => db.leaveRequests.some((r) => r.employeeId === employeeId && r.status === 'approved' && r.dateFrom <= date && r.dateTo >= date)
 
-// ---------------------------------------------------------------------------------------------------- bulk apply
-
-export interface WfhInput {
-  employeeIds: string[]
-  kind: WfhKind
-  dateFrom: string
-  /** Required for temporary; null/omitted = open-ended standing. */
-  dateTo: string | null
-  /** Empty = every working day in the range. */
-  daysOfWeek: number[]
-  times: WfhTimes
-  custom?: WfhArrangement['custom']
-  reason: string
-  /** Cancel an employee's overlapping arrangements of the same kind instead of skipping them. */
-  replaceOverlaps?: boolean
-  /** Optional monthly cap per employee — months over it are reported, not blocked. */
-  monthlyLimit?: number
-}
-
-export interface WfhPreviewRow {
-  employee: Employee
-  /** Working days the arrangement will apply to (inside the previewed span). */
-  workDays: number
-  /** Days in the range that the arrangement will not change, and why. */
-  skipped: { leave: number; holiday: number; rest: number; punches: number }
-  /** Existing pending/approved arrangements of the same kind that overlap. */
-  overlapIds: string[]
-  /** Months (YYYY-MM) where the employee would pass the monthly limit. */
-  overLimit: string[]
-}
-
-/** Open-ended standing arrangements are previewed over this many days. */
-const PREVIEW_SPAN_DAYS = 56
-
-export function validateWfhInput(input: WfhInput): string | undefined {
-  if (!input.reason.trim()) return 'Add a reason.'
-  if (!input.dateFrom) return 'Choose a start date.'
-  if (input.kind === 'temporary' && !input.dateTo) return 'Choose an end date.'
-  if (input.dateTo && input.dateTo < input.dateFrom) return 'The end date is before the start date.'
-  if (input.times === 'custom') {
-    const c = input.custom
-    if (!c || !c.timeIn || !c.timeOut) return 'Enter the AM in and PM out times.'
-    if (c.breakOut && c.breakIn && c.breakIn <= c.breakOut) return 'PM in must be after AM out.'
-  }
-  if (input.employeeIds.length === 0) return 'Choose at least one employee.'
-  return undefined
-}
-
 const overlaps = (a: Pick<WfhArrangement, 'dateFrom' | 'dateTo'>, b: Pick<WfhArrangement, 'dateFrom' | 'dateTo'>) => a.dateFrom <= (b.dateTo ?? '9999-12-31') && b.dateFrom <= (a.dateTo ?? '9999-12-31')
-
-export async function previewWfh(session: SessionUser, input: WfhInput): Promise<WfhPreviewRow[]> {
-  const employees = (await getEmployees(session)).filter((e) => input.employeeIds.includes(e.id))
-  const today = todayKey()
-  const spanEnd = input.dateTo ?? addDays(input.dateFrom, PREVIEW_SPAN_DAYS)
-  const probe = { dateFrom: input.dateFrom, dateTo: input.dateTo, daysOfWeek: input.daysOfWeek } as WfhArrangement
-  return employees.map((employee) => {
-    const skipped = { leave: 0, holiday: 0, rest: 0, punches: 0 }
-    let workDays = 0
-    const perMonth = new Map<string, number>()
-    for (let d = input.dateFrom; d <= spanEnd; d = addDays(d, 1)) {
-      if (!arrangementCovers(probe, d)) continue
-      if (scheduleOn(employee, d).rest) skipped.rest++
-      else if (isHoliday(employee.companyId, d)) skipped.holiday++
-      else if (hasLeave(employee.id, d)) skipped.leave++
-      else if (d <= today && db.attendanceRecords.some((r) => r.employeeId === employee.id && r.date === d && !r.autoRecorded)) skipped.punches++
-      else {
-        workDays++
-        perMonth.set(d.slice(0, 7), (perMonth.get(d.slice(0, 7)) ?? 0) + 1)
-      }
-    }
-    const overlapIds = db.wfhArrangements.filter((a) => a.employeeId === employee.id && a.kind === input.kind && (a.status === 'approved' || a.status === 'pending') && overlaps(a, probe)).map((a) => a.id)
-    const overLimit: string[] = []
-    if (input.monthlyLimit) {
-      for (const [month, added] of perMonth) {
-        let existing = 0
-        const last = key(new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
-        for (let d = `${month}-01`; d <= last; d = addDays(d, 1)) if (wfhOwnerFor(employee.id, d)) existing++
-        if (existing + added > input.monthlyLimit) overLimit.push(month)
-      }
-    }
-    return { employee, workDays, skipped, overlapIds, overLimit }
-  })
-}
 
 export interface WfhBatchResult {
   created: WfhArrangement[]
   skipped: { employeeId: string; reason: string }[]
 }
 
+// mock: remove in P13. getWfhArrangements, createWfhBatch and cancelWfh serve the ESS request page; the Attendance WFH screens use wfhArrangementService.
 /**
  * Creates one arrangement per employee. People who can adjust attendance (HR, admins, managers for their team) save them as approved;
  * anyone else — an employee asking for themselves — saves a pending request for a manager to decide.
@@ -256,31 +165,7 @@ export async function cancelWfh(session: SessionUser, ids: string[]): Promise<nu
   return mine.length
 }
 
-/** Stops arrangements after `lastDay` (kept up to and including it); auto-recorded days after it are removed. */
-export async function endWfh(session: SessionUser, ids: string[], lastDay: string): Promise<number> {
-  const mine = db.wfhArrangements.filter((a) => ids.includes(a.id) && a.companyId === session.companyId && a.status === 'approved' && (!a.dateTo || a.dateTo > lastDay))
-  for (const a of mine) a.dateTo = lastDay < a.dateFrom ? a.dateFrom : lastDay
-  const set = new Set(mine.map((a) => a.id))
-  db.attendanceRecords = db.attendanceRecords.filter((r) => !(r.autoRecorded && r.wfhId && set.has(r.wfhId) && r.date > lastDay))
-  version++
-  if (mine.length) logActivity(session, `Ended ${mine.length} WFH arrangement${mine.length === 1 ? '' : 's'} after ${lastDay}`, 'Updated')
-  return mine.length
-}
-
-export async function decideWfh(session: SessionUser, ids: string[], decision: 'approved' | 'rejected'): Promise<number> {
-  let n = 0
-  for (const a of db.wfhArrangements) {
-    if (!ids.includes(a.id) || a.companyId !== session.companyId || a.status !== 'pending') continue
-    a.status = decision
-    a.decidedBy = session.name
-    n++
-  }
-  version++
-  if (n) logActivity(session, `${decision === 'approved' ? 'Approved' : 'Rejected'} ${n} WFH request${n === 1 ? '' : 's'}`, decision === 'approved' ? 'Approved' : 'Rejected')
-  return n
-}
-
-// ---------------------------------------------------------------------------------------------------- auto-recording
+// ---------------------------------------------------------------------------------------------------- auto-recording (mock attendance)
 
 /** How far back approved arrangements are filled in. */
 const MATERIALIZE_DAYS = 92

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, Home } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
@@ -11,11 +11,12 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { ApplyWfhDialog, WEEKDAYS } from '@ops/features/attendance/components/ApplyWfhDialog'
-import { useWfhLimitStore } from '@ops/features/attendance/wfhLimitStore'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useWfh } from '@ops/features/attendance/hooks/useWfh'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSession } from '@ops/hooks/useSession'
-import { cancelWfh, decideWfh, endWfh, getWfhArrangements, todayKey } from '@ops/lib/services/wfhService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { cancelWfh, decideWfh, endWfh, setWfhMonthlyLimit } from '@ops/lib/services/wfhArrangementService'
+import { todayKey } from '@ops/lib/services/wfhService'
 import type { WfhArrangement } from '@ops/types/domain'
 
 const TIMES_LABEL = { default: 'Schedule times', custom: 'Fixed times', self_log: 'Self-logged' } as const
@@ -37,23 +38,29 @@ const span = (a: WfhArrangement) => (a.dateTo ? (a.dateTo === a.dateFrom ? a.dat
 const weekdays = (a: WfhArrangement) => (a.daysOfWeek.length ? a.daysOfWeek.map((d) => WEEKDAYS[d]).join(', ') : 'All working days')
 
 export function WfhPanel() {
-  const { user } = useSession()
   const { notify } = useToast()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const canAdjust = usePermission('attendance.adjust')
-  const monthlyLimit = useWfhLimitStore((s) => s.monthlyLimit)
-  const setMonthlyLimit = useWfhLimitStore((s) => s.setMonthlyLimit)
-  const [list, setList] = useState<WfhArrangement[] | null>(null)
+  const canSetLimit = usePermission('attendance.approve')
+  const { arrangements: list, monthlyLimit, refetch } = useWfh()
+  const [limitDraft, setLimitDraft] = useState(String(monthlyLimit))
+  useEffect(() => setLimitDraft(String(monthlyLimit)), [monthlyLimit])
   const [filter, setFilter] = useState('active')
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [action, setAction] = useState<{ type: 'cancel' | 'end'; ids: string[] } | null>(null)
   const [lastDay, setLastDay] = useState(todayKey())
   const [busy, setBusy] = useState(false)
 
-  const refetch = useCallback(() => {
-    getWfhArrangements(user).then(setList)
-  }, [user])
-  useEffect(refetch, [refetch])
+  async function saveLimit() {
+    const next = Math.max(0, Math.floor(Number(limitDraft)) || 0)
+    if (next === monthlyLimit) return setLimitDraft(String(next))
+    try {
+      await setWfhMonthlyLimit(next)
+    } catch (error) {
+      notify({ title: "Couldn't save the limit", description: apiErrorMessage(error), tone: 'danger' })
+    }
+    refetch()
+  }
 
   const nameOf = useMemo(() => {
     const m = new Map(employees.map((e) => [e.id, `${e.personal.firstName} ${e.personal.lastName}`]))
@@ -74,18 +81,26 @@ export function WfhPanel() {
   const shown = groups.filter((g) => g.state === filter)
 
   async function decide(id: string, decision: 'approved' | 'rejected') {
-    await decideWfh(user, [id], decision)
-    notify({ title: decision === 'approved' ? 'WFH approved' : 'WFH rejected', tone: 'success' })
+    try {
+      await decideWfh([id], decision)
+      notify({ title: decision === 'approved' ? 'WFH approved' : 'WFH rejected', tone: 'success' })
+    } catch (error) {
+      notify({ title: "Couldn't decide the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     refetch()
   }
 
   async function confirm() {
     if (!action) return
     setBusy(true)
-    const n = action.type === 'cancel' ? await cancelWfh(user, action.ids) : await endWfh(user, action.ids, lastDay)
+    try {
+      const n = action.type === 'cancel' ? await cancelWfh(action.ids) : await endWfh(action.ids, lastDay)
+      notify({ title: `${n} arrangement${n === 1 ? '' : 's'} ${action.type === 'cancel' ? 'cancelled' : 'ended'}`, tone: 'success' })
+    } catch (error) {
+      notify({ title: "Couldn't update the arrangements", description: apiErrorMessage(error), tone: 'danger' })
+    }
     setBusy(false)
     setAction(null)
-    notify({ title: `${n} arrangement${n === 1 ? '' : 's'} ${action.type === 'cancel' ? 'cancelled' : 'ended'}`, tone: 'success' })
     refetch()
   }
 
@@ -132,7 +147,7 @@ export function WfhPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <ApplyWfhDialog onApplied={refetch} />
         <FormField label="Monthly WFH limit per employee (0 = no limit)" className="w-full sm:w-72">
-          <Input type="number" min={0} value={monthlyLimit} onChange={(e) => setMonthlyLimit(Number(e.target.value))} />
+          <Input type="number" min={0} max={31} value={limitDraft} disabled={!canSetLimit} onChange={(e) => setLimitDraft(e.target.value)} onBlur={saveLimit} />
         </FormField>
       </div>
 
