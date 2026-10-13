@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\LateCountingPeriod;
 use App\Enums\PayrollFrequency;
+use App\Http\Requests\AssignEmployeesToPayrollGroupRequest;
 use App\Models\DeductionType;
 use App\Models\EarningType;
+use App\Models\Employee;
 use App\Models\OvertimeRate;
+use App\Models\ShiftAssignment;
 use App\Models\WorkSchedule;
 use App\Support\ActivityLogger;
 use App\Support\PayrollDefaults;
@@ -233,7 +236,7 @@ class PayrollSettingsController extends Controller
 
     public function workSchedules(): JsonResponse
     {
-        return response()->json(['data' => WorkSchedule::withCount('payrollGroups')->orderBy('name')->get()]);
+        return response()->json(['data' => WorkSchedule::withCount(['payrollGroups', 'employees'])->orderBy('name')->get()]);
     }
 
     public function storeWorkSchedule(Request $request): JsonResponse
@@ -258,10 +261,40 @@ class PayrollSettingsController extends Controller
         if ($using > 0) {
             return response()->json(['message' => "This schedule is the default of {$using} payroll group".($using === 1 ? '' : 's').'. Change those groups first.'], 422);
         }
+        $assigned = $workSchedule->employees()->count();
+        if ($assigned > 0) {
+            return response()->json(['message' => "{$assigned} employee".($assigned === 1 ? ' has' : 's have').' this work schedule. Move them to another schedule first.'], 422);
+        }
+        // Past roster entries go with the template; a shift still to come would silently become "not scheduled", so it blocks.
+        if (ShiftAssignment::where('work_schedule_id', $workSchedule->id)->where('date', '>=', now()->toDateString())->exists()) {
+            return response()->json(['message' => 'This schedule is still on the roster for upcoming days. Clear or change those days first.'], 422);
+        }
         $workSchedule->delete();
         $this->log('Deleted', 'Work schedule', $workSchedule->name);
 
         return response()->json(null, 204);
+    }
+
+    /** Sets (or clears, with `unassign`) the default work schedule of the given employees. An employee has one. */
+    public function assignWorkScheduleEmployees(AssignEmployeesToPayrollGroupRequest $request, WorkSchedule $workSchedule): JsonResponse
+    {
+        $ids = $request->validated('employee_ids');
+        $assign = $request->action() === 'assign';
+
+        // Only the visible employees; when unassigning, only those on this schedule.
+        $changed = Employee::whereIn('id', $ids)
+            ->when(! $assign, fn ($q) => $q->where('work_schedule_id', $workSchedule->id))
+            ->update(['work_schedule_id' => $assign ? $workSchedule->id : null]);
+
+        ActivityLogger::log(
+            module: 'Payroll',
+            action: 'Updated',
+            title: 'Work schedule assignment',
+            description: "{$changed} employee".($changed === 1 ? '' : 's').($assign ? ' assigned to ' : ' removed from ').$workSchedule->name,
+            subject: $workSchedule,
+        );
+
+        return response()->json(['data' => ['changed' => $changed, 'employees_count' => $workSchedule->employees()->count()]]);
     }
 
     /** @return array<string, mixed> */

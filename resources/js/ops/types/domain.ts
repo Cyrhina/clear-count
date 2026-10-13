@@ -252,6 +252,8 @@ export interface Employee {
   branchId: string
   /** Set by the API (the mock data keeps group membership on the group). */
   payrollGroupId?: string
+  /** The default work schedule (set by the API). The roster overrides it for single days. */
+  workScheduleId?: string
   employeeNumber: string
   personal: EmployeePersonal
   employment: EmployeeEmployment
@@ -307,6 +309,8 @@ export interface Schedule {
   gracePeriodMinutes?: number
   restDays?: number[]
   assignedEmployeeIds?: string[]
+  /** How many employees have this as their default schedule (set by the API). */
+  employeesCount?: number
   color?: ShiftColor
 }
 

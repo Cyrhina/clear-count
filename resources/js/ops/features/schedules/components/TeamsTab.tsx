@@ -9,8 +9,9 @@ import { todayKey } from '@ops/features/schedules/dateUtil'
 import { useRoster } from '@ops/features/schedules/hooks/useRoster'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
-import { setDepartmentSupervisor } from '@ops/lib/services/branchDepartmentService'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { setBranchDepartmentSupervisor } from '@ops/lib/services/branchDepartmentService'
 import { cn } from '@ops/lib/utils/cn'
 import type { Employee } from '@ops/types/domain'
 
@@ -26,7 +27,7 @@ export function TeamsTab() {
   const today = todayKey()
   const { user } = useSession()
   const { notify } = useToast()
-  const { branches: companyBranches } = useTenant()
+  const { branches: companyBranches } = useBranches()
   const branches = useMemo(() => (user.branchId ? companyBranches.filter((b) => b.id === user.branchId) : companyBranches), [companyBranches, user.branchId])
   const canManage = usePermission('schedules.manage')
   const roster = useRoster(today, today)
@@ -43,14 +44,19 @@ export function TeamsTab() {
           .filter((d) => d.branchId === branch.id)
           .sort((a, b) => a.name.localeCompare(b.name))
           .map((team) => ({ department: team.name, members: staff.filter((e) => e.employment.department === team.name), team }))
-        return { branch, manager: branch.managerEmployeeId ? byId.get(branch.managerEmployeeId) : undefined, staffCount: staff.length, departments }
+        // The Branches API has no manager column yet, so no manager is shown.
+        return { branch, manager: undefined as Employee | undefined, staffCount: staff.length, departments }
       }),
     [branches, roster.employees, roster.departments, byId],
   )
 
   async function change(teamId: string, employeeId: string) {
-    const result = await setDepartmentSupervisor(user, teamId, employeeId === NONE ? null : employeeId)
-    notify(result.ok ? { title: 'Direct supervisor updated', tone: 'success' } : { title: "Couldn't update the supervisor", description: result.error, tone: 'danger' })
+    try {
+      await setBranchDepartmentSupervisor(teamId, employeeId === NONE ? null : employeeId)
+      notify({ title: 'Direct supervisor updated', tone: 'success' })
+    } catch (error) {
+      notify({ title: "Couldn't update the supervisor", description: apiErrorMessage(error), tone: 'danger' })
+    }
     roster.refetch()
   }
 

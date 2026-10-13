@@ -18,8 +18,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P0 | Foundation and golden snapshot | merged | backend/p00-foundation | #3 | 2026-10-12 |
 | P1 | Company setup wiring | merged | backend/p01-company-setup | #4 | 2026-10-13 |
 | P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
-| P3 | Employees (a, b) | in progress: P3a merged (#6), P3b in review | backend/p03-employees, backend/p03b-employees-bulk | #6 (P3a) | 2026-10-13 (P3a) |
-| P4 | Schedules and roster | not started | | | |
+| P3 | Employees (a, b) | done (merged #6, #7) | backend/p03-employees, backend/p03b-employees-bulk | #6, #7 | 2026-10-13 |
+| P4 | Schedules and roster | in progress: in review | backend/p04-schedules | | |
 | P5 | Attendance, adjustments, biometrics, WFH (a, b) | not started | | | |
 | P6 | Leave | not started | | | |
 | P7 | Overtime, work logs, approvals inbox, notifications | not started | | | |
@@ -56,12 +56,13 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 
 | Mock code (file:function) | Still imported by | Remove in | Added in |
 |---|---|---|---|
-| `companyService`: getCompany, getSchedules, getHolidays, addEmployeesToSchedule | attendance, schedules, onboarding, employees, company-settings (dead dialogs) | P2 (company), P4 (schedules), P5 (holidays in attendance) | P1 |
+| `companyService`: getCompany, getSchedules, getHolidays | attendance, onboarding, employees | P2 (company), P5 (schedules, holidays in attendance) | P1 |
 | `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules | payroll, payslips, loans-deductions, attendance (late counting), reports | P9 (deductions), P10 (groups, rules, compensation) | P1 |
-| `features/company-settings/components/payroll/AssignEmployeesDialog.tsx` (generic, for work schedules) | nothing (kept to be rewired on the API) | P4 | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
-| `branchService`: getBranches; `branchDepartmentService`: getBranchDepartments, addBranchDepartment, ensureBranchDepartment, setDepartmentSupervisor, releaseSupervisorIfMoved | schedules (teams, roster), integrations, `employeeService.createEmployee` | P4 (schedules), P16 (integrations) | P2 |
+| `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
+| `scheduleService.getRosterMap`, `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | `ImportBiometricsDialog` | P5 | P4 |
+| `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
 
@@ -79,6 +80,22 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P4 - 2026-10-16
+- Branch: backend/p04-schedules (pushed: no)
+- Done:
+  - Backend: `employees.work_schedule_id` (the default schedule) and a `shift_assignments` table (one row per employee per day; no schedule = rostered rest day; no row = not scheduled; unique on employee and date). `BelongsToEmployee` (first employee-owned scope, inherits the Employee scope: a manager's branch). `ScheduleResolver::for($employee, $date)`: roster entry, then the employee schedule, then the payroll group schedule; the last two rest on the days outside the schedule's working days. Endpoints: `GET api/schedules/templates|roster` (`schedules.view`), `POST api/schedules/roster`, `roster/clear`, `roster/copy-week` (`schedules.manage`; ids outside the user's scope are ignored; 20000 employee-days a request), `POST api/payroll-settings/work-schedules/{id}/employees` (default schedule, the same body as payroll group assign). A work schedule in use (employees, or upcoming roster days) cannot be deleted. Tests: 187 (183 pass, 4 skipped).
+  - Frontend: `scheduleService` on the API; the roster hook reads the real employees (all pages), departments and branches; Assign shift, Clear and Copy last week write to the API; Teams tab sets supervisors through the Branches API; Work Schedules settings: Assign dialog (employees move between schedules) and real "N Assigned" counts. DemoSeeder: a default schedule per employee and this week's roster.
+- Next: open the P4 PR, merge it, then start P5 (Attendance, adjustments, biometrics, WFH). PLAN.md P5.
+- Gotchas:
+  - Leave on the roster is still the mock, so approved leave does not show until Leave (P6).
+  - The Teams tab shows no branch manager: the Branches API has no manager column yet.
+  - The roster stores no per-day time overrides (PLAN had them as optional).
+  - A schedule can be given to employees but not taken away without giving them another one (no "remove" in the Assign dialog).
+  - `ScheduleResolver` is not called by anything yet; attendance (P5), working days (P6) and payroll (P10) use it.
+  - Not browser-tested: copy last week, clearing a day, the manager view, deleting a schedule in use.
+- Checks: php artisan test 187 (183 passed, 4 skipped); tsc clean; test:samples pass.
+
 
 ### P3b - 2026-10-15
 - Branch: backend/p03b-employees-bulk (pushed: no)

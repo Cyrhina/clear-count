@@ -210,6 +210,13 @@ export async function fetchEmployees(params: EmployeeListParams = {}): Promise<E
   return { employees: res.data.map(toEmployee), total: res.meta.total, page: res.meta.current_page, lastPage: res.meta.last_page }
 }
 
+/** Every employee the user can see, page by page (the API caps a page at 100). */
+export async function fetchAllEmployees(params: Omit<EmployeeListParams, 'page' | 'perPage'> = {}): Promise<Employee[]> {
+  const first = await fetchEmployees({ ...params, perPage: 100, page: 1 })
+  const rest = await Promise.all(Array.from({ length: Math.max(0, first.lastPage - 1) }, (_, i) => fetchEmployees({ ...params, perPage: 100, page: i + 2 })))
+  return [...first.employees, ...rest.flatMap((p) => p.employees)]
+}
+
 export async function fetchEmployee(id: string): Promise<EmployeeRecord> {
   const res = await api.get<{ data: unknown }>(`/api/employees/${id}`)
   return toEmployee(res.data)

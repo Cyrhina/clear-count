@@ -9,9 +9,10 @@ import { useToast } from '@ops/components/ui/Toast'
 import { addDays, dayShort, fromDateKey, shiftRangeLabel, weekDays } from '@ops/features/schedules/dateUtil'
 import { cn } from '@ops/lib/utils/cn'
 import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { assignShifts, clearShifts } from '@ops/lib/services/scheduleService'
-import type { Employee, Schedule } from '@ops/types/domain'
+import type { Schedule } from '@ops/features/company-settings/types'
+import type { Employee } from '@ops/types/domain'
 
 const REST = '__rest__'
 const CLEAR = '__clear__'
@@ -57,7 +58,7 @@ export function AssignShiftDialog({
   const [search, setSearch] = useState('')
   const [branchId, setBranchId] = useState('all')
   const [department, setDepartment] = useState('all')
-  const { branches } = useTenant()
+  const { branches } = useBranches()
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export function AssignShiftDialog({
     setSaving(true)
     const employeeIds = [...selected]
     const dates = wholeWeek ? weekDays(from) : pickedDates
-    const written = shift === CLEAR ? await clearShifts(user, { employeeIds, dates }) : await assignShifts(user, { employeeIds, dates, scheduleId: shift === REST ? null : shift })
+    const written = shift === CLEAR ? await clearShifts({ employeeIds, dates }) : await assignShifts({ employeeIds, dates, scheduleId: shift === REST ? null : shift })
     setSaving(false)
     notify({
       title: shift === CLEAR ? 'Roster cleared' : 'Roster updated',

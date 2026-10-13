@@ -6,6 +6,7 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import type { Schedule } from '@ops/features/company-settings/types'
 import type { ShiftType } from '@ops/types/domain'
 import { ScheduleDialog } from '@ops/features/company-settings/components/payroll/ScheduleDialog'
+import { WorkScheduleAssignDialog } from '@ops/features/company-settings/components/payroll/WorkScheduleAssignDialog'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -75,12 +76,18 @@ export function WorkSchedulesSection({
               </dl>
 
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                <Badge tone="brand">{schedule.assignedEmployeeIds?.length ?? 0} Assigned</Badge>
+                <Badge tone="brand">{schedule.employeesCount ?? 0} Assigned</Badge>
                 {canEdit && (
                   <div className="flex gap-1.5">
-                    <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />} disabled title="Assigning employees comes with the Employees and Schedules modules">
-                      Assign
-                    </Button>
+                    <WorkScheduleAssignDialog
+                      schedule={schedule}
+                      schedules={schedules}
+                      trigger={
+                        <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />}>
+                          Assign
+                        </Button>
+                      }
+                    />
                     <ScheduleDialog
                       schedule={schedule}
                       onSaved={onRefetch}

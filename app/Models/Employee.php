@@ -46,6 +46,12 @@ class Employee extends Model
         return $this->belongsTo(PayrollGroup::class);
     }
 
+    /** The default work schedule; the roster overrides it for single days (see ScheduleResolver). */
+    public function workSchedule(): BelongsTo
+    {
+        return $this->belongsTo(WorkSchedule::class);
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

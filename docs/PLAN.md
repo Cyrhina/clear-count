@@ -325,6 +325,8 @@ Frontend: `scheduleService`, and the schedule parts of `companyService` that P1 
 
 Done when: the roster persists, and `ScheduleResolver` is unit-tested on its precedence order.
 
+**P4 status:** done in branch `backend/p04-schedules` (see PROGRESS.md). Not done: per-day time overrides, leave on the roster (P6).
+
 ---
 
 ### P5. Attendance, adjustments, biometrics, WFH (XL)
