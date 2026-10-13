@@ -15,12 +15,13 @@ const TONE_DOT: Record<string, string> = {
 
 /** Global notification trigger — the popover listing and click-to-redirect behavior are unchanged from the header version, just relocated. */
 export function NotificationsBell({ className }: { className?: string }) {
-  const notifications = useNotifications()
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const navigate = useNavigate()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   function onNotificationClick(notification: (typeof notifications)[number]) {
     setNotificationsOpen(false)
+    if (notification.read === false) void markRead(notification.id)
     if (!notification.link) return
     navigate(notification.link, { state: { highlightId: notification.highlightId, tab: notification.tab } })
   }
@@ -37,7 +38,7 @@ export function NotificationsBell({ className }: { className?: string }) {
           aria-label="Notifications"
         >
           <Bell className="size-4" />
-          {notifications.length > 0 && <span className="absolute right-1.5 top-1.5 flex size-2 rounded-full bg-danger" />}
+          {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 flex size-2 rounded-full bg-danger" />}
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
@@ -49,7 +50,14 @@ export function NotificationsBell({ className }: { className?: string }) {
             'data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95',
           )}
         >
-          <p className="border-b border-border px-4 py-3 font-display text-sm font-semibold tracking-tight">Notifications</p>
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="font-display text-sm font-semibold tracking-tight">Notifications</p>
+            {notifications.some((n) => n.read === false) && (
+              <button type="button" onClick={() => void markAllRead()} className="text-xs font-medium text-primary hover:underline">
+                Mark all read
+              </button>
+            )}
+          </div>
           <div className="max-h-80 scroll-smooth overflow-y-auto">
             {notifications.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p>
@@ -63,7 +71,7 @@ export function NotificationsBell({ className }: { className?: string }) {
                 >
                   <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', TONE_DOT[notification.tone])} />
                   <span className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug text-foreground">{notification.message}</p>
+                    <p className={cn('text-sm leading-snug text-foreground', notification.read === false && 'font-semibold')}>{notification.message}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(notification.timestamp)}</p>
                   </span>
                 </button>

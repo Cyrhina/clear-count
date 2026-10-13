@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\OvertimeController;
 use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\BranchDepartment;
@@ -11,18 +12,24 @@ use App\Models\Employee;
 use App\Models\EmployeeCompensation;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Models\OvertimeRate;
+use App\Models\OvertimeRecord;
 use App\Models\PayrollGroup;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\WfhArrangement;
+use App\Models\WorkLog;
 use App\Models\WorkSchedule;
 use App\Support\AttendanceStatusResolver;
 use App\Support\LeaveDefaults;
 use App\Support\LeaveLedger;
 use App\Support\LeavePlanner;
+use App\Support\Notifier;
 use App\Support\PayrollDefaults;
 use App\Support\WfhPlanner;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 class DemoSeeder extends Seeder
 {
@@ -64,6 +71,9 @@ class DemoSeeder extends Seeder
         // The accounts listed on the login page (UserSeeder) belong to the demo company too: without a company
         // they would see no users, no company profile and no activity log. The super admin stays company-less.
         User::whereIn('email', UserSeeder::DEMO_LOGIN_EMAILS)->update(['company_id' => $company->id, 'branch_id' => $head->id]);
+
+        // Last, so the approvers belong to the company by now.
+        $this->notifyPending();
     }
 
     /** Work schedules and payroll groups of the demo company, with its employees spread over the groups. */
@@ -131,6 +141,18 @@ class DemoSeeder extends Seeder
         $this->seedAttendance($company, $schedules);
         $this->seedWfh($company);
         $this->seedLeave($company);
+        $this->seedOvertime($company);
+    }
+
+    /** The pending requests above wait for their approvers: send the notices once, whatever the model events did while seeding. */
+    private function notifyPending(): void
+    {
+        DB::table('notifications')->delete();
+        // The roles were seeded in this same process: drop the permission list cached before they existed.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        foreach ([LeaveRequest::class, OvertimeRecord::class, WorkLog::class, WfhArrangement::class] as $model) {
+            $model::withoutGlobalScopes()->where('status', 'pending')->get()->each(fn ($request) => Notifier::requested($request));
+        }
     }
 
     /** The default leave types, this year's credits for everyone, and a few requests: one approved (today and tomorrow), one approved and one pending for next week. */
@@ -154,6 +176,38 @@ class DemoSeeder extends Seeder
             ]);
             if ($status === 'approved') {
                 LeaveLedger::record($employee, $vacation, 'used', -$days, 'Approved leave', null, $request, $from->toDateString());
+            }
+        }
+    }
+
+    /** A few overtime requests (two pending), and work logs for up to three hourly or output-based employees. */
+    private function seedOvertime(Company $company): void
+    {
+        PayrollDefaults::ensureOvertimeRates($company->id);
+        $employees = Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get();
+        $rate = fn (string $key) => OvertimeRate::withoutGlobalScopes()->where('company_id', $company->id)->where('key', $key)->value('multiplier');
+
+        foreach ([[0, 12, '18:00', '22:00', 'regular', 'approved'], [1, 4, '22:00', '02:00', 'night_diff', 'pending'], [2, 2, '18:00', '20:30', 'regular', 'pending'], [3, 20, '19:00', '23:30', 'regular', 'rejected']] as [$i, $ago, $start, $end, $type, $status]) {
+            if (! isset($employees[$i])) {
+                continue;
+            }
+            OvertimeRecord::create([
+                'company_id' => $company->id, 'employee_id' => $employees[$i]->id, 'work_date' => now()->subDays($ago)->toDateString(), 'start_time' => $start, 'end_time' => $end,
+                'hours' => OvertimeController::hours($start, $end), 'type' => $type, 'multiplier' => $rate($type), 'reason' => 'Project deadline', 'status' => $status,
+                'decided_at' => $status === 'pending' ? null : now(),
+            ]);
+        }
+
+        foreach ($employees->filter(fn (Employee $e) => in_array($e->compensation['payType'] ?? null, ['hourly', 'output_based'], true))->take(3) as $employee) {
+            $output = $employee->compensation['payType'] === 'output_based';
+            $rateAmount = (float) $employee->compensation['basicPay'];
+            foreach ([[5, 'approved'], [2, 'pending'], [1, 'pending']] as [$ago, $status]) {
+                $quantity = $output ? 30 : 8;
+                WorkLog::create([
+                    'company_id' => $company->id, 'employee_id' => $employee->id, 'type' => $output ? 'output' : 'hourly', 'work_date' => now()->subDays($ago)->toDateString(), 'quantity' => $quantity,
+                    'unit_label' => $output ? ($employee->compensation['outputUnit'] ?? 'Per Unit') : 'hrs', 'rate' => $rateAmount, 'amount' => round($quantity * $rateAmount, 2),
+                    'description' => $output ? 'Units completed' : 'Regular hours', 'status' => $status, 'decided_at' => $status === 'approved' ? now() : null,
+                ]);
             }
         }
     }

@@ -1,5 +1,6 @@
 import { Boxes, CalendarRange, CheckCheck, Clock, Hourglass, Search, Wallet, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Avatar } from '@ops/components/ui/Avatar'
@@ -15,9 +16,11 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { ApprovalsInbox } from '@ops/features/approvals/components/ApprovalsInbox'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { useSession } from '@ops/hooks/useSession'
-import { decideCompensationApprovals, getCompensationApprovals, getPendingWorkLogsForPeriod } from '@ops/lib/services/compensationApprovalService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { decideWorkLogs, fetchWorkLogs } from '@ops/lib/services/workLogApiService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
@@ -29,7 +32,6 @@ const HIGHLIGHT_FADE_MS = 1000
 
 interface PeriodContext {
   period: PayrollPeriod
-  employeeIds: Set<string>
 }
 
 const TYPE_OPTIONS = [
@@ -55,25 +57,18 @@ function formatQuantity(approval: CompensationApproval): string {
   return `${approval.quantity} ${noun}${approval.quantity === 1 ? '' : 's'}`
 }
 
+const WORK_LOGS_KEY = 'work-logs'
+
 function useCompensationApprovals() {
-  const { user } = useSession()
-  const [approvals, setApprovals] = useState<CompensationApproval[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getCompensationApprovals(user).then(setApprovals)
-  }, [user])
-
-  useEffect(() => {
-    getCompensationApprovals(user).then(setApprovals)
-  }, [user])
-
-  return { approvals: approvals ?? [], isLoading: approvals === null, refetch }
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: [WORK_LOGS_KEY], queryFn: fetchWorkLogs })
+  return { approvals: query.data ?? [], isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: [WORK_LOGS_KEY] }) }
 }
 
 export function CompensationApprovalsPage() {
   const { user } = useSession()
   const { notify } = useToast()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const { approvals, isLoading, refetch } = useCompensationApprovals()
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -96,13 +91,15 @@ export function CompensationApprovalsPage() {
   // Arriving from a payroll period's "Open Approvals" link: scope the list to that period, pre-select
   // its pending entries for bulk action, and briefly highlight them.
   useEffect(() => {
-    if (!periodId) return
+    if (!periodId || isLoading) return
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
-    getPendingWorkLogsForPeriod(user, periodId).then((result) => {
-      if (cancelled || !result) return
-      const ids = new Set(result.pendingIds)
-      setPeriodContext({ period: result.period, employeeIds: new Set(result.employeeIds) })
+    // Payroll periods are still the mock (P10): the period gives the date range; the logs are the real ones.
+    getPayrollPeriods(user).then((periods) => {
+      const period = periods.find((p) => p.id === periodId)
+      if (cancelled || !period) return
+      const ids = new Set(approvals.filter((a) => a.status === 'pending' && a.workDate >= period.startDate && a.workDate <= period.endDate).map((a) => a.id))
+      setPeriodContext({ period })
       setSelectedIds(ids)
       if (ids.size === 0) return
       setHighlight({ ids, phase: 'on' })
@@ -113,7 +110,8 @@ export function CompensationApprovalsPage() {
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [user, periodId])
+    // Run once the logs have loaded, not again after each decision.
+  }, [user, periodId, isLoading])
 
   const hasHighlight = highlight !== null && !isLoading
   useEffect(() => {
@@ -136,8 +134,8 @@ export function CompensationApprovalsPage() {
   const filtered = approvals
     .filter((a) => {
       if (periodContext) {
-        const { period, employeeIds } = periodContext
-        if (a.workDate < period.startDate || a.workDate > period.endDate || !employeeIds.has(a.employeeId)) return false
+        const { period } = periodContext
+        if (a.workDate < period.startDate || a.workDate > period.endDate) return false
       }
       if (type !== 'all' && a.type !== type) return false
       if (status !== 'all' && a.status !== status) return false
@@ -179,7 +177,12 @@ export function CompensationApprovalsPage() {
   }
 
   async function decide(ids: string[], decision: 'approved' | 'rejected') {
-    const count = await decideCompensationApprovals(user, ids, decision)
+    let count: number
+    try {
+      count = await decideWorkLogs(ids, decision)
+    } catch (error) {
+      return notify({ title: "Couldn't decide the entries", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({
       title: `${count} ${count === 1 ? 'entry' : 'entries'} ${decision}`,
       description: decision === 'approved' ? 'Approved amounts are now ready for the next payroll run.' : undefined,
@@ -199,6 +202,8 @@ export function CompensationApprovalsPage() {
         title="Work & Output Approvals"
         description="Review timecard hours and piece-rate output submitted for employees paid by the hour or by output before they reach payroll."
       />
+
+      <ApprovalsInbox />
 
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">

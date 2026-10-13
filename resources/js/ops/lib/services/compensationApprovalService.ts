@@ -1,7 +1,8 @@
+// mock: remove in P13 (ESS work output), P10 (payroll), P14 (dashboards, reports). The Approvals page uses workLogApiService.
 import { workLogsForPeriod } from '@ops/lib/payroll/rateBasis'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { db } from '@ops/mock-data'
-import type { ApprovalStatus, CompensationApproval, PayrollPeriod, SessionUser } from '@ops/types/domain'
+import type { CompensationApproval, PayrollPeriod, SessionUser } from '@ops/types/domain'
 
 export interface WorkLogTotals {
   records: number
@@ -30,25 +31,6 @@ function workLogEmployeesFor(session: SessionUser, period: PeriodScope) {
       (e.compensation.payType === 'hourly' || e.compensation.payType === 'output_based') &&
       (!group || group.employeeIds.includes(e.id)),
   )
-}
-
-/**
- * The pending entries a payroll period's "won't be paid unless approved" warning counts — same
- * employee scope and date range — so Approvals can pre-select exactly those.
- */
-export async function getPendingWorkLogsForPeriod(
-  session: SessionUser,
-  periodId: string,
-): Promise<{ period: PayrollPeriod; employeeIds: string[]; pendingIds: string[] } | undefined> {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  if (!period) return undefined
-  const employees = workLogEmployeesFor(session, period)
-  const pendingIds = employees.flatMap((employee) =>
-    workLogsForPeriod(employee.id, period, db.compensationApprovals)
-      .inRange.filter((a) => a.status === 'pending')
-      .map((a) => a.id),
-  )
-  return { period, employeeIds: employees.map((e) => e.id), pendingIds }
 }
 
 /**
@@ -125,23 +107,4 @@ export async function withdrawWorkLog(session: SessionUser, id: string): Promise
   if (index < 0) return false
   db.compensationApprovals.splice(index, 1)
   return true
-}
-
-/** Decides one or many pending entries at once — backs both the per-row actions and Bulk Approve/Reject. */
-export async function decideCompensationApprovals(
-  session: SessionUser,
-  ids: string[],
-  decision: Extract<ApprovalStatus, 'approved' | 'rejected'>,
-): Promise<number> {
-  const idSet = new Set(ids)
-  const decidedAt = new Date().toISOString()
-  let count = 0
-  for (const approval of db.compensationApprovals) {
-    if (!idSet.has(approval.id) || approval.companyId !== session.companyId || approval.status !== 'pending') continue
-    approval.status = decision
-    approval.decidedBy = session.name
-    approval.decidedAt = decidedAt
-    count++
-  }
-  return count
 }

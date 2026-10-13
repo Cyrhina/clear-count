@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Holiday;
 use App\Support\MailLink;
+use App\Support\Notifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -50,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(20)->by('user-mail:actor:'.$request->user()?->id),
             ];
         });
+
+        Notifier::watch();
 
         // Feeds the "Last login" column and tells pending invites apart from active users.
         Event::listen(Login::class, fn (Login $event) => $event->user->forceFill(['last_login_at' => now()])->saveQuietly());

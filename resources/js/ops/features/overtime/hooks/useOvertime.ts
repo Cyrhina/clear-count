@@ -1,31 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getOvertimeRecords, getOvertimeSummary, type OvertimeSummary } from '@ops/lib/services/overtimeService'
-import type { OvertimeRecord } from '@ops/types/domain'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
+import { fetchOvertime, summarizeOvertime } from '@ops/lib/services/overtimeApiService'
+import type { Employee, OvertimeRecord } from '@ops/types/domain'
+
+export const OVERTIME_KEY = 'overtime'
 
 export function useOvertimeRecords() {
-  const { user } = useSession()
-  const [records, setRecords] = useState<OvertimeRecord[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getOvertimeRecords(user).then(setRecords)
-  }, [user])
-
-  useEffect(() => {
-    setRecords(null)
-    refetch()
-  }, [refetch])
-
-  return { records: records ?? [], isLoading: records === null, refetch }
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: [OVERTIME_KEY], queryFn: fetchOvertime })
+  return { records: query.data ?? [], isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: [OVERTIME_KEY] }) }
 }
 
-export function useOvertimeSummary(refreshKey: number) {
-  const { user } = useSession()
-  const [summary, setSummary] = useState<OvertimeSummary | null>(null)
-
-  useEffect(() => {
-    getOvertimeSummary(user).then(setSummary)
-  }, [user, refreshKey])
-
+/** The metric cards, worked out from the records already loaded. */
+export function useOvertimeSummary(records: OvertimeRecord[], employees: Employee[], isLoading: boolean) {
+  const summary = useMemo(() => (isLoading ? null : summarizeOvertime(records, employees)), [records, employees, isLoading])
   return { summary, isLoading: summary === null }
 }

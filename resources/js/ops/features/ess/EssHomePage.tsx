@@ -107,7 +107,7 @@ export function EssHomePage() {
   const { user } = useSession()
   const { requests, isLoading: isLoadingLeave } = useLeaveRequests()
   const { leaveTypes } = useLeaveTypes()
-  const notifications = useNotifications()
+  const { notifications } = useNotifications()
   const [records, setRecords] = useState<AttendanceRecord[] | null>(null)
 
   useEffect(() => {

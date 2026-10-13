@@ -15,14 +15,14 @@ import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckbo
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { NewOvertimeRequestDialog } from '@ops/features/overtime/components/NewOvertimeRequestDialog'
 import { OvertimeDetailsDialog } from '@ops/features/overtime/components/OvertimeDetailsDialog'
 import { useOvertimeRecords, useOvertimeSummary } from '@ops/features/overtime/hooks/useOvertime'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useRowSelection } from '@ops/hooks/useRowSelection'
-import { useSession } from '@ops/hooks/useSession'
-import { decideOvertimeRecord, decideOvertimeRecords, exportOvertimeSummaryCsv } from '@ops/lib/services/overtimeService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { decideOvertime, overtimeCsv } from '@ops/lib/services/overtimeApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { OvertimeRecord, OvertimeType } from '@ops/types/domain'
 
@@ -92,12 +92,10 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export function OvertimePage() {
-  const { user } = useSession()
   const { notify } = useToast()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const { records, isLoading, refetch } = useOvertimeRecords()
-  const [refreshKey, setRefreshKey] = useState(0)
-  const { summary, isLoading: summaryLoading } = useOvertimeSummary(refreshKey)
+  const { summary, isLoading: summaryLoading } = useOvertimeSummary(records, employees, isLoading)
   const canApprove = usePermission('overtime.approve')
   const canFile = usePermission('overtime.log')
 
@@ -110,11 +108,6 @@ export function OvertimePage() {
   const [selectedRecord, setSelectedRecord] = useState<OvertimeRecord | null>(null)
 
   const employeeById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])
-
-  function refetchAll() {
-    refetch()
-    setRefreshKey((k) => k + 1)
-  }
 
   const filtered = records
     .filter((record) => {
@@ -156,25 +149,32 @@ export function OvertimePage() {
     })
 
   async function handleDecide(record: OvertimeRecord, decision: 'approved' | 'rejected') {
-    await decideOvertimeRecord(user, record.id, decision)
-    notify({ title: `Request ${decision}`, tone: 'success' })
+    try {
+      await decideOvertime([record.id], decision)
+      notify({ title: `Request ${decision}`, tone: 'success' })
+    } catch (error) {
+      notify({ title: "Couldn't decide the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     setSelectedRecord(null)
-    refetchAll()
+    refetch()
   }
 
   const pendingIds = useMemo(() => (canApprove ? filtered.filter((r) => r.status === 'pending').map((r) => r.id) : []), [filtered, canApprove])
   const selection = useRowSelection(pendingIds)
 
   async function handleBulkDecide(decision: 'approved' | 'rejected') {
-    const n = await decideOvertimeRecords(user, [...selection.selected], decision)
-    notify({ title: `${n} request${n === 1 ? '' : 's'} ${decision}`, tone: 'success' })
+    try {
+      const n = await decideOvertime([...selection.selected], decision)
+      notify({ title: `${n} request${n === 1 ? '' : 's'} ${decision}`, tone: 'success' })
+    } catch (error) {
+      notify({ title: "Couldn't decide the requests", description: apiErrorMessage(error), tone: 'danger' })
+    }
     selection.clear()
-    refetchAll()
+    refetch()
   }
 
-  async function handleExport() {
-    const csv = await exportOvertimeSummaryCsv(user)
-    downloadCsv('overtime-summary.csv', csv)
+  function handleExport() {
+    downloadCsv('overtime-summary.csv', overtimeCsv(records, employees))
     notify({ title: 'Overtime summary exported', tone: 'success' })
   }
 
@@ -189,7 +189,7 @@ export function OvertimePage() {
               <span className="sm:hidden">Export</span>
               <span className="hidden sm:inline">Export Summary</span>
             </Button>
-            {canFile && <NewOvertimeRequestDialog employees={employees} onCreated={refetchAll} />}
+            {canFile && <NewOvertimeRequestDialog employees={employees} onCreated={refetch} />}
           </div>
         }
       />

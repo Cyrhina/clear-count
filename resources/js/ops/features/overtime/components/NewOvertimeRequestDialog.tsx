@@ -10,8 +10,8 @@ import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { otRateOptionLabel, usePayrollRatesStore } from '@ops/features/company-settings/payrollRatesStore'
-import { useSession } from '@ops/hooks/useSession'
-import { createOvertimeRecord } from '@ops/lib/services/overtimeService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fileOvertime } from '@ops/lib/services/overtimeApiService'
 import type { Employee, OvertimeType } from '@ops/types/domain'
 
 const schema = z.object({
@@ -32,7 +32,6 @@ const REAL_OVERTIME_TYPES: OvertimeType[] = ['regular', 'rest_day_holiday', 'nig
 
 export function NewOvertimeRequestDialog({ employees, onCreated }: { employees: Employee[]; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const otRates = usePayrollRatesStore((s) => s.otRates)
   const typeOptions = otRates
@@ -51,7 +50,11 @@ export function NewOvertimeRequestDialog({ employees, onCreated }: { employees: 
   })
 
   async function onSubmit(values: FormValues) {
-    await createOvertimeRecord(user, values)
+    try {
+      await fileOvertime(values)
+    } catch (error) {
+      return notify({ title: "Couldn't file the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Overtime request logged', description: 'Pending approval.', tone: 'success' })
     reset({ type: 'regular', date: new Date().toISOString().slice(0, 10), employeeId: '', startTime: '', endTime: '', reason: '' })
     setOpen(false)
