@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
+use App\Support\LeaveLedger;
 use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -44,6 +45,30 @@ class Employee extends Model
     public function payrollGroup(): BelongsTo
     {
         return $this->belongsTo(PayrollGroup::class);
+    }
+
+    /** Set by `preloadLeaveCredits` so a list does not query the ledger once per employee. @var array<string, float>|null */
+    public ?array $leaveCredits = null;
+
+    /** Fills `leaveCredits` for many employees with one query. @param  iterable<Employee>  $employees */
+    public static function preloadLeaveCredits(iterable $employees): void
+    {
+        $employees = collect($employees);
+        $balances = LeaveLedger::balancesFor($employees->pluck('id')->all());
+        $names = LeaveType::pluck('name', 'id');
+        foreach ($employees as $employee) {
+            $employee->leaveCredits = collect($balances[$employee->id] ?? [])->mapWithKeys(fn ($days, $typeId) => [$names[$typeId] ?? "#{$typeId}" => $days])->all();
+        }
+    }
+
+    /** Leave credits by leave type name, from the ledger (the old `benefits.leaveCreditsByType` is now derived). @return array<string, float> */
+    public function leaveCreditsByType(): array
+    {
+        if ($this->leaveCredits === null) {
+            self::preloadLeaveCredits([$this]);
+        }
+
+        return $this->leaveCredits;
     }
 
     /** The default work schedule; the roster overrides it for single days (see ScheduleResolver). */

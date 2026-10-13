@@ -9,12 +9,17 @@ use App\Models\Company;
 use App\Models\CompensationType;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\LeaveRequest;
+use App\Models\LeaveType;
 use App\Models\PayrollGroup;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\WfhArrangement;
 use App\Models\WorkSchedule;
 use App\Support\AttendanceStatusResolver;
+use App\Support\LeaveDefaults;
+use App\Support\LeaveLedger;
+use App\Support\LeavePlanner;
 use App\Support\PayrollDefaults;
 use App\Support\WfhPlanner;
 use Illuminate\Database\Seeder;
@@ -125,6 +130,32 @@ class DemoSeeder extends Seeder
         ShiftAssignment::insert($rows);
         $this->seedAttendance($company, $schedules);
         $this->seedWfh($company);
+        $this->seedLeave($company);
+    }
+
+    /** The default leave types, this year's credits for everyone, and a few requests: one approved (today and tomorrow), one approved and one pending for next week. */
+    private function seedLeave(Company $company): void
+    {
+        LeaveDefaults::ensure($company->id);
+        $employees = Employee::withoutGlobalScopes()->where('company_id', $company->id)->orderBy('id')->get();
+        $employees->each(fn (Employee $e) => LeaveLedger::grantYear($e, now()->year));
+        $vacation = LeaveType::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Vacation Leave')->first();
+        $nextMonday = now()->startOfWeek()->addWeek()->toImmutable();
+
+        foreach ([[3, now(), now()->addDay(), 'approved'], [4, $nextMonday, $nextMonday->addDay(), 'approved'], [5, $nextMonday->addDays(2), $nextMonday->addDays(4), 'pending']] as [$i, $from, $to, $status]) {
+            $employee = $employees[$i] ?? null;
+            $days = $employee ? LeavePlanner::days($employee, $from->toDateString(), $to->toDateString(), 'full') : 0;
+            if (! $employee || $days === 0.0 || LeaveLedger::balance($employee->id, $vacation->id) < $days) {
+                continue;
+            }
+            $request = LeaveRequest::create([
+                'company_id' => $company->id, 'employee_id' => $employee->id, 'leave_type_id' => $vacation->id, 'date_from' => $from->toDateString(), 'date_to' => $to->toDateString(),
+                'days' => $days, 'reason' => 'Family trip', 'status' => $status, 'decided_at' => $status === 'approved' ? now() : null,
+            ]);
+            if ($status === 'approved') {
+                LeaveLedger::record($employee, $vacation, 'used', -$days, 'Approved leave', null, $request, $from->toDateString());
+            }
+        }
     }
 
     /** Two employees work from home on Wednesdays (a standing arrangement), and the days that have come are filled in. */

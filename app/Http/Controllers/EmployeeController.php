@@ -7,15 +7,18 @@ use App\Http\Resources\EmployeeDetailResource;
 use App\Http\Resources\EmployeeResource;
 use App\Models\BranchDepartment;
 use App\Models\Employee;
+use App\Models\LeaveType;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\EmployeeHiring;
 use App\Support\EmployeeRules;
+use App\Support\LeaveLedger;
 use App\Support\ListQuery;
 use App\Support\Roles;
 use App\Support\UserInvites;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -48,7 +51,10 @@ class EmployeeController extends Controller
             $employees->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('employee_number', 'like', $like)->orWhere('department', 'like', $like));
         }
 
-        return EmployeeResource::collection($query->paginate($employees))->response();
+        $page = $query->paginate($employees);
+        Employee::preloadLeaveCredits($page->getCollection());
+
+        return EmployeeResource::collection($page)->response();
     }
 
     public function show(Employee $employee): JsonResponse
@@ -94,7 +100,15 @@ class EmployeeController extends Controller
 
     public function updateBenefits(Request $request, Employee $employee): JsonResponse
     {
-        $employee->update(['benefits' => $request->validate(EmployeeRules::benefits())['benefits']]);
+        $benefits = $request->validate(EmployeeRules::benefits())['benefits'];
+        // Leave credits live in the ledger: an edited amount becomes an adjustment entry, and is not stored on the record.
+        foreach ($benefits['leaveCreditsByType'] ?? [] as $name => $credits) {
+            if ($type = LeaveType::where('name', $name)->first()) {
+                LeaveLedger::setBalance($employee, $type, (float) $credits, $request->user(), 'Edited on the employee record');
+            }
+        }
+        $employee->update(['benefits' => Arr::except($benefits, ['leaveCreditsByType'])]);
+        $employee->leaveCredits = null;
 
         return $this->updated($employee, 'Benefits');
     }

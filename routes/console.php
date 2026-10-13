@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Fills in the day's attendance of approved WFH arrangements (also catches up days missed while the app was down).
 Schedule::command('attendance:materialize-wfh')->dailyAt('00:30');
+
+// Leave year end: carry-over up to each type's limit, expiry of the rest, and the new year's credits.
+Schedule::command('leave:year-end')->yearlyOn(1, 1, '00:10');

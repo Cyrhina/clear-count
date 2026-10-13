@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\WorkSchedule;
 use App\Support\ActivityLogger;
 use App\Support\AttendanceStatusResolver;
@@ -80,7 +81,7 @@ class AttendanceController extends Controller
             for ($i = 0; $i < $days; $i++) {
                 $date = $from->addDays($i)->toDateString();
                 $resolved = ScheduleResolver::for($employee, $date);
-                if (! $resolved['schedule'] || $resolved['is_rest_day'] || AttendanceStatusResolver::isHoliday($employee, $date)) {
+                if (! $resolved['schedule'] || $resolved['is_rest_day'] || AttendanceStatusResolver::isHoliday($employee, $date) || LeaveRequest::approvedOn($employee->id, $date)) {
                     $result['skipped']++;
 
                     continue;
