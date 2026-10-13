@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\BranchDepartment;
 use App\Models\Employee;
 use App\Models\EmployeeCompensation;
+use App\Models\LeaveType;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 /** Creating an employee and writing pay changes: shared by the hire endpoint, the import and the compensation update. */
@@ -28,12 +30,21 @@ final class EmployeeHiring
                 'personal' => $data['personal'],
                 'employment' => [...$data['employment'], 'status' => $data['employment']['status'] ?? 'active'],
                 'compensation' => self::snapshot($data['compensation']),
-                'benefits' => $data['benefits'] ?? ['leaveCreditsByType' => []],
+                'benefits' => Arr::except($data['benefits'] ?? [], ['leaveCreditsByType']),
                 'government' => $data['government'] ?? [],
                 'bank' => $data['bank'] ?? [],
             ]);
             self::recordCompensation($employee, $employee->compensation, 'Initial Hire', $employee->employment['dateHired'], $by);
             BranchDepartment::ensure($employee->branch_id, $employee->department);
+
+            // The year's leave credits (pro-rated for the hire year); amounts typed on the form replace the defaults.
+            LeaveDefaults::ensure($employee->company_id);
+            LeaveLedger::grantYear($employee, now()->year, $by);
+            foreach ($data['benefits']['leaveCreditsByType'] ?? [] as $name => $credits) {
+                if ($type = LeaveType::where('company_id', $employee->company_id)->where('name', $name)->first()) {
+                    LeaveLedger::setBalance($employee, $type, (float) $credits, $by, 'Set when hired');
+                }
+            }
 
             return $employee;
         });

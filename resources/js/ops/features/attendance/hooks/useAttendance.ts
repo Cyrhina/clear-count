@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
 import {
   fetchAdjustments,
   fetchAttendanceForDate,
   fetchLateRecords,
   fetchSchedulesWithMembers,
-  getApprovedLeavesInRange,
-  getEmployeeIdsOnLeaveForDate,
 } from '@ops/lib/services/attendanceService'
 import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
+import { fetchApprovedLeaves } from '@ops/lib/services/leaveApiService'
 import type { ApprovedLeave } from '@ops/features/attendance/leaveStatus'
 import type { Schedule } from '@ops/features/company-settings/types'
 import type { AttendanceAdjustment, AttendanceRecord } from '@ops/types/domain'
@@ -34,14 +32,13 @@ export function useDailyAttendance(date: string = todayKey()) {
   return { records: records ?? [], schedules, isLoading: records === null, refetch }
 }
 
-/** Powers the "On Leave" status filter option on the Daily Attendance tab (leave is still the mock until the Leave module). */
+/** Powers the "On Leave" status filter option on the Daily Attendance tab. */
 export function useDateStatusSets(date: string) {
-  const { user } = useSession()
   const [onLeaveIds, setOnLeaveIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    getEmployeeIdsOnLeaveForDate(user, date).then(setOnLeaveIds)
-  }, [user, date])
+    fetchApprovedLeaves(date, date).then((leaves) => setOnLeaveIds(new Set(leaves.map((l) => l.request.employeeId))))
+  }, [date])
 
   return { onLeaveIds }
 }
@@ -63,12 +60,11 @@ export function useAttendanceAdjustments() {
 
 /** Approved leaves covering `date` (with leave type) — drives the "On Leave" status override on the daily table. */
 export function useApprovedLeavesForDate(date: string) {
-  const { user } = useSession()
   const [leaves, setLeaves] = useState<ApprovedLeave[]>([])
 
   const refetch = useCallback(() => {
-    getApprovedLeavesInRange(user, date, date).then(setLeaves)
-  }, [user, date])
+    fetchApprovedLeaves(date, date).then(setLeaves)
+  }, [date])
 
   useEffect(() => {
     refetch()

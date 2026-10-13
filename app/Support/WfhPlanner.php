@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\WfhArrangement;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
@@ -89,7 +90,7 @@ final class WfhPlanner
                     $existing = $have->get($date);
                     // A real punch or hand-logged day stays; so does a day another arrangement still owns. A day an older arrangement filled in
                     // is taken over when this one now decides it (a temporary beats a standing one).
-                    if (($existing && (! $existing->auto_recorded || $existing->wfh_id === $a->id)) || self::ownerFor($approved, $date)?->id !== $a->id || AttendanceStatusResolver::isHoliday($employee, $date)) {
+                    if (($existing && (! $existing->auto_recorded || $existing->wfh_id === $a->id)) || self::ownerFor($approved, $date)?->id !== $a->id || AttendanceStatusResolver::isHoliday($employee, $date) || LeaveRequest::approvedOn($employee->id, $date)) {
                         continue;
                     }
                     $resolved = ScheduleResolver::for($employee, $date);

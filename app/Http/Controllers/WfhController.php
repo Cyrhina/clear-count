@@ -6,6 +6,7 @@ use App\Exceptions\ConflictException;
 use App\Models\AttendanceRecord;
 use App\Models\Company;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\WfhArrangement;
 use App\Support\ActivityLogger;
 use App\Support\Approval;
@@ -60,6 +61,8 @@ class WfhController extends Controller
                 }
                 if (ScheduleResolver::for($employee, $date)['is_rest_day']) {
                     $skipped['rest']++;
+                } elseif (LeaveRequest::approvedOn($employee->id, $date)) {
+                    $skipped['leave']++;
                 } elseif (AttendanceStatusResolver::isHoliday($employee, $date)) {
                     $skipped['holiday']++;
                 } elseif ($punched->has($date)) {

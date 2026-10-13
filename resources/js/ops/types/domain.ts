@@ -573,8 +573,10 @@ export interface LeaveRequest {
   dateTo: string
   /** Full day (default) or a half-day leave — morning (AM) or afternoon (PM). */
   dayPortion?: LeaveDayPortion
+  /** Credits the request uses (set by the API). */
+  days?: number
   reason?: string
-  status: ApprovalStatus
+  status: ApprovalStatus | 'cancelled'
   requestedAt: string
   decidedBy?: string
   decidedAt?: string

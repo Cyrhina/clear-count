@@ -8,8 +8,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
 import { HIERARCHY_LABEL, HIERARCHY_LEVELS } from '@ops/features/leave/hierarchyUtil'
-import { useSession } from '@ops/hooks/useSession'
-import { createLeaveType, updateLeaveType, type LeaveTypeInput } from '@ops/lib/services/leaveService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { createLeaveType, updateLeaveType, type LeaveTypeInput } from '@ops/lib/services/leaveApiService'
 import type { LeaveType } from '@ops/types/domain'
 
 function toFormValues(leaveType?: LeaveType): LeaveTypeInput {
@@ -32,7 +32,6 @@ function LeaveTypeForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
 
   const {
@@ -43,12 +42,16 @@ function LeaveTypeForm({
   } = useForm<LeaveTypeInput>({ defaultValues: toFormValues(leaveType) })
 
   async function onSubmit(values: LeaveTypeInput) {
-    if (leaveType) {
-      await updateLeaveType(user, leaveType.id, values)
-      notify({ title: 'Leave type updated', tone: 'success' })
-    } else {
-      await createLeaveType(user, values)
-      notify({ title: 'Leave type added', tone: 'success' })
+    try {
+      if (leaveType) {
+        await updateLeaveType(leaveType.id, values)
+        notify({ title: 'Leave type updated', tone: 'success' })
+      } else {
+        await createLeaveType(values)
+        notify({ title: 'Leave type added', tone: 'success' })
+      }
+    } catch (error) {
+      return notify({ title: "Couldn't save the leave type", description: apiErrorMessage(error), tone: 'danger' })
     }
     onSaved()
   }

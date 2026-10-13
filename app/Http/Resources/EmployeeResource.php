@@ -30,7 +30,7 @@ class EmployeeResource extends JsonResource
             'employee_number' => $this->employee_number,
             'personal' => $this->personal,
             'employment' => $this->employment,
-            'benefits' => $this->benefits,
+            'benefits' => [...($this->benefits ?? []), 'leaveCreditsByType' => $this->leaveCreditsByType()],
             'government' => $this->government,
             $this->mergeWhen($canSeePay, [
                 'compensation' => $this->compensation,

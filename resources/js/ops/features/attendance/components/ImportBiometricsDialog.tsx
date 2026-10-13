@@ -34,13 +34,14 @@ import { downloadCsv, toCsv } from '@ops/features/reports/components/shared'
 import { useSession } from '@ops/hooks/useSession'
 import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { apiErrorMessage } from '@ops/lib/api/http'
-import { fetchAttendanceHistory, fetchSchedulesWithMembers, getApprovedLeavesInRange, importPunches, statusForPunch } from '@ops/lib/services/attendanceService'
+import { fetchAttendanceHistory, fetchSchedulesWithMembers, importPunches, statusForPunch } from '@ops/lib/services/attendanceService'
 import { fetchAllEmployees } from '@ops/lib/services/employeeService'
 import { fetchRosterMap } from '@ops/lib/services/scheduleService'
 import { fetchWfhDayLookup } from '@ops/lib/services/wfhArrangementService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
 import { xlsxToCsv } from '@ops/lib/utils/xlsxRead'
+import { fetchApprovedLeaves } from '@ops/lib/services/leaveApiService'
 import type { AttendanceRecord, Employee, Schedule } from '@ops/types/domain'
 
 interface Preview {
@@ -56,7 +57,7 @@ interface Preview {
   /** Approved WFH days (`employeeId|date`) — not "no punch" days. */
   wfhDays: Set<string>
   /** Approved leave across the whole scope, so days the file doesn't mention still know who is on leave. */
-  leaves: Awaited<ReturnType<typeof getApprovedLeavesInRange>>
+  leaves: Awaited<ReturnType<typeof fetchApprovedLeaves>>
   /** What the schedule-based import was narrowed to (undefined for a standard import). */
   scope?: ImportScope
 }
@@ -287,7 +288,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     // A schedule-based import also looks at the whole scope, so "no punch" days are checked against leave and the roster.
     const spanFrom = currentScope ? [dates[0], currentScope.from].filter(Boolean).sort()[0] : dates[0]
     const spanTo = currentScope ? [dates[dates.length - 1], currentScope.to].filter(Boolean).sort().reverse()[0] : dates[dates.length - 1]
-    const leaves = spanFrom ? await getApprovedLeavesInRange(user, spanFrom, spanTo) : []
+    const leaves = spanFrom ? await fetchApprovedLeaves(spanFrom, spanTo) : []
     const leave = annotateImportWithLeaves(result.records, leaves, employees, schedules)
     const roster = spanFrom ? await fetchRosterMap(spanFrom, spanTo) : new Map<string, string | null>()
     const wfhDays = spanFrom ? await fetchWfhDayLookup(spanFrom, spanTo) : new Set<string>()

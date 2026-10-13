@@ -20,8 +20,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
 | P3 | Employees (a, b) | done (merged #6, #7) | backend/p03-employees, backend/p03b-employees-bulk | #6, #7 | 2026-10-13 |
 | P4 | Schedules and roster | done (merged #8) | backend/p04-schedules | #8 | 2026-10-13 |
-| P5 | Attendance, adjustments, biometrics, WFH (a, b) | P5a merged (#9); P5b in review | backend/p05a-attendance, backend/p05b-wfh | #9 (P5a) | 2026-10-13 (P5a) |
-| P6 | Leave | not started | | | |
+| P5 | Attendance, adjustments, biometrics, WFH (a, b) | done (merged #9, #10) | backend/p05a-attendance, backend/p05b-wfh | #9, #10 | 2026-10-13 |
+| P6 | Leave | in progress: in review | backend/p06-leave | | |
 | P7 | Overtime, work logs, approvals inbox, notifications | not started | | | |
 | P8 | Statutory tables and withholding tax | not started | | | |
 | P9 | Benefits, loans, deductions, bonuses | not started | | | |
@@ -48,6 +48,9 @@ Decisions made during the phases (PLAN.md marks each one with **Confirm with the
 | 2026-10-12 | P1 | Payroll Groups: screen or backend leads? | Backend leads. Real cutoff and pay-date pickers, server calendar, 4 frequencies, group points at a Compensation Type record. |
 | 2026-10-12 | P1 | What do the Assign employees actions do before P3/P4? | Disabled with a note; they come back with the Employees and Schedules modules. |
 | 2026-10-13 | P2 | Department: foreign key now or in P3? | In P3. P2 keeps the department as a name on the employee; a rename updates the employees, a delete is blocked while any employee has the name. |
+| 2026-10-13 | P6 | How do leave credits come in? | The full yearly credits are granted at once (at hire and at the start of each leave year). No monthly accrual, so there is no `leave:accrue`. |
+| 2026-10-13 | P6 | How is the leave year counted, and mid-year hires? | Calendar year. A hire gets the credits pro-rated by the months left in the hire year (to the half day). |
+| 2026-10-13 | P6 | What happens to unused credits at year end? | Carried over up to the leave type's max carry-over; the rest expires (an `expiry` ledger entry). No cash conversion. |
 | 2026-10-12 | P0 | Give company_admin, super_admin and manager `profile.view`? | Yes, on the server and in the client copy. `ess.view` was not added to admins. |
 
 ## Mock-removal ledger
@@ -63,6 +66,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
 | `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: getWfhArrangements, createWfhBatch, cancelWfh, scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | payroll, reports (late and absence, team), dashboards, manager service, notifications, ESS (WFH request page), leave, `LogAttendanceDialog` (default times) | P6 (leave), P10 (payroll), P13 (ESS, WFH request), P14 (dashboards, reports) | P5a |
+| `leaveService` (mock): getLeaveTypes, getLeaveRequests, getLeaveBalance, planLeaveRequest, submitLeaveRequest; `features/leave/hooks/useLeave.ts`; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | ESS leave pages, dashboards, notifications, manager service, payroll (inputs, 13th month), reports (late and absence, team) | P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P6 |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -81,6 +85,23 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P6 - 2026-10-19
+- Branch: backend/p06-leave (pushed: no)
+- Done:
+  - Owner decisions (see the table): full credits at once, calendar year with pro-rating for the hire year, carry-over up to the type's maximum and the rest expires.
+  - Backend: `leave_types` (paid or unpaid, default credits, max carry-over, credits per hierarchy tier), `leave_requests` (`days` computed by the server when filed), `leave_ledger` (grant, adjustment, used, reversal, expiry; balance = sum of entries; available = balance minus pending requests). `LeaveLedger` is the Ledger pattern; `LeavePlanner` works out the days (the employee's working days from `ScheduleResolver`, minus holidays; half days 0.5), overlaps (only an AM and a PM half day of one date may share it) and credits. Approving takes the days from the balance in the same transaction (Approval kit; refused with 409 when the balance is too low); cancelling an approved request writes a reversal. Endpoints under `api/leave`: types (list, add, edit), requests (list with range and status filters, preview, file, decide in bulk, cancel), balances, grant credits (add or set). Hiring grants the year's credits (also through the import); the employee's `benefits.leaveCreditsByType` is now read from the ledger, and editing it on the profile writes an adjustment. `leave:year-end` runs on 1 January 00:10 (carry-over, expiry, new year's credits; safe to repeat). Default leave types are created on first use (`LeaveDefaults`). Attendance: manual logging, WFH fill-in and the WFH preview now skip approved leave. Tests: 216 (212 pass, 4 skipped), including the year-end over three years.
+  - Frontend: `leaveApiService` and `useLeaveData`; the Leave page (requests list with approve, reject, bulk and Cancel; file request with the server preview; Leave Types and Credits with Grant Credits; the team credits panel) and the leave overlay of Attendance, the roster and the biometrics import read the API. DemoSeeder: the default leave types, this year's credits for everyone and three requests.
+- Next: open the P6 PR, merge it, then start P7 (Overtime, work logs, approvals inbox, notifications). PLAN.md P7.
+- Gotchas:
+  - The credits shown on a profile are the ledger balance (what is left), not the yearly allowance.
+  - The ESS leave pages, dashboards, notifications, manager service, payroll and the leave reports still read the mock (see the ledger). An ESS request does not reach the API until P13.
+  - Hierarchy tier still comes from the position title (Manager = executive; Supervisor or Team Lead = managerial; else rank and file), as the screens did.
+  - A half-day leave also stops manual attendance logging for that date.
+  - An approved leave does not change attendance records already logged; the attendance screens show On Leave from the leave data.
+  - Not browser-tested: filing a request in the dialog, Cancel, Grant Credits, editing a leave type, the manager view.
+- Checks: php artisan test 216 (212 passed, 4 skipped); tsc clean; test:samples 13 pass; test:golden 3 pass.
+
 
 ### P5b - 2026-10-18
 - Branch: backend/p05b-wfh (pushed: no)

@@ -5,14 +5,14 @@ import { PlainCards } from '@ops/components/ui/PlainCards'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Select } from '@ops/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { LeaveFilterBar } from '@ops/features/leave/components/LeaveFilterBar'
 import { LeaveRequestDialog } from '@ops/features/leave/components/LeaveRequestDialog'
 import { LeaveRequestsList } from '@ops/features/leave/components/LeaveRequestsList'
 import { LeaveTypesPanel } from '@ops/features/leave/components/LeaveTypesPanel'
 import { TeamLeaveCreditsPanel } from '@ops/features/leave/components/TeamLeaveCreditsPanel'
 import { HIERARCHY_LABEL, HIERARCHY_LEVELS, getEmployeeHierarchyLevel } from '@ops/features/leave/hierarchyUtil'
-import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
+import { useLeaveRequestList, useLeaveTypeList } from '@ops/features/leave/hooks/useLeaveData'
 import { useHighlightTarget } from '@ops/hooks/useHighlightTarget'
 import { usePermission } from '@ops/hooks/usePermission'
 import type { Employee } from '@ops/types/domain'
@@ -32,9 +32,9 @@ export function LeavePage() {
 }
 
 function LeaveContent() {
-  const { requests, isLoading, refetch } = useLeaveRequests()
-  const { leaveTypes, refetch: refetchLeaveTypes } = useLeaveTypes()
-  const { employees, refetch: refetchEmployees } = useEmployees()
+  const { requests, isLoading, refetch } = useLeaveRequestList()
+  const { leaveTypes, refetch: refetchLeaveTypes } = useLeaveTypeList()
+  const { employees } = useAllEmployees()
   const canRequest = usePermission('leave.request')
   const canManageTypes = usePermission('leave.manage_types')
   const canApprove = usePermission('leave.approve')
@@ -162,7 +162,7 @@ function LeaveContent() {
 
         <TabsContent value="types">
           {canManageTypes ? (
-            <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} onCreditsGranted={refetchEmployees} />
+            <LeaveTypesPanel leaveTypes={leaveTypes} employees={employees} onChanged={refetchLeaveTypes} onCreditsGranted={refetchLeaveTypes} />
           ) : (
             <TeamLeaveCreditsPanel employees={employees} leaveTypes={leaveTypes} />
           )}

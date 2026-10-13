@@ -7,13 +7,12 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { grantLeaveCredits } from '@ops/lib/services/leaveService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { grantCredits } from '@ops/lib/services/leaveApiService'
 import type { Employee, LeaveType } from '@ops/types/domain'
 
 /** Grants (or resets) leave credits for several employees at once: pick the employees, the leave type, and how many days. */
 export function GrantLeaveCreditsDialog({ employees, leaveTypes, onGranted }: { employees: Employee[]; leaveTypes: LeaveType[]; onGranted: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
@@ -31,7 +30,13 @@ export function GrantLeaveCreditsDialog({ employees, leaveTypes, onGranted }: { 
   async function save() {
     if (!leaveType) return
     setSaving(true)
-    const n = await grantLeaveCredits(user, selected, leaveType.name, amount, mode)
+    let n: number
+    try {
+      n = await grantCredits(selected, leaveType.id, amount, mode)
+    } catch (error) {
+      setSaving(false)
+      return notify({ title: "Couldn't update the credits", description: apiErrorMessage(error), tone: 'danger' })
+    }
     setSaving(false)
     notify({ title: `${leaveType.name} credits updated for ${n} employee${n === 1 ? '' : 's'}`, description: mode === 'add' ? `+${amount} day${amount === 1 ? '' : 's'} each.` : `Set to ${amount} day${amount === 1 ? '' : 's'} each.`, tone: 'success' })
     setOpen(false)
