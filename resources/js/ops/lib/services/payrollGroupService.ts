@@ -55,3 +55,9 @@ export async function getPayrollGroupCalendar(id: string, year: number): Promise
   const res = await api.get<{ data: unknown[] }>(`${BASE}/${id}/calendar`, { year })
   return camelizeKeys<CalendarPeriod[]>(res.data)
 }
+
+/** Moves employees into the group (out of any other), or out of it with `unassign`. Returns how many changed. */
+export async function assignPayrollGroupEmployees(id: string, employeeIds: string[], action: 'assign' | 'unassign' = 'assign'): Promise<number> {
+  const res = await api.post<{ data: { changed: number } }>(`${BASE}/${id}/employees`, { employee_ids: employeeIds.map(Number), action })
+  return res.data.changed
+}

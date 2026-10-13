@@ -4,6 +4,7 @@ import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { useToast } from '@ops/components/ui/Toast'
+import { PayrollGroupAssignDialog } from '@ops/features/company-settings/components/payroll/PayrollGroupAssignDialog'
 import { PayrollGroupDetailDialog } from '@ops/features/company-settings/components/payroll/PayrollGroupDetailDialog'
 import { PayrollGroupDialog } from '@ops/features/company-settings/components/payroll/PayrollGroupDialog'
 import type { CompensationType, PayrollGroup, PayrollRules, Schedule } from '@ops/features/company-settings/types'
@@ -109,9 +110,15 @@ export function PayrollGroupsSection({
                   />
                   {canEdit && (
                     <>
-                      <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />} disabled title="Assigning employees comes with the Employees module">
-                        Assign
-                      </Button>
+                      <PayrollGroupAssignDialog
+                        group={group}
+                        groups={groups}
+                        trigger={
+                          <Button size="sm" variant="ghost" icon={<Users className="size-3.5" />}>
+                            Assign
+                          </Button>
+                        }
+                      />
                       <PayrollGroupDialog
                         group={group}
                         compensationTypes={compensationTypes}

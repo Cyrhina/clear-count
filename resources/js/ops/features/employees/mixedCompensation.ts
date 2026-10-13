@@ -1,15 +1,9 @@
-import { create } from 'zustand'
 import { formatCurrency } from '@ops/lib/utils/format'
+import type { MixedCompensation } from '@ops/types/domain'
 
-export type MixedBaseType = 'monthly' | 'daily' | 'hourly'
-export type MixedComponentType = 'commission_pct' | 'piece_rate' | 'allowance_per_day'
-
-export interface MixedCompensationStructure {
-  baseType: MixedBaseType
-  baseAmount: number
-  componentType: MixedComponentType
-  rate: number
-}
+export type MixedCompensationStructure = MixedCompensation
+export type MixedBaseType = MixedCompensation['baseType']
+export type MixedComponentType = MixedCompensation['componentType']
 
 const BASE_UNIT_LONG: Record<MixedBaseType, string> = { monthly: 'mo', daily: 'day', hourly: 'hr' }
 const BASE_UNIT_SHORT: Record<MixedBaseType, string> = { monthly: 'mo', daily: 'day', hourly: 'hr' }
@@ -42,26 +36,4 @@ export function summarizeMixedCompensationShort(structure: MixedCompensationStru
         ? `${formatPesoShort(structure.rate)}/task`
         : `${formatPesoShort(structure.rate)}/day`
   return `${basePart} + ${variablePart}`
-}
-
-interface MixedCompensationState {
-  structures: Record<string, MixedCompensationStructure>
-  setStructure: (employeeId: string, structure: MixedCompensationStructure) => void
-}
-
-/**
- * "Mixed Compensation" isn't a real payroll pay-rate type (`PayRateType` stays exactly the 5
- * standard values the computation engine, reports, and payslips already handle) — this is a
- * display-only overlay for the Add Employee modal, keyed by employee id, in-memory only like the
- * rest of this app's mock data.
- */
-export const useMixedCompensationStore = create<MixedCompensationState>((set, get) => ({
-  structures: {},
-  setStructure: (employeeId, structure) => {
-    set({ structures: { ...get().structures, [employeeId]: structure } })
-  },
-}))
-
-export function useMixedCompensation(employeeId: string): MixedCompensationStructure | undefined {
-  return useMixedCompensationStore((s) => s.structures[employeeId])
 }

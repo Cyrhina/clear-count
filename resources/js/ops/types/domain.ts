@@ -184,12 +184,22 @@ export interface EmployeeEmployment {
  */
 export type PayRateType = 'monthly' | 'semi_monthly' | 'daily' | 'hourly' | 'output_based'
 
+/** A base rate plus one variable component (commission, piece rate or a daily allowance). */
+export interface MixedCompensation {
+  baseType: 'monthly' | 'daily' | 'hourly'
+  baseAmount: number
+  componentType: 'commission_pct' | 'piece_rate' | 'allowance_per_day'
+  rate: number
+}
+
 export interface EmployeeCompensation {
   basicPay: number
   payType: PayRateType
   /** Only meaningful when payType is 'output_based', e.g. "Per Unit", "Per Piece". */
   outputUnit?: string | null
   allowances: { label: string; amount: number }[]
+  /** Set when the pay is a mixed structure; `basicPay` and `payType` then mirror its base. */
+  mixed?: MixedCompensation
 }
 
 export interface EmployeeBenefits {

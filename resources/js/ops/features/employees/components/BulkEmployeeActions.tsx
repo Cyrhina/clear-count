@@ -1,6 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { Building2, CalendarClock, ChevronDown, Download, Gift, GitBranch, Layers, MinusCircle, UserMinus, Users, Wallet } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Building2, ChevronDown, Download, GitBranch, Layers, UserMinus, Users, Wallet } from 'lucide-react'
+import { useState } from 'react'
 import { BulkActionBar } from '@ops/components/ui/BulkActionBar'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
@@ -8,34 +9,36 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
 import { companyHeaderFor, downloadReportWorkbook } from '@ops/features/reports/reportExport'
-import { useBenefitPlans, useDeductionPlans } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
-import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
-import { enrollEmployeesInDeductionPlan, enrollEmployeesInPlan } from '@ops/lib/services/benefitsService'
-import { assignEmployeesToBranch } from '@ops/lib/services/branchService'
-import { addEmployeesToSchedule, getSchedules } from '@ops/lib/services/companyService'
-import { bulkUpdateEmployeeDepartment, bulkUpdateEmployeeStatus } from '@ops/lib/services/employeeService'
-import { bulkSetEmployeePayrollGroup } from '@ops/lib/services/payrollSettingsService'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { formatBaseRateShort } from '@ops/lib/payroll/payRate'
-import type { BenefitCategory, Employee, Schedule } from '@ops/types/domain'
+import { bulkSetBranch, bulkSetDepartment, bulkSetStatus } from '@ops/lib/services/employeeService'
+import { assignPayrollGroupEmployees, getPayrollGroups } from '@ops/lib/services/payrollGroupService'
+import type { Employee } from '@ops/types/domain'
 
-type BulkKind = 'department' | 'branch' | 'payroll_group' | 'schedule' | 'benefit' | 'deduction' | 'deactivate'
+type BulkKind = 'department' | 'branch' | 'payroll_group' | 'deactivate'
 
-const today = () => new Date().toISOString().slice(0, 10)
-const CATEGORY_OPTIONS: { value: BenefitCategory; label: string }[] = [
-  { value: 'hmo', label: 'HMO' },
-  { value: 'allowance', label: 'Allowance' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'other', label: 'Other benefit' },
-]
+const TITLES: Record<BulkKind, string> = {
+  department: 'Change department',
+  branch: 'Change branch',
+  payroll_group: 'Assign payroll group',
+  deactivate: 'Deactivate employees',
+}
 
-/** Floating bar over the Employees list: assign / move the selected employees in bulk, deactivate them, or export them. */
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/**
+ * Floating bar over the Employees list: move the selected employees in bulk, deactivate them, or export them.
+ * Adding them to a work schedule, benefit plan or recurring deduction comes back with those modules (P4, P9).
+ */
 export function BulkEmployeeActions({ selected, employees, departments, onClear, onDone }: { selected: string[]; employees: Employee[]; departments: string[]; onClear: () => void; onDone: () => void }) {
   const { user } = useSession()
   const { company } = useTenant()
+  const { branches } = useBranches()
   const canEdit = usePermission('employees.edit')
   const canSeparate = usePermission('employees.separate')
   const canPayrollGroup = usePermission('settings.payroll.edit')
@@ -43,13 +46,13 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
   const chosen = employees.filter((e) => selected.includes(e.id))
 
   function exportSelected() {
-    const header = ['Employee ID', 'Employee Name', 'Department', 'Position', 'Branch ID', 'Employment Type', 'Base Rate', 'Status']
+    const header = ['Employee ID', 'Employee Name', 'Department', 'Position', 'Branch', 'Employment Type', 'Base Rate', 'Status']
     const rows = chosen.map((e) => [
       e.employeeNumber,
       `${e.personal.firstName} ${e.personal.lastName}`,
       e.employment.department,
       e.employment.position,
-      e.branchId,
+      branches.find((b) => b.id === e.branchId)?.name ?? '',
       e.employment.employmentType,
       formatBaseRateShort(e.compensation.payType, e.compensation.basicPay, e.compensation.outputUnit),
       e.employment.status,
@@ -68,9 +71,6 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
     { kind: 'department', label: 'Change Department', icon: Layers, show: canEdit },
     { kind: 'branch', label: 'Change Branch', icon: GitBranch, show: canEdit },
     { kind: 'payroll_group', label: 'Assign Payroll Group', icon: Wallet, show: canPayrollGroup },
-    { kind: 'schedule', label: 'Assign Work Schedule', icon: CalendarClock, show: canEdit },
-    { kind: 'benefit', label: 'Add to Benefit Plan', icon: Gift, show: canEdit },
-    { kind: 'deduction', label: 'Add to Recurring Deduction', icon: MinusCircle, show: canEdit },
   ]
   const available = entries.filter((e) => e.show)
 
@@ -111,7 +111,6 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
         <BulkDialog
           kind={kind}
           ids={selected}
-          employees={chosen}
           departments={departments}
           onClose={() => setKind(null)}
           onDone={() => {
@@ -125,79 +124,41 @@ export function BulkEmployeeActions({ selected, employees, departments, onClear,
   )
 }
 
-const TITLES: Record<BulkKind, string> = {
-  department: 'Change department',
-  branch: 'Change branch',
-  payroll_group: 'Assign payroll group',
-  schedule: 'Assign work schedule',
-  benefit: 'Add to a benefit plan',
-  deduction: 'Add to a recurring deduction',
-  deactivate: 'Deactivate employees',
-}
-
-function BulkDialog({ kind, ids, departments, onClose, onDone }: { kind: BulkKind; ids: string[]; employees: Employee[]; departments: string[]; onClose: () => void; onDone: () => void }) {
-  const { user } = useSession()
+function BulkDialog({ kind, ids, departments, onClose, onDone }: { kind: BulkKind; ids: string[]; departments: string[]; onClose: () => void; onDone: () => void }) {
   const { notify } = useToast()
-  const { branches } = useTenant()
-  const { groups } = usePayrollGroups()
+  const { branches } = useBranches()
+  const groups = useQuery({ queryKey: ['employees', 'payroll-groups'], queryFn: getPayrollGroups, enabled: kind === 'payroll_group' }).data ?? []
   const [saving, setSaving] = useState(false)
-
   const [department, setDepartment] = useState('')
-  const [branchId, setBranchId] = useState(branches[0]?.id ?? '')
-  const [groupId, setGroupId] = useState('none')
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [scheduleId, setScheduleId] = useState('')
-  const [category, setCategory] = useState<BenefitCategory>('hmo')
-  const { plans: benefitPlans } = useBenefitPlans(category)
-  const { plans: deductionPlans } = useDeductionPlans()
-  const [planId, setPlanId] = useState('')
-  const [startDate, setStartDate] = useState(today())
+  const [branchId, setBranchId] = useState('')
+  const [groupId, setGroupId] = useState('')
 
-  useEffect(() => {
-    if (kind === 'schedule') getSchedules(user).then((s) => (setSchedules(s), setScheduleId((id) => id || s[0]?.id || '')))
-  }, [kind, user])
-
-  const activeBenefitPlans = benefitPlans.filter((p) => p.status === 'active')
-  const activeDeductionPlans = deductionPlans.filter((p) => p.status === 'active')
-  const plans = kind === 'benefit' ? activeBenefitPlans : activeDeductionPlans
-  const effectivePlanId = plans.some((p) => p.id === planId) ? planId : (plans[0]?.id ?? '')
-  const selectedPlan = plans.find((p) => p.id === effectivePlanId)
-  const customPlan = !!selectedPlan && 'amountType' in selectedPlan && selectedPlan.amountType === 'custom'
-
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-
-  const canSave =
-    kind === 'department' ? department.trim() !== '' : kind === 'branch' ? !!branchId : kind === 'schedule' ? !!scheduleId : kind === 'benefit' || kind === 'deduction' ? !!effectivePlanId && !!startDate : true
+  const effectiveBranch = branchId || branches[0]?.id || ''
+  const activeGroups = groups.filter((g) => g.status === 'active')
+  const effectiveGroup = groupId || activeGroups[0]?.id || ''
+  const canSave = kind === 'department' ? department.trim() !== '' : kind === 'branch' ? !!effectiveBranch : kind === 'payroll_group' ? !!effectiveGroup : true
 
   async function save() {
     setSaving(true)
     try {
       if (kind === 'department') {
-        const n = await bulkUpdateEmployeeDepartment(user, ids, department.trim())
+        const n = await bulkSetDepartment(ids, department.trim())
         notify({ title: `${plural(n, 'employee')} moved to ${department.trim()}`, description: n < ids.length ? `${ids.length - n} already in it.` : undefined, tone: n ? 'success' : 'default' })
       } else if (kind === 'branch') {
-        const n = await assignEmployeesToBranch(user, ids, branchId)
-        notify({ title: `${plural(n, 'employee')} moved to ${branches.find((b) => b.id === branchId)?.name}`, tone: n ? 'success' : 'default' })
+        const n = await bulkSetBranch(ids, effectiveBranch)
+        notify({ title: `${plural(n, 'employee')} moved to ${branches.find((b) => b.id === effectiveBranch)?.name}`, tone: n ? 'success' : 'default' })
       } else if (kind === 'payroll_group') {
-        const n = await bulkSetEmployeePayrollGroup(user, ids, groupId === 'none' ? null : groupId)
-        notify({ title: groupId === 'none' ? `${plural(n, 'employee')} removed from their payroll group` : `${plural(n, 'employee')} assigned to ${groups.find((g) => g.id === groupId)?.name}`, tone: 'success' })
-      } else if (kind === 'schedule') {
-        const n = await addEmployeesToSchedule(user, scheduleId, ids)
-        notify({ title: `${plural(n, 'employee')} assigned to ${schedules.find((s) => s.id === scheduleId)?.name}`, description: n < ids.length ? `${ids.length - n} were already on it.` : undefined, tone: n ? 'success' : 'default' })
-      } else if (kind === 'benefit' || kind === 'deduction') {
-        const result = kind === 'benefit' ? await enrollEmployeesInPlan(user, effectivePlanId, ids, startDate) : await enrollEmployeesInDeductionPlan(user, effectivePlanId, ids, startDate)
-        notify({
-          title: `${plural(result.added, 'employee')} added to ${selectedPlan?.name}`,
-          description: result.skipped ? `${result.skipped} skipped — already enrolled${kind === 'benefit' && category === 'hmo' ? ' or in another HMO plan' : ''}.` : undefined,
-          tone: result.added ? 'success' : 'default',
-        })
+        const n = await assignPayrollGroupEmployees(effectiveGroup, ids)
+        notify({ title: `${plural(n, 'employee')} assigned to ${groups.find((g) => g.id === effectiveGroup)?.name}`, tone: 'success' })
       } else {
-        const n = await bulkUpdateEmployeeStatus(user, ids, 'inactive')
+        const n = await bulkSetStatus(ids, 'inactive')
         notify({ title: `${plural(n, 'employee')} deactivated`, tone: n ? 'success' : 'default' })
       }
-    } finally {
+    } catch (error) {
       setSaving(false)
+      return notify({ title: "Couldn't apply the change", description: apiErrorMessage(error), tone: 'danger' })
     }
+    setSaving(false)
     onDone()
   }
 
@@ -212,7 +173,7 @@ function BulkDialog({ kind, ids, departments, onClose, onDone }: { kind: BulkKin
 
         <div className="mt-5 space-y-4">
           {kind === 'department' && (
-            <FormField label="Department" hint="Pick an existing department or type a new one.">
+            <FormField label="Department" hint="Pick an existing department or type a new one. It is created in each employee's branch if it is missing.">
               <Input value={department} onChange={(e) => setDepartment(e.target.value)} list="bulk-departments" placeholder="e.g. Operations" />
               <datalist id="bulk-departments">
                 {departments.map((d) => (
@@ -222,43 +183,17 @@ function BulkDialog({ kind, ids, departments, onClose, onDone }: { kind: BulkKin
             </FormField>
           )}
           {kind === 'branch' && (
-            <FormField label="Move to branch" hint="Branch managers moving out of their branch are released from managing it.">
-              <Select value={branchId} onValueChange={setBranchId} aria-label="Branch" options={branches.map((b) => ({ value: b.id, label: b.name }))} />
+            <FormField label="Move to branch" hint="Their department is created in the new branch if it is missing, and they stop supervising a department they left.">
+              <Select value={effectiveBranch} onValueChange={setBranchId} aria-label="Branch" options={branches.map((b) => ({ value: b.id, label: b.name }))} />
             </FormField>
           )}
           {kind === 'payroll_group' && (
             <FormField label="Payroll group" hint="An employee belongs to one payroll group — this replaces their current one.">
-              <Select value={groupId} onValueChange={setGroupId} aria-label="Payroll group" options={[{ value: 'none', label: 'No payroll group' }, ...groups.map((g) => ({ value: g.id, label: g.name }))]} />
+              <Select value={effectiveGroup} onValueChange={setGroupId} aria-label="Payroll group" options={activeGroups.map((g) => ({ value: g.id, label: g.name }))} />
             </FormField>
-          )}
-          {kind === 'schedule' && (
-            <FormField label="Work schedule" hint="An employee has one work schedule — this replaces their current one.">
-              <Select value={scheduleId} onValueChange={setScheduleId} aria-label="Work schedule" options={schedules.map((s) => ({ value: s.id, label: `${s.name} · ${s.startTime}–${s.endTime}` }))} />
-            </FormField>
-          )}
-          {(kind === 'benefit' || kind === 'deduction') && (
-            <>
-              {kind === 'benefit' && (
-                <FormField label="Benefit type">
-                  <Select value={category} onValueChange={(v) => setCategory(v as BenefitCategory)} aria-label="Benefit type" options={CATEGORY_OPTIONS} />
-                </FormField>
-              )}
-              <FormField label="Plan" hint={customPlan ? 'Customizable plan: everyone starts at its default amount — adjust individuals from the plan afterwards.' : undefined}>
-                <Select
-                  value={effectivePlanId}
-                  onValueChange={setPlanId}
-                  aria-label="Plan"
-                  options={plans.map((p) => ({ value: p.id, label: p.name }))}
-                />
-              </FormField>
-              <FormField label="Start date">
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </FormField>
-              {plans.length === 0 && <p className="text-xs text-muted-foreground">There is no active plan to add to.</p>}
-            </>
           )}
           {kind === 'deactivate' && (
-            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs">Employees who resigned or were terminated should be separated from their profile instead, so their last day and benefits end correctly.</p>
+            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs">Employees who resigned or were terminated should be separated from their profile instead, so their last day is recorded.</p>
           )}
         </div>
 

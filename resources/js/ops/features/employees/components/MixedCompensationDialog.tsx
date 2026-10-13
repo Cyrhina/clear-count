@@ -4,8 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/comp
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
-import type { MixedBaseType, MixedComponentType, MixedCompensationStructure } from '@ops/features/employees/mixedCompensationStore'
-import { summarizeMixedCompensation } from '@ops/features/employees/mixedCompensationStore'
+import type { MixedBaseType, MixedComponentType, MixedCompensationStructure } from '@ops/features/employees/mixedCompensation'
+import { summarizeMixedCompensation } from '@ops/features/employees/mixedCompensation'
 
 const BASE_TYPE_OPTIONS: { value: MixedBaseType; label: string }[] = [
   { value: 'monthly', label: 'Fixed Monthly Base' },

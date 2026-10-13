@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
@@ -7,37 +8,60 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@ops/components/ui/Toast'
 import { downloadCsv, toCsv } from '@ops/features/reports/components/shared'
 import { parseCsv } from '@ops/features/reports/reportExport'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
-import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
-import { IMPORT_COLUMNS, importTemplateRows, parseEmployeeImport } from '@ops/lib/payroll/employeeImport'
-import { useBranchDepartments } from '@ops/features/branches/hooks/useBranchDepartments'
-import { importEmployees } from '@ops/lib/services/employeeService'
+import { BRANCHES_KEY, useBranches, useDepartments } from '@ops/features/branches/hooks/useBranches'
+import { EMPLOYEES_KEY } from '@ops/features/employees/hooks/useEmployeeRecords'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { IMPORT_COLUMNS, importTemplateRows, parseEmployeeImport, toImportRow } from '@ops/lib/payroll/employeeImport'
+import { importEmployees, type ImportReport } from '@ops/lib/services/employeeService'
 import { cn } from '@ops/lib/utils/cn'
 
 /** Bulk-add employees from a CSV. A downloadable sample file shows the exact columns and formats. */
-export function ImportEmployeesDialog({ onImported }: { onImported: () => void }) {
+export function ImportEmployeesDialog() {
   const [open, setOpen] = useState(false)
   const [fileName, setFileName] = useState<string | null>(null)
   const [csvRows, setCsvRows] = useState<string[][] | null>(null)
   const [readError, setReadError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
-  const { user } = useSession()
-  const { branches } = useTenant()
-  const { employees } = useEmployees()
+  const { branches } = useBranches()
+  const { departments, isLoading: departmentsLoading } = useDepartments()
+  const queryClient = useQueryClient()
   const { notify } = useToast()
+  // The server's dry run of the rows the browser accepted: it finds duplicate names and anything else only it can check.
+  const [report, setReport] = useState<ImportReport | null>(null)
+  const [checking, setChecking] = useState(false)
 
-  const { departments, isLoading: departmentsLoading } = useBranchDepartments()
+  const result = useMemo(() => (csvRows && !departmentsLoading ? parseEmployeeImport(csvRows, branches, departments) : null), [csvRows, branches, departments, departmentsLoading])
+  const payloads = useMemo(() => (result?.rows ?? []).filter((r) => r.input).map((r) => toImportRow(r.input!, r.line)), [result])
 
-  const result = useMemo(() => (csvRows && !departmentsLoading ? parseEmployeeImport(csvRows, branches, employees, departments) : null), [csvRows, branches, employees, departments, departmentsLoading])
-  const valid = result?.rows.filter((r) => r.input) ?? []
-  const invalid = result?.rows.filter((r) => !r.input) ?? []
+  useEffect(() => {
+    setReport(null)
+    if (payloads.length === 0) return
+    let current = true
+    setChecking(true)
+    importEmployees(payloads, true)
+      .then((r) => current && setReport(r))
+      .catch((error) => current && setReadError(apiErrorMessage(error)))
+      .finally(() => current && setChecking(false))
+    return () => {
+      current = false
+    }
+  }, [payloads])
+
+  // A row is ready when the browser and the server both accept it.
+  const serverRow = (line: number) => report?.rows.find((r) => r.line === line)
+  const rows = (result?.rows ?? []).map((row) => {
+    const server = serverRow(row.line)
+    return { ...row, errors: [...row.errors, ...(server?.errors ?? [])], warnings: [...row.warnings, ...(server?.warnings ?? [])] }
+  })
+  const valid = rows.filter((r) => r.input && r.errors.length === 0)
+  const invalid = rows.filter((r) => r.errors.length > 0)
 
   function reset() {
     setFileName(null)
     setCsvRows(null)
     setReadError(null)
+    setReport(null)
     if (fileInput.current) fileInput.current.value = ''
   }
 
@@ -68,16 +92,23 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
 
   async function onImport() {
     setImporting(true)
-    const count = await importEmployees(user, valid.map((r) => r.input!))
-    setImporting(false)
-    notify({
-      title: `${count} employee${count === 1 ? '' : 's'} imported`,
-      description: invalid.length > 0 ? `${invalid.length} row${invalid.length === 1 ? ' was' : 's were'} skipped.` : 'Added to the roster.',
-      tone: 'success',
-    })
-    setOpen(false)
-    reset()
-    onImported()
+    try {
+      const sent = payloads.filter((p) => valid.some((r) => r.line === p.line))
+      const done = await importEmployees(sent, false)
+      notify({
+        title: `${done.created} employee${done.created === 1 ? '' : 's'} imported`,
+        description: invalid.length > 0 ? `${invalid.length} row${invalid.length === 1 ? ' was' : 's were'} skipped.` : 'Added to the roster.',
+        tone: 'success',
+      })
+      void queryClient.invalidateQueries({ queryKey: [EMPLOYEES_KEY] })
+      void queryClient.invalidateQueries({ queryKey: [BRANCHES_KEY] })
+      setOpen(false)
+      reset()
+    } catch (error) {
+      notify({ title: "Couldn't import the employees", description: apiErrorMessage(error), tone: 'danger' })
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
@@ -153,10 +184,11 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
         {result && result.missingColumns.length === 0 && (
           <div className="mt-4 space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
+              {checking && <Badge tone="neutral">Checking with the server…</Badge>}
               <Badge tone="success">{valid.length} ready to import</Badge>
               {invalid.length > 0 && <Badge tone="danger">{invalid.length} with errors (will be skipped)</Badge>}
             </div>
-            {result.rows.length === 0 ? (
+            {rows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No employee rows found below the header.</p>
             ) : (
               <div className="max-h-72 overflow-auto rounded-xl border border-border">
@@ -171,7 +203,7 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {result.rows.map((row) => (
+                    {rows.map((row) => (
                       <TableRow key={row.line} className={cn(row.errors.length > 0 && 'bg-danger/5')}>
                         <TableCell className="text-muted-foreground">{row.line}</TableCell>
                         <TableCell className="font-medium">{row.name}</TableCell>
@@ -200,7 +232,7 @@ export function ImportEmployeesDialog({ onImported }: { onImported: () => void }
           <Button variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button disabled={valid.length === 0 || importing} onClick={onImport}>
+          <Button disabled={valid.length === 0 || importing || checking} onClick={onImport}>
             {valid.length > 0 ? `Import ${valid.length} Employee${valid.length === 1 ? '' : 's'}` : 'Import'}
           </Button>
         </div>

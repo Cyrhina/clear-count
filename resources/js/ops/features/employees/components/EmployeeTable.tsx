@@ -10,7 +10,7 @@ import { SEPARATION_LABEL } from '@ops/lib/services/employeeService'
 import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckboxes'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useMixedCompensationStore, summarizeMixedCompensationShort } from '@ops/features/employees/mixedCompensationStore'
+import { summarizeMixedCompensationShort } from '@ops/features/employees/mixedCompensation'
 import { formatBaseRateShort } from '@ops/lib/payroll/payRate'
 import type { Employee } from '@ops/types/domain'
 
@@ -23,7 +23,6 @@ export interface EmployeeSelection {
 
 export function EmployeeTable({ employees, branches, selection }: { employees: Employee[]; branches: { id: string; name: string }[]; selection?: EmployeeSelection }) {
   const navigate = useNavigate()
-  const mixedStructures = useMixedCompensationStore((s) => s.structures)
   const canViewPay = usePermission('employees.pay.view')
 
   const allColumns: ColumnDef<Employee, unknown>[] = [
@@ -63,7 +62,7 @@ export function EmployeeTable({ employees, branches, selection }: { employees: E
       id: 'baseRate',
       header: 'Base Rate',
       cell: ({ row }) => {
-        const mixed = mixedStructures[row.original.id]
+        const mixed = row.original.compensation.mixed
         if (mixed) return <span className="tabular-nums">{summarizeMixedCompensationShort(mixed)}</span>
         const { basicPay, payType, outputUnit } = row.original.compensation
         return <span className="tabular-nums">{formatBaseRateShort(payType, basicPay, outputUnit)}</span>
@@ -99,7 +98,7 @@ export function EmployeeTable({ employees, branches, selection }: { employees: E
   }
 
   const baseRateLabel = (e: Employee) => {
-    const mixed = mixedStructures[e.id]
+    const mixed = e.compensation.mixed
     if (mixed) return summarizeMixedCompensationShort(mixed)
     return formatBaseRateShort(e.compensation.payType, e.compensation.basicPay, e.compensation.outputUnit)
   }

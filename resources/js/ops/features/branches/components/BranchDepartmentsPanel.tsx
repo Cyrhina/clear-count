@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@ops/components/ui/Button'
@@ -6,12 +7,47 @@ import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import type { BranchRecord, DepartmentRecord } from '@ops/features/branches/types'
 import { apiErrorMessage } from '@ops/lib/api/http'
-import { copyBranchDepartments, createBranchDepartment, removeBranchDepartment, renameBranchDepartment } from '@ops/lib/services/branchDepartmentService'
+import { fetchEmployees } from '@ops/lib/services/employeeService'
+import { copyBranchDepartments, createBranchDepartment, removeBranchDepartment, renameBranchDepartment, setBranchDepartmentSupervisor } from '@ops/lib/services/branchDepartmentService'
+
+const NONE = '__none__'
+
+function SupervisorSelect({ department, canManage, onChanged }: { department: DepartmentRecord; canManage: boolean; onChanged: () => void }) {
+  const { notify } = useToast()
+  const members = useQuery({
+    queryKey: ['employees', 'department-members', department.branchId, department.name],
+    queryFn: () => fetchEmployees({ branchId: department.branchId, department: department.name, perPage: 100 }),
+  }).data?.employees ?? []
+  const supervisor = members.find((e) => e.id === department.supervisorEmployeeId)
+  const label = (e: (typeof members)[number]) => `${e.personal.firstName} ${e.personal.lastName} · ${e.employment.position}`
+
+  if (!canManage) return supervisor ? <span>{label(supervisor)}</span> : <span className="text-muted-foreground">No supervisor</span>
+
+  async function change(value: string) {
+    try {
+      await setBranchDepartmentSupervisor(department.id, value === NONE ? null : value)
+    } catch (error) {
+      return notify({ title: "Couldn't update the supervisor", description: apiErrorMessage(error), tone: 'danger' })
+    }
+    notify({ title: 'Direct supervisor updated', tone: 'success' })
+    onChanged()
+  }
+
+  return (
+    <Select
+      value={department.supervisorEmployeeId ?? NONE}
+      onValueChange={change}
+      aria-label={`Direct supervisor for ${department.name}`}
+      options={[{ value: NONE, label: 'No supervisor' }, ...members.filter((e) => e.employment.status === 'active' || e.id === department.supervisorEmployeeId).map((e) => ({ value: e.id, label: label(e) }))]}
+    />
+  )
+}
 
 /**
+/**
  * The departments configured for one branch: add / rename / remove, and copy the list from another branch.
- * Employees pick their department from this list (Add / Edit Employee).
- * Choosing each department's direct supervisor returns with the Employees module (P3), which brings the real employee list.
+ * Employees pick their department from this list (Add / Edit Employee). Each department's direct supervisor is chosen
+ * from the employees in it (SupervisorSelect).
  */
 export function BranchDepartmentsPanel({
   branch,
@@ -107,11 +143,12 @@ export function BranchDepartmentsPanel({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[420px] border-collapse text-sm">
+          <table className="w-full min-w-[560px] border-collapse text-sm">
             <thead>
               <tr className="bg-muted/30 text-left text-xs font-medium text-muted-foreground">
                 <th className="px-3 py-2">Department</th>
                 <th className="px-3 py-2">Employees</th>
+                <th className="min-w-56 px-3 py-2">Direct supervisor</th>
                 {canManage && <th className="px-3 py-2 text-right">Manage</th>}
               </tr>
             </thead>
@@ -140,6 +177,9 @@ export function BranchDepartmentsPanel({
                     )}
                   </td>
                   <td className="px-3 py-2 tabular-nums">{d.employeeCount}</td>
+                  <td className="px-3 py-2">
+                    <SupervisorSelect department={d} canManage={canManage} onChanged={onChanged} />
+                  </td>
                   {canManage && (
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
