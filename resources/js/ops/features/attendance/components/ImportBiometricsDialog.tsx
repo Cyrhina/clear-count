@@ -32,10 +32,11 @@ import { addDays, startOfWeek, todayKey } from '@ops/features/schedules/dateUtil
 import { ScheduleReviewTable } from '@ops/features/attendance/components/ScheduleReviewTable'
 import { downloadCsv, toCsv } from '@ops/features/reports/components/shared'
 import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
-import { applyBiometricsPunches, getApprovedLeavesInRange, getAttendanceRecords, getSchedules, statusForPunch } from '@ops/lib/services/attendanceService'
-import { getEmployees } from '@ops/lib/services/employeeService'
-import { getRosterMap } from '@ops/lib/services/scheduleService'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fetchAttendanceHistory, fetchSchedulesWithMembers, getApprovedLeavesInRange, importPunches, statusForPunch } from '@ops/lib/services/attendanceService'
+import { fetchAllEmployees } from '@ops/lib/services/employeeService'
+import { fetchRosterMap } from '@ops/lib/services/scheduleService'
 import { getWfhDayLookup } from '@ops/lib/services/wfhService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
@@ -146,11 +147,11 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useSession()
   const { notify } = useToast()
-  const { branches } = useTenant()
+  const { branches } = useBranches()
 
   useEffect(() => {
     if (!open || mode !== 'schedule') return
-    Promise.all([getEmployees(user), getSchedules(user)]).then(([employees, schedules]) =>
+    Promise.all([fetchAllEmployees(), fetchSchedulesWithMembers()]).then(([employees, schedules]) =>
       setScopeMeta({ employees: employees.filter((e) => e.employment.status === 'active'), schedules }),
     )
   }, [open, mode, user])
@@ -264,7 +265,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
 
   async function showPreview(sourceName: string, text: string, mapping?: ColumnMapping) {
     setSource({ name: sourceName, text })
-    const [employees, existing, schedules] = await Promise.all([getEmployees(user), getAttendanceRecords(user), getSchedules(user)])
+    const [employees, existing, schedules] = await Promise.all([fetchAllEmployees(), fetchAttendanceHistory(), fetchSchedulesWithMembers()])
     const result = parseBiometricsFile(text, employees, existing, {
       mapping,
       template: device === 'other',
@@ -288,7 +289,7 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
     const spanTo = currentScope ? [dates[dates.length - 1], currentScope.to].filter(Boolean).sort().reverse()[0] : dates[dates.length - 1]
     const leaves = spanFrom ? await getApprovedLeavesInRange(user, spanFrom, spanTo) : []
     const leave = annotateImportWithLeaves(result.records, leaves, employees, schedules)
-    const roster = spanFrom ? await getRosterMap(user, spanFrom, spanTo) : new Map<string, string | null>()
+    const roster = spanFrom ? await fetchRosterMap(spanFrom, spanTo) : new Map<string, string | null>()
     const wfhDays = spanFrom ? await getWfhDayLookup(user, spanFrom, spanTo) : new Set<string>()
     setParseError(null)
     setMappingDraft(null)
@@ -313,18 +314,18 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
   }
 
   async function handleDownloadSample(kind: 'dat' | 'csv') {
-    const employees = await getEmployees(user)
+    const employees = await fetchAllEmployees()
     if (kind === 'dat') downloadText('ZK3969_1_attlog.dat', buildSampleAttlog(employees, date))
     else downloadCsv(`ZK3969_attendance_${date}.csv`, toCsv(buildSampleZkCsv(employees, date)))
   }
 
   async function handleDownloadTemplate() {
-    const employees = await getEmployees(user)
+    const employees = await fetchAllEmployees()
     downloadCsv('biometrics_standard_template.csv', toCsv(buildStandardTemplateCsv(employees, date)))
   }
 
   async function handleTrySample() {
-    const employees = await getEmployees(user)
+    const employees = await fetchAllEmployees()
     await showPreview('the ZK3969 sample log', buildSampleAttlog(employees, date))
   }
 
@@ -359,7 +360,15 @@ export function ImportBiometricsDialog({ date, onImported }: { date: string; onI
       : records
           .filter((r) => (r.action === 'create' || r.action === 'update') && r.timeIn)
           .map((r) => ({ employeeId: r.employeeId, date: r.date, timeIn: r.timeIn!, timeOut: r.timeOut, breakOut: r.breakOut, breakIn: r.breakIn }))
-    const count = await applyBiometricsPunches(user, punches)
+    let count: number
+    try {
+      const result = await importPunches(punches)
+      count = result.saved
+      if (result.refused.length > 0) notify({ title: `${result.refused.length} row${result.refused.length === 1 ? ' was' : 's were'} refused`, description: result.refused[0].errors[0], tone: 'danger' })
+    } catch (error) {
+      setIsProcessing(false)
+      return notify({ title: "Couldn't import the punches", description: apiErrorMessage(error), tone: 'danger' })
+    }
     setIsProcessing(false)
     const errors = preview.result.issues.filter((i) => i.severity === 'error').length
     const onLeave = preview.leave.byKey.size + preview.leave.leaveOnly.length

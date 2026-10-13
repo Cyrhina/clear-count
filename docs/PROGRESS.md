@@ -19,8 +19,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P1 | Company setup wiring | merged | backend/p01-company-setup | #4 | 2026-10-13 |
 | P2 | Branches, departments, onboarding | merged | backend/p02-branches-departments | #5 | 2026-10-13 |
 | P3 | Employees (a, b) | done (merged #6, #7) | backend/p03-employees, backend/p03b-employees-bulk | #6, #7 | 2026-10-13 |
-| P4 | Schedules and roster | in progress: in review | backend/p04-schedules | | |
-| P5 | Attendance, adjustments, biometrics, WFH (a, b) | not started | | | |
+| P4 | Schedules and roster | done (merged #8) | backend/p04-schedules | #8 | 2026-10-13 |
+| P5 | Attendance, adjustments, biometrics, WFH (a, b) | in progress: P5a in review, P5b not started | backend/p05a-attendance | | |
 | P6 | Leave | not started | | | |
 | P7 | Overtime, work logs, approvals inbox, notifications | not started | | | |
 | P8 | Statutory tables and withholding tax | not started | | | |
@@ -61,7 +61,8 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
-| `scheduleService.getRosterMap`, `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | `ImportBiometricsDialog` | P5 | P4 |
+| `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
+| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService` (all); `db.attendanceRecords`, `db.attendanceAdjustments` | payroll, reports (late and absence, team), dashboards, manager service, notifications, ESS, leave, `WfhPanel`, `ApplyWfhDialog` | P5b (WFH), P6 (leave), P10 (payroll), P13 (ESS), P14 (dashboards, reports) | P5a |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -80,6 +81,21 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P5a - 2026-10-17
+- Branch: backend/p05a-attendance (pushed: no)
+- Done:
+  - Backend: `attendance_records` (one row per employee per day; times, status, late and undertime minutes, work type, source, `auto_recorded` and `wfh_id` ready for P5b) and `attendance_adjustments`. `AttendanceStatusResolver` (port of `statusForPunch`, with night shifts handled; holiday check). The Approval kit: `Approval::decide` (locks the row, only a pending request can be decided) and `ConflictException` (409). `ApplyAttendanceAdjustment` rewrites the record in the same transaction and works the status out again from the schedule of that day. Endpoints: `GET api/attendance?date|from,to[,employee_id]`, `late-dates`, `POST log`, `POST biometrics` (rows as JSON on the Import kit, `dry_run`), adjustments list, store, bulk decide. Tests: 195 (191 pass, 4 skipped).
+  - Frontend: `attendanceService` real functions (the old mock ones that other modules read stay); the Attendance page uses the real employees (`useAllEmployees`), branches, records, adjustments, late dates (the "Late #n" count now reads the API) and the real late policy; Log Attendance, File and Request Adjustment, approve and reject (single and bulk), and the Import Biometrics dialog (the browser still parses the files; the apply step posts normalized punches). `fetchSchedulesWithMembers` fills `assignedEmployeeIds` from each employee's default schedule so the review helpers work unchanged. The roster map for imports is now the API roster. DemoSeeder: ten days of punches.
+- Next: open the P5a PR, merge it, then P5b (WFH): `wfh_arrangements` on the Approval kit, auto-approve for `attendance.adjust`, `attendance:materialize-wfh` and the backfill, the monthly limit as a company setting. PLAN.md P5b.
+- Gotchas:
+  - The WFH tab, Apply WFH and leave are still the mock, so WFH days and approved leave do not show on the page until P5b and P6.
+  - The Daily table shows the records that exist; an employee with no record that day has no row (the mock did the same, except for leave).
+  - The Import dialog compares against the last 366 days of records. The server takes 500 rows a request; the browser sends batches.
+  - Night-shift undertime differs on purpose from the old client function: the end and an early-morning punch-out count on the next day.
+  - Not browser-tested: the file picker and both import modes (the endpoint is covered by Pest), Request Adjustment from a row (hidden buttons in the pane), reject, bulk decide, the manager view, the Weekly and Monthly tab.
+- Checks: php artisan test 195 (191 passed, 4 skipped); tsc clean; test:samples 13 pass; test:golden 3 pass.
+
 
 ### P4 - 2026-10-16
 - Branch: backend/p04-schedules (pushed: no)

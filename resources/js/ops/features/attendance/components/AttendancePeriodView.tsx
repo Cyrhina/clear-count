@@ -10,7 +10,7 @@ import { lateDatesByEmployee } from '@ops/features/attendance/lateCycle'
 import { dayMonth, fromDateKey, monthDays, rangeLabel, shiftAnchor, todayKey, viewRange, weekDays } from '@ops/features/schedules/dateUtil'
 import { useSession } from '@ops/hooks/useSession'
 import { cn } from '@ops/lib/utils/cn'
-import { getApprovedLeavesInRange, getAttendanceRecords, getSchedules } from '@ops/lib/services/attendanceService'
+import { fetchAttendanceHistory, fetchSchedulesWithMembers, getApprovedLeavesInRange } from '@ops/lib/services/attendanceService'
 import { formatDate } from '@ops/lib/utils/format'
 import type { AttendanceRecord, Employee, Schedule } from '@ops/types/domain'
 
@@ -50,9 +50,9 @@ export function AttendancePeriodView({ employees }: { employees: Employee[] }) {
   const { from, to } = viewRange(anchor, view)
 
   useEffect(() => {
-    getAttendanceRecords(user).then(setRecords)
-    getSchedules(user).then(setSchedules)
-  }, [user])
+    fetchAttendanceHistory().then(setRecords)
+    fetchSchedulesWithMembers().then(setSchedules)
+  }, [])
   useEffect(() => {
     getApprovedLeavesInRange(user, from, to).then(setLeaves)
   }, [user, from, to])

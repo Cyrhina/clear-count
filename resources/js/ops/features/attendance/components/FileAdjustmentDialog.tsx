@@ -9,8 +9,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { fileAttendanceAdjustment, getAttendanceRecordForEmployeeDate } from '@ops/lib/services/attendanceService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fetchAttendanceRange, requestAdjustment } from '@ops/lib/services/attendanceService'
 import type { Employee } from '@ops/types/domain'
 
 const schema = z.object({
@@ -34,7 +34,6 @@ const REASON_CATEGORY_OPTIONS = [
 
 export function FileAdjustmentDialog({ employees, onCreated }: { employees: Employee[]; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const [originalLog, setOriginalLog] = useState<{ timeIn: string | null; timeOut: string | null } | 'none' | null>(null)
 
@@ -59,17 +58,21 @@ export function FileAdjustmentDialog({ employees, onCreated }: { employees: Empl
       return
     }
     let cancelled = false
-    getAttendanceRecordForEmployeeDate(user, employeeId, date).then((record) => {
+    fetchAttendanceRange(date, date, employeeId).then(([record]) => {
       if (cancelled) return
       setOriginalLog(record ? { timeIn: record.timeIn, timeOut: record.timeOut } : 'none')
     })
     return () => {
       cancelled = true
     }
-  }, [user, employeeId, date])
+  }, [employeeId, date])
 
   async function onSubmit(values: FormValues) {
-    await fileAttendanceAdjustment(user, values)
+    try {
+      await requestAdjustment({ employeeId: values.employeeId, date: values.date, requestedTimeIn: values.requestedTimeIn, requestedTimeOut: values.requestedTimeOut, reason: values.remarks, reasonCategory: values.reasonCategory })
+    } catch (error) {
+      return notify({ title: "Couldn't file the adjustment", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Adjustment filed', description: 'Sent for approval.', tone: 'success' })
     reset({ employeeId: '', date: new Date().toISOString().slice(0, 10), requestedTimeIn: '', requestedTimeOut: '', reasonCategory: 'Missed Time In/Out', remarks: '' })
     setOpen(false)

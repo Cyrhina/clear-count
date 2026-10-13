@@ -9,8 +9,8 @@ import { RowCheckbox, SelectAllCheckbox } from '@ops/components/ui/SelectCheckbo
 import { useToast } from '@ops/components/ui/Toast'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useRowSelection } from '@ops/hooks/useRowSelection'
-import { useSession } from '@ops/hooks/useSession'
-import { decideAttendanceAdjustment, decideAttendanceAdjustments } from '@ops/lib/services/attendanceService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { decideAdjustments } from '@ops/lib/services/attendanceService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatDate } from '@ops/lib/utils/format'
 import type { AttendanceAdjustment, Employee } from '@ops/types/domain'
@@ -27,12 +27,16 @@ export function AdjustmentsList({
   highlightId?: string
 }) {
   const canApprove = usePermission('attendance.approve')
-  const { user } = useSession()
   const { notify } = useToast()
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
   async function decide(id: string, decision: 'approved' | 'rejected') {
-    await decideAttendanceAdjustment(user, id, decision)
+    try {
+      await decideAdjustments([id], decision)
+    } catch (error) {
+      notify({ title: "Couldn't decide the adjustment", description: apiErrorMessage(error), tone: 'danger' })
+      return onDecided()
+    }
     notify({ title: `Adjustment ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
     onDecided()
   }
@@ -41,7 +45,14 @@ export function AdjustmentsList({
   const selection = useRowSelection(pendingIds)
 
   async function decideSelected(decision: 'approved' | 'rejected') {
-    const n = await decideAttendanceAdjustments(user, [...selection.selected], decision)
+    let n: number
+    try {
+      n = await decideAdjustments([...selection.selected], decision)
+    } catch (error) {
+      notify({ title: "Couldn't decide the adjustments", description: apiErrorMessage(error), tone: 'danger' })
+      selection.clear()
+      return onDecided()
+    }
     notify({ title: `${n} adjustment${n === 1 ? '' : 's'} ${decision}`, tone: decision === 'approved' ? 'success' : 'default' })
     selection.clear()
     onDecided()
@@ -72,7 +83,7 @@ export function AdjustmentsList({
                   {employee ? `${employee.personal.firstName} ${employee.personal.lastName}` : 'Unknown employee'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Requested {formatDate(adjustment.requestedAt)} &middot; New time: {adjustment.requestedTimeIn ?? '—'}
+                  {adjustment.date ? `For ${formatDate(adjustment.date)} · ` : ''}Requested {formatDate(adjustment.requestedAt)} &middot; New time: {adjustment.requestedTimeIn ?? '—'}
                   {' – '}
                   {adjustment.requestedTimeOut ?? '—'}
                 </p>

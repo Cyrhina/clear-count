@@ -24,6 +24,7 @@ final class ScheduleResolver
             return ['schedule' => $entry->workSchedule, 'is_rest_day' => $entry->work_schedule_id === null, 'source' => 'roster'];
         }
 
+        $employee->loadMissing(['workSchedule', 'payrollGroup.workSchedule']);
         foreach (['employee' => $employee->workSchedule, 'payroll_group' => $employee->payrollGroup?->workSchedule] as $source => $schedule) {
             if ($schedule) {
                 // days_of_week: 1 = Monday ... 7 = Sunday, the same as Carbon's isoWeekday().

@@ -20,10 +20,10 @@ import { ImportBiometricsDialog } from '@ops/features/attendance/components/Impo
 import { useApprovedLeavesForDate, useAttendanceAdjustments, useDailyAttendance, useDateStatusSets, useLateDates } from '@ops/features/attendance/hooks/useAttendance'
 import { approvedLeaveOn, resolveLeaveStatus, type LeaveResolution } from '@ops/features/attendance/leaveStatus'
 import { WfhPanel } from '@ops/features/attendance/components/WfhPanel'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useBranches } from '@ops/features/branches/hooks/useBranches'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { useHighlightTarget } from '@ops/hooks/useHighlightTarget'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useTenant } from '@ops/hooks/useTenant'
 import type { AttendanceRecord, Employee } from '@ops/types/domain'
 
 function shiftDate(dateKey: string, deltaDays: number) {
@@ -70,10 +70,11 @@ export function AttendancePage() {
   const { records: punchRecords, schedules, isLoading: isLoadingAttendance, refetch: refetchAttendance } = useDailyAttendance(date)
   const lateDates = useLateDates(punchRecords)
   const { leaves, refetch: refetchLeaves } = useApprovedLeavesForDate(date)
-  const { onLeaveIds, pendingAdjustmentIds } = useDateStatusSets(date)
+  const { onLeaveIds } = useDateStatusSets(date)
   const { adjustments, isLoading: isLoadingAdjustments, refetch } = useAttendanceAdjustments()
-  const { employees, refetch: refetchEmployees } = useEmployees()
-  const { branches } = useTenant()
+  const { employees, refetch: refetchEmployees } = useAllEmployees()
+  const { branches } = useBranches()
+  const pendingAdjustmentIds = useMemo(() => new Set(adjustments.filter((a) => a.status === 'pending' && a.date === date).map((a) => a.employeeId)), [adjustments, date])
   const canAdjust = usePermission('attendance.adjust')
   const canImport = usePermission('attendance.import')
 
@@ -293,6 +294,7 @@ export function AttendancePage() {
                 employees={employees}
                 onDecided={() => {
                   refetch()
+                  refetchDaily()
                   refetchEmployees()
                 }}
                 highlightId={highlightId}
