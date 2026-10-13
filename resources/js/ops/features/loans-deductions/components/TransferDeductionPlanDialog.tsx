@@ -8,8 +8,7 @@ import { Input } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { transferEmployeesBetweenDeductionPlans } from '@ops/lib/services/benefitsService'
+import { transferEmployeesBetweenDeductionPlans } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { DeductionPlan, Employee } from '@ops/types/domain'
 
@@ -32,7 +31,6 @@ export function TransferDeductionPlanDialog({
   onClose: () => void
   onTransferred: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const targets = useMemo(() => plans.filter((p) => p.id !== from.id && p.status === 'active'), [plans, from.id])
   const [targetId, setTargetId] = useState('')
@@ -56,7 +54,7 @@ export function TransferDeductionPlanDialog({
 
   async function save() {
     setSaving(true)
-    const result = await transferEmployeesBetweenDeductionPlans(user, from.id, targetId, [...selected], effective)
+    const result = await transferEmployeesBetweenDeductionPlans(from.id, targetId, [...selected], effective)
     setSaving(false)
     notify({
       title: result.moved ? `${result.moved} employee${result.moved === 1 ? '' : 's'} moved to ${target?.name}` : 'Nobody was moved',

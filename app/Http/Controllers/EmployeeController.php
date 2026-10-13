@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\EndEmployeeBenefits;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Resources\EmployeeDetailResource;
 use App\Http\Resources\EmployeeResource;
@@ -161,8 +162,7 @@ class EmployeeController extends Controller
 
     /**
      * Active, inactive or archived. A separation (reason, last day) can only come with a non-active status; going back to
-     * active clears it.
-     * shortcut: ending the employee's recurring benefits and deductions on the last day arrives with P9.
+     * active clears it. A separation also ends the employee's benefits and recurring deductions on the last day.
      */
     public function updateStatus(Request $request, Employee $employee): JsonResponse
     {
@@ -182,6 +182,9 @@ class EmployeeController extends Controller
             $employment['separationReason'] = $separation['reason'];
         }
         $employee->update(['employment' => $employment]);
+        if ($separation) {
+            EndEmployeeBenefits::run($employee, $separation['date']);
+        }
 
         ActivityLogger::log(
             module: 'Employees',

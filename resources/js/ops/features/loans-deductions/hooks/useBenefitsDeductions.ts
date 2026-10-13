@@ -1,72 +1,41 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
-import { getBenefitPlans, getDeductionPlans, getEmployeeBenefits, getEmployeeDeductions } from '@ops/lib/services/benefitsService'
+import { fetchBenefitPlans, fetchDeductionPlans, fetchEmployeeBenefits, fetchEmployeeDeductions } from '@ops/lib/services/benefitsApiService'
 import { getLoanTypes } from '@ops/lib/services/loanTypeService'
 import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
-import type { BenefitCategory, BenefitPlan, DeductionConfig, DeductionPlan, EmployeeBenefit, EmployeeDeduction, LoanTypeConfig } from '@ops/types/domain'
+import type { BenefitCategory, DeductionConfig, LoanTypeConfig } from '@ops/types/domain'
+
+/** Key of benefits and deductions; a save invalidates plans and enrolments together. */
+export const BENEFITS_KEY = 'benefits-deductions'
+
+function useInvalidate() {
+  const queryClient = useQueryClient()
+  return () => void queryClient.invalidateQueries({ queryKey: [BENEFITS_KEY] })
+}
 
 export function useEmployeeBenefits() {
-  const { user } = useSession()
-  const [benefits, setBenefits] = useState<EmployeeBenefit[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getEmployeeBenefits(user).then(setBenefits)
-  }, [user])
-
-  useEffect(() => {
-    setBenefits(null)
-    refetch()
-  }, [refetch])
-
-  return { benefits: benefits ?? [], isLoading: benefits === null, refetch }
+  const refetch = useInvalidate()
+  const query = useQuery({ queryKey: [BENEFITS_KEY, 'benefits'], queryFn: fetchEmployeeBenefits })
+  return { benefits: query.data ?? [], isLoading: query.isPending, refetch }
 }
 
 export function useBenefitPlans(category: BenefitCategory) {
-  const { user } = useSession()
-  const [plans, setPlans] = useState<BenefitPlan[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getBenefitPlans(user, category).then(setPlans)
-  }, [user, category])
-
-  useEffect(() => {
-    setPlans(null)
-    refetch()
-  }, [refetch])
-
-  return { plans: plans ?? [], isLoading: plans === null, refetch }
+  const refetch = useInvalidate()
+  const query = useQuery({ queryKey: [BENEFITS_KEY, 'benefit-plans', category], queryFn: () => fetchBenefitPlans(category) })
+  return { plans: query.data ?? [], isLoading: query.isPending, refetch }
 }
 
 export function useDeductionPlans() {
-  const { user } = useSession()
-  const [plans, setPlans] = useState<DeductionPlan[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getDeductionPlans(user).then(setPlans)
-  }, [user])
-
-  useEffect(() => {
-    setPlans(null)
-    refetch()
-  }, [refetch])
-
-  return { plans: plans ?? [], isLoading: plans === null, refetch }
+  const refetch = useInvalidate()
+  const query = useQuery({ queryKey: [BENEFITS_KEY, 'deduction-plans'], queryFn: fetchDeductionPlans })
+  return { plans: query.data ?? [], isLoading: query.isPending, refetch }
 }
 
 export function useEmployeeDeductions() {
-  const { user } = useSession()
-  const [deductions, setDeductions] = useState<EmployeeDeduction[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getEmployeeDeductions(user).then(setDeductions)
-  }, [user])
-
-  useEffect(() => {
-    setDeductions(null)
-    refetch()
-  }, [refetch])
-
-  return { deductions: deductions ?? [], isLoading: deductions === null, refetch }
+  const refetch = useInvalidate()
+  const query = useQuery({ queryKey: [BENEFITS_KEY, 'deductions'], queryFn: fetchEmployeeDeductions })
+  return { deductions: query.data ?? [], isLoading: query.isPending, refetch }
 }
 
 /** The company's Payroll Settings deduction entries (how each loan type / deduction is split across pay runs). */

@@ -8,7 +8,7 @@ import { DeductionsView } from '@ops/features/loans-deductions/components/Deduct
 import { RecurringDeductionsView } from '@ops/features/loans-deductions/components/RecurringDeductionsView'
 import { EmployeeLoansView } from '@ops/features/loans-deductions/components/EmployeeLoansView'
 import { LoanTypesView } from '@ops/features/loans-deductions/components/LoanTypesView'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
 import { usePermission } from '@ops/hooks/usePermission'
 
 const SECTIONS = [
@@ -47,7 +47,7 @@ const SECTIONS = [
  */
 export function LoansDeductionsPage() {
   const [params, setParams] = useSearchParams()
-  const { employees } = useEmployees()
+  const { employees } = useAllEmployees()
   const canManage = usePermission('loans.manage')
 
   const section = SECTIONS.find((s) => s.value === params.get('section')) ?? SECTIONS[0]

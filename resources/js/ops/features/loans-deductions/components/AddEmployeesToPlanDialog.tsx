@@ -7,8 +7,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { enrollEmployeesInPlan, isExclusiveCategory } from '@ops/lib/services/benefitsService'
+import { enrollEmployeesInPlan, isExclusiveCategory } from '@ops/lib/services/benefitsApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { BenefitPlan, Employee, EmployeeBenefit } from '@ops/types/domain'
 
@@ -36,7 +35,6 @@ export function AddEmployeesToPlanDialog({
   plans: BenefitPlan[]
   onAdded: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const [startDate, setStartDate] = useState(today())
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -69,7 +67,7 @@ export function AddEmployeesToPlanDialog({
   async function save() {
     setSaving(true)
     const perEmployee = Object.fromEntries([...selected].map((id) => [id, Number(amounts[id] ?? plan.monthlyValue)]))
-    const result = await enrollEmployeesInPlan(user, plan.id, [...selected], startDate, perEmployee)
+    const result = await enrollEmployeesInPlan(plan.id, [...selected], startDate, perEmployee)
     setSaving(false)
     notify({
       title: `${result.added} employee${result.added === 1 ? '' : 's'} added to ${plan.name}`,

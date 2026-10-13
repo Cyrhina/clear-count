@@ -9,8 +9,7 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
-import { createDeductionPlan, updateDeductionPlan } from '@ops/lib/services/benefitsService'
+import { createDeductionPlan, updateDeductionPlan } from '@ops/lib/services/benefitsApiService'
 import type { DeductionPlan } from '@ops/types/domain'
 
 const schema = z.object({
@@ -32,7 +31,6 @@ const toFormValues = (plan?: DeductionPlan): FormValues => ({ name: plan?.name ?
 /** Create or edit a recurring-deduction plan. Editing carries the change to everyone still enrolled, from the next payroll run. */
 export function DeductionPlanDialog({ plan, enrolledCount = 0, onSaved, trigger }: { plan?: DeductionPlan; enrolledCount?: number; onSaved: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = Boolean(plan)
 
@@ -53,7 +51,7 @@ export function DeductionPlanDialog({ plan, enrolledCount = 0, onSaved, trigger 
 
   async function onSubmit(values: FormValues) {
     const payload = { name: values.name, amountType: values.amountType, amount: values.amount, reason: values.reason?.trim() || undefined }
-    const result = plan ? await updateDeductionPlan(user, plan.id, payload) : await createDeductionPlan(user, payload)
+    const result = plan ? await updateDeductionPlan(plan.id, payload) : await createDeductionPlan(payload)
     if (!result.ok) return setError('name', { message: result.error })
     notify({
       title: isEdit ? 'Deduction updated' : 'Deduction added',

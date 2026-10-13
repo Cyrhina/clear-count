@@ -12,8 +12,7 @@ import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { useDeductionConfigs } from '@ops/features/loans-deductions/hooks/useBenefitsDeductions'
 import { fullName } from '@ops/features/loans-deductions/loanUtils'
-import { useSession } from '@ops/hooks/useSession'
-import { createEmployeeDeduction, updateEmployeeDeduction } from '@ops/lib/services/benefitsService'
+import { createEmployeeDeduction, updateEmployeeDeduction } from '@ops/lib/services/benefitsApiService'
 import type { Employee, EmployeeDeduction, EmployeeDeductionKind } from '@ops/types/domain'
 
 const schema = z
@@ -72,7 +71,6 @@ export function DeductionDialog({
   trigger?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const configs = useDeductionConfigs()
   const isEdit = Boolean(deduction)
@@ -105,10 +103,10 @@ export function DeductionDialog({
       reason: values.reason?.trim() || undefined,
     }
     if (deduction) {
-      await updateEmployeeDeduction(user, deduction.id, payload)
+      await updateEmployeeDeduction(deduction.id, payload)
       notify({ title: 'Deduction updated', tone: 'success' })
     } else {
-      await createEmployeeDeduction(user, payload)
+      await createEmployeeDeduction(payload)
       const employee = employees.find((e) => e.id === values.employeeId)
       notify({ title: `${values.name} added`, description: employee ? `Will be deducted from ${fullName(employee)} in the matching payroll run.` : undefined, tone: 'success' })
     }
