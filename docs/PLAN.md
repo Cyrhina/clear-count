@@ -451,7 +451,7 @@ Frontend: `payrollService` (delete the TS engine; keep `computationBreakdown.ts`
 
 Done when: a full cycle (create, run, review, approve, finalize) works on demo data; parity tests pass; a finalized run cannot be changed.
 
-**P10 status:** split into P10a (engine) and P10b (runs). P10a is done in branch `backend/p10a-payroll-engine` (see PROGRESS.md): the golden file is `payroll-runs.json`, and the parity test replays it on arrays rather than rebuilding database rows (the database collector has its own tests). The late policy is not applied (owner decision).
+**P10 status:** split into P10a (engine, merged) and P10b (runs, in review in `backend/p10b-payroll-runs`). P10a is done in branch `backend/p10a-payroll-engine` (see PROGRESS.md): the golden file is `payroll-runs.json`, and the parity test replays it on arrays rather than rebuilding database rows (the database collector has its own tests). The late policy is not applied (owner decision).
 
 ---
 

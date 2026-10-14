@@ -7,7 +7,7 @@ import type { ApprovalStatus, Employee, OvertimeRecord, OvertimeType } from '@op
  * from the rate table when the request is filed. The mock `overtimeService` stays for payroll, dashboards, reports and notifications.
  */
 
-type ApiOvertime = {
+export type ApiOvertime = {
   id: string
   employeeId: string
   workDate: string
@@ -23,7 +23,7 @@ type ApiOvertime = {
   decider?: { name: string }
 }
 
-const toRecord = (o: ApiOvertime): OvertimeRecord => ({
+export const toOvertimeRecord = (o: ApiOvertime): OvertimeRecord => ({
   id: o.id,
   companyId: '',
   employeeId: o.employeeId,
@@ -42,7 +42,7 @@ const toRecord = (o: ApiOvertime): OvertimeRecord => ({
 
 export async function fetchOvertime(): Promise<OvertimeRecord[]> {
   const res = await api.get<{ data: unknown[] }>('/api/overtime')
-  return camelizeKeys<ApiOvertime[]>(res.data).map(toRecord)
+  return camelizeKeys<ApiOvertime[]>(res.data).map(toOvertimeRecord)
 }
 
 export interface OvertimeFilingInput {

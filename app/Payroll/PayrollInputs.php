@@ -38,13 +38,18 @@ final class PayrollInputs
 
     /**
      * One line per employee the run covers: active employees, plus anyone separated within the period (their final pay), limited to the
-     * period's payroll group and without the employees held out of the run.
+     * period's payroll group and without the employees held out of the run. `$only` limits it to those employee ids.
      *
+     * @param  list<int|string>|null  $only
      * @return list<array<string, mixed>>
      */
-    public static function lines(int $companyId, array $period): array
+    public static function lines(int $companyId, array $period, ?array $only = null): array
     {
         $employees = self::employees($companyId, $period);
+        if ($only !== null) {
+            $only = array_map('strval', $only);
+            $employees = array_values(array_filter($employees, fn ($e) => in_array($e['id'], $only, true)));
+        }
         $base = self::base($companyId, $period, array_column($employees, 'id'));
 
         return array_map(fn (array $employee) => ComputeLine::run([...$base, 'employee' => $employee]), $employees);

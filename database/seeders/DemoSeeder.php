@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Models\WfhArrangement;
 use App\Models\WorkLog;
 use App\Models\WorkSchedule;
+use App\Payroll\PayrollRun;
 use App\Support\AttendanceStatusResolver;
 use App\Support\LeaveDefaults;
 use App\Support\LeaveLedger;
@@ -35,6 +36,7 @@ use App\Support\LoanLedger;
 use App\Support\Notifier;
 use App\Support\PayrollDefaults;
 use App\Support\WfhPlanner;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
@@ -80,8 +82,63 @@ class DemoSeeder extends Seeder
         // they would see no users, no company profile and no activity log. The super admin stays company-less.
         User::whereIn('email', UserSeeder::DEMO_LOGIN_EMAILS)->update(['company_id' => $company->id, 'branch_id' => $head->id]);
 
+        $this->seedPayrollRuns($company);
+
         // Last, so the approvers belong to the company by now.
         $this->notifyPending();
+    }
+
+    /**
+     * Sample run history for the demo company, made by the real run steps: the two months before last are fully paid, and last month shows
+     * every status (finalized, approved, in review, draft). Oldest first, so finalized runs post loan repayments in pay-date order.
+     */
+    private function seedPayrollRuns(Company $company): void
+    {
+        $admin = User::where('email', 'andrea.villareal@fbs.com')->firstOrFail();
+        $groups = fn (string $frequency) => PayrollGroup::withoutGlobalScopes()->where('company_id', $company->id)->where('frequency', $frequency)->orderBy('id')->get();
+        $month = fn (int $ago) => now()->startOfMonth()->subMonths($ago);
+        $range = fn (CarbonInterface $a, CarbonInterface $b) => $a->format('M j').' – '.($a->month === $b->month ? $b->format('j') : $b->format('M j')).', '.$b->year;
+
+        // [group, label, start, end, pay date, status]
+        $runs = [];
+        foreach ([2, 1] as $ago) {
+            $m = $month($ago);
+            $latest = $ago === 1;
+            $end = $m->copy()->endOfMonth();
+            $runs[] = [$groups('monthly')->first(), $m->format('F Y'), $m->copy(), $end, $end, $latest ? 'approved' : 'finalized'];
+            $runs[] = [$groups('semi_monthly')->first(), $range($m, $m->copy()->day(15)), $m->copy(), $m->copy()->day(15), $m->copy()->day(15), 'finalized'];
+            $runs[] = [$groups('semi_monthly')->first(), $range($m->copy()->day(16), $end), $m->copy()->day(16), $end, $end, $latest ? 'review' : 'finalized'];
+        }
+
+        // Weekly groups run every week of the last four of last month (Monday to Sunday, paid the Friday after); the newest is still open.
+        $monday = $month(1)->endOfMonth()->startOfWeek();
+        $monday = $monday->copy()->addDays(6)->gt($month(1)->endOfMonth()) ? $monday->subWeek() : $monday;
+        foreach ([3, 2, 1, 0] as $weeksBack) {
+            $start = $monday->copy()->subWeeks($weeksBack);
+            foreach ($groups('weekly') as $g) {
+                $open = $g->name === 'Weekly Daily Workers' ? 'review' : 'approved';
+                $runs[] = [$g, $range($start, $start->copy()->addDays(6)), $start, $start->copy()->addDays(6), $start->copy()->addDays(11), $weeksBack === 0 ? $open : 'finalized'];
+            }
+        }
+        $next = $monday->copy()->addWeek();
+        $runs[] = [$groups('weekly')->firstWhere('name', 'Weekly Daily Workers'), $range($next, $next->copy()->addDays(6)), $next, $next->copy()->addDays(6), $next->copy()->addDays(11), 'draft'];
+
+        usort($runs, fn ($a, $b) => $a[2]->timestamp <=> $b[2]->timestamp);
+        foreach ($runs as [$group, $label, $start, $end, $payDate, $status]) {
+            $period = PayrollRun::create($company->id, [
+                'label' => $label, 'start_date' => $start->toDateString(), 'end_date' => $end->toDateString(), 'pay_date' => $payDate->toDateString(), 'payroll_group_id' => $group->id,
+            ]);
+            if ($status === 'draft') {
+                continue;
+            }
+            $period = PayrollRun::run($period);
+            if ($status !== 'review') {
+                $period = PayrollRun::approve($period, $admin);
+            }
+            if ($status === 'finalized') {
+                PayrollRun::finalize($period, $admin);
+            }
+        }
     }
 
     /** Work schedules and payroll groups of the demo company, with its employees spread over the groups. */

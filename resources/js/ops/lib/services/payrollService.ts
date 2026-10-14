@@ -2,58 +2,20 @@ import { leaveDayFraction } from '@ops/lib/leave/leaveDays'
 import { bonusAmountFor, bonusAppliesToEmployee, includedInRegularPayroll } from '@ops/lib/payroll/bonusMatching'
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { allocateMonthly, loanConfigNameFor, payScheduleFor, periodsPerMonthFor } from '@ops/lib/payroll/payFrequency'
-import { basicPayFor, dailyRateFor, hourlyRateFor, monthlyEquivalentFor, workLogsForPeriod } from '@ops/lib/payroll/rateBasis'
-import { formatPayrollNumber, nextPayrollSequence, payrollYearOf } from '@ops/lib/payroll/payrollNumber'
-import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
+import { basicPayFor, dailyRateFor, hourlyRateFor, monthlyEquivalentFor } from '@ops/lib/payroll/rateBasis'
+import { fetchPayrollLines, fetchPayrollPeriods } from '@ops/lib/services/payrollApiService'
 import { db } from '@ops/mock-data'
 import { marginalRateOn, taxBracketsFor, taxFrequencyForPay, withholdingTaxOn } from '@ops/lib/payroll/withholdingTax'
-import type { BonusIncentive, Employee, OvertimeRecord, PayrollDeductionLine, PayrollFrequency, PayrollLine, PayrollPeriod, PayrollPeriodStatus, SessionUser, SssBracket, StatutoryConfig } from '@ops/types/domain'
+import type { BonusIncentive, Employee, OvertimeRecord, PayrollDeductionLine, PayrollFrequency, PayrollLine, PayrollPeriod, SessionUser, SssBracket, StatutoryConfig } from '@ops/types/domain'
 
 /** Case/whitespace-insensitive match between a bonus/13th-month payout label and a real payroll period's label — the seam that lets those modules' approved records flow into a run without a hard foreign key to a period that may not exist yet when they're created. */
 function periodLabelMatches(label: string, period: PayrollPeriod): boolean {
   return label.trim().toLowerCase() === period.label.trim().toLowerCase()
 }
 
-export async function getPayrollPeriods(session: SessionUser): Promise<PayrollPeriod[]> {
-  return scopeToCompany(db.payrollPeriods, session.companyId).sort((a, b) => b.startDate.localeCompare(a.startDate))
-}
-
-export async function getPayrollLines(session: SessionUser, periodId: string): Promise<PayrollLine[]> {
-  return db.payrollLines.filter((l) => l.companyId === session.companyId && l.periodId === periodId)
-}
-
-export async function getPayrollLine(session: SessionUser, lineId: string): Promise<PayrollLine | undefined> {
-  return db.payrollLines.find((l) => l.companyId === session.companyId && l.id === lineId)
-}
-
-export interface CreatePeriodInput {
-  label: string
-  startDate: string
-  endDate: string
-  payDate: string
-  /** When set, `runPayroll` only includes employees currently assigned to this Payroll Group. */
-  payrollGroupId?: string
-}
-
-/** The payroll number the next run with this pay date will get (PR001 again at the start of each year). */
-export async function getNextPayrollNumber(session: SessionUser, payDate: string): Promise<string> {
-  const year = payrollYearOf(payDate)
-  return formatPayrollNumber(nextPayrollSequence(scopeToCompany(db.payrollPeriods, session.companyId), year))
-}
-
-export async function createPayrollPeriod(session: SessionUser, input: CreatePeriodInput): Promise<PayrollPeriod> {
-  const payrollYear = payrollYearOf(input.payDate)
-  const period: PayrollPeriod = {
-    id: crypto.randomUUID(),
-    companyId: session.companyId,
-    payrollNumber: formatPayrollNumber(nextPayrollSequence(scopeToCompany(db.payrollPeriods, session.companyId), payrollYear)),
-    payrollYear,
-    status: 'draft',
-    ...input,
-  }
-  db.payrollPeriods.unshift(period)
-  return period
-}
+// The runs live on the server (payrollApiService); these keep the call shape of the reports, approvals and notifications that still read through here. A role that may not read payroll gets none. mock: remove in P14.
+export const getPayrollPeriods = (_session: SessionUser): Promise<PayrollPeriod[]> => fetchPayrollPeriods().catch(() => [])
+export const getPayrollLines = (_session: SessionUser, periodId: string): Promise<PayrollLine[]> => fetchPayrollLines(periodId).catch(() => [])
 
 /** How much of `date` an approved paid leave covers: 1 for a full-day leave, 0.5 for a half-day leave — a covered day is paid, never deducted as an absence. */
 function paidLeaveCoverage(companyId: string, employeeId: string, date: string): number {
@@ -184,6 +146,7 @@ function configNamed(companyId: string, name: string) {
   return db.deductionConfigs.find((c) => c.companyId === companyId && c.name === name)
 }
 
+// mock: remove in P14 (report previews and the bonus payslip only; payroll runs are computed by App\Payroll\ComputeLine).
 function computeLine(session: SessionUser, period: PayrollPeriod, config: StatutoryConfig, employee: Employee): PayrollLine {
   const group = period.payrollGroupId ? db.payrollGroups.find((g) => g.id === period.payrollGroupId) : undefined
   // The group's work schedule decides the daily-payroll divisor (22 working days for 5-day weeks, 26 for 6-day).
@@ -453,144 +416,13 @@ export function marginalTaxRateFor(session: SessionUser, employee: Employee, bas
   return marginalTaxRate(config, employee, frequency, periodsPerMonthFor(frequency, group))
 }
 
-/** Computes a line exactly as `runPayroll` would, without saving it or changing any state — for report previews. */
+/** Computes a line the way the browser engine did, without saving it — for report previews only. The runs are computed on the server. mock: remove in P14. */
 export function previewPayrollLine(session: SessionUser, period: PayrollPeriod, employee: Employee): PayrollLine | undefined {
   const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
   return config ? computeLine(session, period, config, employee) : undefined
 }
 
-/** Computes payroll lines for every active employee and moves the period from draft to review. */
-export async function runPayroll(session: SessionUser, periodId: string): Promise<PayrollLine[]> {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  if (!period) throw new Error('Payroll period not found')
-
-  const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
-  if (!config) throw new Error('Statutory configuration not found')
-
-  const payrollGroup = period.payrollGroupId ? db.payrollGroups.find((g) => g.id === period.payrollGroupId) : undefined
-  const activeEmployees = db.employees.filter(
-    (e) =>
-      e.companyId === session.companyId &&
-      // Separated employees stay in the one run that covers their last working day, to receive their final pay.
-      (e.employment.status === 'active' || (!!e.employment.dateSeparated && e.employment.dateSeparated >= period.startDate && e.employment.dateSeparated <= period.endDate)) &&
-      (!payrollGroup || payrollGroup.employeeIds.includes(e.id)) &&
-      !period.excludedEmployeeIds?.includes(e.id),
-  )
-
-  db.payrollLines = db.payrollLines.filter((l) => l.periodId !== periodId)
-  for (const approval of db.compensationApprovals) {
-    if (approval.payrollPeriodId === periodId) approval.payrollPeriodId = undefined
-  }
-
-  const lines = activeEmployees.map((employee) => computeLine(session, period, config, employee))
-  db.payrollLines.push(...lines)
-
-  // Lock the approved work logs this run paid to the period (computed while still 'draft', the
-  // same selection `computeLine` just used) so no other run can pay them again.
-  for (const employee of activeEmployees) {
-    for (const approval of workLogsForPeriod(employee.id, period, db.compensationApprovals).payable) {
-      approval.payrollPeriodId = period.id
-    }
-  }
-
-  period.status = 'review'
-  return lines
-}
-
-/** Holds employees out of a run that hasn't been approved yet: their lines are removed and the work logs they locked are freed. Returns how many were held. */
-export async function holdEmployeesInPeriod(session: SessionUser, periodId: string, employeeIds: string[]): Promise<number> {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  if (!period || (period.status !== 'draft' && period.status !== 'review')) return 0
-  const held = new Set(period.excludedEmployeeIds ?? [])
-  const ids = employeeIds.filter((id) => !held.has(id) && db.employees.some((e) => e.id === id && e.companyId === session.companyId))
-  for (const id of ids) held.add(id)
-  period.excludedEmployeeIds = [...held]
-  const idSet = new Set(ids)
-  db.payrollLines = db.payrollLines.filter((l) => !(l.periodId === periodId && idSet.has(l.employeeId)))
-  for (const approval of db.compensationApprovals) {
-    if (approval.payrollPeriodId === periodId && idSet.has(approval.employeeId)) approval.payrollPeriodId = undefined
-  }
-  return ids.length
-}
-
-/** Puts held employees back into the run; if the run was already calculated, their lines are computed now. Returns how many were released. */
-export async function releaseEmployeesInPeriod(session: SessionUser, periodId: string, employeeIds: string[]): Promise<number> {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
-  if (!period || !config || (period.status !== 'draft' && period.status !== 'review')) return 0
-  const ids = employeeIds.filter((id) => period.excludedEmployeeIds?.includes(id))
-  period.excludedEmployeeIds = (period.excludedEmployeeIds ?? []).filter((id) => !ids.includes(id))
-  if (period.status === 'review') {
-    for (const id of ids) {
-      const employee = db.employees.find((e) => e.id === id && e.companyId === session.companyId)
-      if (!employee) continue
-      db.payrollLines.push(computeLine(session, period, config, employee))
-      for (const approval of workLogsForPeriod(employee.id, period, db.compensationApprovals).payable) approval.payrollPeriodId = period.id
-    }
-  }
-  return ids.length
-}
-
-function transition(session: SessionUser, periodId: string, from: PayrollPeriodStatus, to: PayrollPeriodStatus) {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  if (!period || period.status !== from) return
-  period.status = to
-}
-
-export async function approvePayroll(session: SessionUser, periodId: string): Promise<void> {
-  transition(session, periodId, 'review', 'approved')
-}
-
-export async function finalizePayroll(session: SessionUser, periodId: string): Promise<void> {
-  const period = db.payrollPeriods.find((p) => p.id === periodId && p.companyId === session.companyId)
-  if (!period || period.status !== 'approved') return
-
-  const lines = db.payrollLines.filter((l) => l.periodId === periodId)
-  for (const line of lines) {
-    for (const deduction of line.loanDeductions) {
-      const loan = db.loans.find((l) => l.employeeId === line.employeeId && l.label === deduction.label)
-      if (loan) {
-        loan.balance = Math.max(0, loan.balance - deduction.amount)
-        if (loan.balance === 0) loan.status = 'completed'
-        loan.repaymentHistory = [
-          ...(loan.repaymentHistory ?? []),
-          {
-            id: crypto.randomUUID(),
-            date: period.payDate,
-            payrollReference: period.label,
-            amount: deduction.amount,
-            remainingBalanceAfter: loan.balance,
-          },
-        ]
-      }
-    }
-  }
-
-  // One-time deductions taken by this run are settled so no later run takes them again.
-  for (const line of lines) {
-    for (const deduction of line.otherDeductions) {
-      if (deduction.kind !== 'one_time') continue
-      const record = db.employeeDeductions.find(
-        (d) =>
-          d.employeeId === line.employeeId &&
-          d.kind === 'one_time' &&
-          d.status === 'active' &&
-          d.name === deduction.label &&
-          !!d.dueDate &&
-          d.dueDate >= period.startDate &&
-          d.dueDate <= period.endDate,
-      )
-      if (record) {
-        record.status = 'completed'
-        record.appliedPeriodId = period.id
-      }
-    }
-  }
-
-  period.status = 'finalized'
-}
-
-// mock: remove in P10. The Statutory page uses statutoryApiService (dated tables on the server); the browser payroll engine still reads this copy.
+// mock: remove in P14. The Statutory page uses statutoryApiService (dated tables on the server); the report previews still read this copy.
 export async function getStatutoryConfig(session: SessionUser): Promise<StatutoryConfig | undefined> {
   return db.statutoryConfigs.find((c) => c.companyId === session.companyId)
 }

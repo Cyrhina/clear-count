@@ -1,5 +1,5 @@
 import { Boxes, Clock, Link2, ListChecks } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
@@ -12,36 +12,14 @@ import { SearchFilterBar } from '@ops/components/ui/SearchFilterBar'
 import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tabs'
-import { usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
-import { useSession } from '@ops/hooks/useSession'
+import { usePayrollInputs, usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { MONTH_NAMES } from '@ops/lib/payroll/complianceDeadlines'
-import { getPayrollInputs } from '@ops/lib/services/payrollInputsService'
-import type { PayrollInputs } from '@ops/lib/services/payrollInputsService'
 import { formatDate } from '@ops/lib/utils/format'
 import { OtherInputsView, OutputRecordsView, TimeRecordsView } from './components/InputRecordViews'
 
 const ALL = 'all'
 
 type InputsTab = 'time' | 'output' | 'other'
-
-function usePayrollInputs(periodId: string | undefined) {
-  const { user } = useSession()
-  const [inputs, setInputs] = useState<PayrollInputs | null | undefined>(undefined)
-
-  useEffect(() => {
-    let cancelled = false
-    setInputs(undefined)
-    if (!periodId) return
-    getPayrollInputs(user, periodId).then((result) => {
-      if (!cancelled) setInputs(result ?? null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [user, periodId])
-
-  return inputs
-}
 
 /**
  * Payroll Inputs — the approved time, output, leave and adjustment records a payroll run reads for a period.

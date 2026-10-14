@@ -15,7 +15,6 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
 import { EmployeeComputationDrawer } from '@ops/features/payroll/components/EmployeeComputationDrawer'
 import { WorkLogsSummaryCard } from '@ops/features/payroll/components/WorkLogsSummaryCard'
 import { BulkEmailToolbar, RowCheckbox, SelectAllCheckbox } from '@ops/features/payslips/components/email/BulkEmailPayslips'
@@ -24,7 +23,7 @@ import { PayslipEmailActions } from '@ops/features/payslips/components/email/Pay
 import { PayslipCard } from '@ops/features/payslips/components/PayslipCard'
 import { usePayslipEmails } from '@ops/features/payslips/hooks/usePayslipEmails'
 import { usePayslipSelection } from '@ops/features/payslips/hooks/usePayslipSelection'
-import { usePayrollLines, usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
+import { usePayrollEmployees, usePayrollLines, usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
@@ -33,14 +32,12 @@ import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, formatBaseRateShort } from '@ops/lib/payroll/payRate'
 import { buildPayslipEmail } from '@ops/lib/payroll/payslipEmail'
 import { basicPayFor } from '@ops/lib/payroll/rateBasis'
-import { getAttendanceRecords } from '@ops/lib/services/attendanceService'
-import { getBonuses } from '@ops/lib/services/bonusService'
-import { getCompensationApprovals } from '@ops/lib/services/compensationApprovalService'
-import { getLoans } from '@ops/lib/services/loanService'
-import { getOvertimeRecords } from '@ops/lib/services/overtimeService'
+import { fetchBonuses } from '@ops/lib/services/bonusApiService'
+import { fetchLoans } from '@ops/lib/services/loanApiService'
+import { fetchStatutoryConfig } from '@ops/lib/services/statutoryApiService'
 import { companyHeaderFor, downloadReportWorkbook } from '@ops/features/reports/reportExport'
-import { approvePayroll, finalizePayroll, getStatutoryConfig, holdEmployeesInPeriod, releaseEmployeesInPeriod, runPayroll } from '@ops/lib/services/payrollService'
-import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
+import { approvePayroll, fetchDeductionConfigsForPayslips, fetchPeriodRecords, finalizePayroll, holdEmployeesInPeriod, releaseEmployeesInPeriod, runPayroll } from '@ops/lib/services/payrollApiService'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { getThirteenthMonthLines, getThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type {
@@ -61,7 +58,7 @@ export function PayrollPeriodDetailPage() {
   const { notify } = useToast()
   const { periods, refetch: refetchPeriods } = usePayrollPeriods()
   const { lines, isLoading: isLoadingLines, refetch: refetchLines } = usePayrollLines(id)
-  const { employees } = useEmployees()
+  const { employees } = usePayrollEmployees()
   const { groups, compensationTypes } = usePayrollGroups()
   const { branches, company } = useTenant()
   const canRun = usePermission('payroll.run')
@@ -84,16 +81,19 @@ export function PayrollPeriodDetailPage() {
 
   // Re-read after each status change — running payroll locks approved entries to this period.
   useEffect(() => {
-    getCompensationApprovals(user).then(setCompensationApprovals)
-  }, [user, periodStatus])
+    if (!id) return
+    fetchPeriodRecords(id).then((records) => {
+      setAttendanceRecords(records.attendance)
+      setOvertimeRecords(records.overtime)
+      setCompensationApprovals(records.workLogs)
+    })
+  }, [id, periodStatus])
 
   useEffect(() => {
-    getDeductionConfigs(user).then(setDeductionConfigs)
-    getLoans(user).then(setLoans)
-    getOvertimeRecords(user).then(setOvertimeRecords)
-    getAttendanceRecords(user).then(setAttendanceRecords)
-    getStatutoryConfig(user).then(setStatutoryConfig)
-    getBonuses(user).then(setBonuses)
+    fetchDeductionConfigsForPayslips().then(setDeductionConfigs)
+    fetchLoans().then(setLoans)
+    fetchStatutoryConfig().then(setStatutoryConfig)
+    fetchBonuses().then(setBonuses)
     getThirteenthMonthRuns(user).then((runs) => {
       const finalizedRun = runs.find((r) => r.status === 'finalized' && r.payoutPeriodLabel.trim().toLowerCase() === (periodLabel ?? '').trim().toLowerCase())
       if (finalizedRun) getThirteenthMonthLines(user, finalizedRun.id).then(setThirteenthMonthLines)
@@ -156,14 +156,25 @@ export function PayrollPeriodDetailPage() {
       }),
     )
 
+  /** Runs a step on the server; a refused one (409 out of order or already finalized, 422) shows the server's reason and the screen reloads. */
+  async function attempt<T>(step: () => Promise<T>): Promise<T | undefined> {
+    try {
+      return await step()
+    } catch (error) {
+      notify({ title: 'That did not go through', description: apiErrorMessage(error), tone: 'danger' })
+      return undefined
+    } finally {
+      refetchPeriods()
+      refetchLines()
+    }
+  }
+
   async function handleRun() {
     if (!id) return
     setBusy(true)
-    const generatedLines = await runPayroll(user, id)
+    const done = await attempt(() => runPayroll(id))
     setBusy(false)
-    notify({ title: 'Payroll calculated', description: `${generatedLines.length} employee lines generated.`, tone: 'success' })
-    refetchPeriods()
-    refetchLines()
+    if (done) notify({ title: 'Payroll calculated', description: 'Every employee line was generated from the approved records.', tone: 'success' })
   }
 
   const canHold = canRun && (period.status === 'review' || period.status === 'draft')
@@ -171,19 +182,17 @@ export function PayrollPeriodDetailPage() {
 
   async function handleHold() {
     if (!id) return
-    const n = await holdEmployeesInPeriod(user, id, [...selection.selected])
+    const n = await attempt(() => holdEmployeesInPeriod(id, [...selection.selected]))
+    if (n === undefined) return
     notify({ title: `${n} employee${n === 1 ? '' : 's'} held out of this run`, description: 'Their lines were removed. Release them from the Held list to add them back.', tone: n ? 'success' : 'default' })
     selection.clear()
-    refetchPeriods()
-    refetchLines()
   }
 
   async function handleRelease(ids: string[]) {
     if (!id) return
-    const n = await releaseEmployeesInPeriod(user, id, ids)
+    const n = await attempt(() => releaseEmployeesInPeriod(id, ids))
+    if (n === undefined) return
     notify({ title: `${n} employee${n === 1 ? '' : 's'} released back into this run`, tone: n ? 'success' : 'default' })
-    refetchPeriods()
-    refetchLines()
   }
 
   const exportSelected = () => {
@@ -201,17 +210,13 @@ export function PayrollPeriodDetailPage() {
 
   async function handleApprove() {
     if (!id) return
-    await approvePayroll(user, id)
-    notify({ title: 'Payroll approved', tone: 'success' })
-    refetchPeriods()
+    if ((await attempt(() => approvePayroll(id))) !== undefined) notify({ title: 'Payroll approved', tone: 'success' })
   }
 
   async function handleFinalize() {
     if (!id) return
-    await finalizePayroll(user, id)
-    notify({ title: 'Payroll finalized', description: 'Payslips are now available and loan balances were updated.', tone: 'success' })
+    if ((await attempt(() => finalizePayroll(id))) !== undefined) notify({ title: 'Payroll finalized', description: 'Payslips are now available and loan balances were updated.', tone: 'success' })
     setConfirmFinalize(false)
-    refetchPeriods()
   }
 
   const totals = lines.reduce(
