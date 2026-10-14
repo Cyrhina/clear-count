@@ -24,7 +24,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
 | P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
 | P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
-| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a done (merged #14), P9b in review | backend/p09b-loans | | |
+| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a, P9b done (merged #14, #15), P9c in review | backend/p09c-bonuses | | |
 | P10 | Payroll engine and runs (a, b) | not started | | | |
 | P11 | Payslips, PDF, email | not started | | | |
 | P12 | 13th month and separate bonus payslips | not started | | | |
@@ -73,6 +73,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `payrollService` (mock): getStatutoryConfig, updateStatutoryConfig, monthlyStatutoryFor; `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/withholdingTax.ts` | the browser payroll engine (runs, period detail, payslips, 13th month, loans) | P10 (payroll), P12 (13th month) | P8 |
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | the browser payroll engine (earnings, deductions, one-time deductions settled on finalize), tax and compliance report | P10 (payroll), P14 (reports) | P9a |
 | `loanService` (mock): getLoans; `db.loans`, `db.loanTypes` (mock-data generators); the ESS loans store (`features/ess` sample loans) | the browser payroll engine (loan deductions, repayment history on finalize), payroll period detail, payslip detail, ESS loans page, notifications (loan payment notice) | P10 (payroll, payslips), P13 (ESS) | P9b |
+| `bonusService` (mock): getBonuses; `db.bonuses` (mock-data generator) | the mock payroll period page and engine (bonuses by period label), 13th month and separate bonus payslips (`BonusPayslipPage`) | P10 (payroll), P12 (separate payslips) | P9c |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -91,6 +92,21 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P9c - 2026-10-24
+- Branch: backend/p09c-bonuses (pushed: no)
+- Done:
+  - Backend: `bonus_incentives` (type fixed amount, percentage, performance or output; target one employee, several, a department or everyone; amount, period label, taxable, one-time or recurring, payout through regular payroll or a separate payslip; status draft, pending, approved, rejected). A new bonus is a draft or goes straight to pending; submit moves a draft to pending; the decision uses the Approval kit (`Approval::decide`: locked row, only pending, 409 when already decided). Only a draft or pending bonus can be edited. The target must match its type and the employees must exist in the company (a percentage is at most 100). Endpoints `api/bonuses`: list, add, edit, submit, decision. `bonuses.view` to read and `bonuses.manage` to change and decide. Tests: 252 (248 pass, 4 skipped).
+  - Frontend: `bonusApiService`; the Bonuses page (list, add, edit, submit, approve, reject) reads and writes the API with the real employees. The mock `bonusService` keeps only `getBonuses`. DemoSeeder: three bonuses (approved, pending, draft). `Notifier::decided` ignores a model it has no notice for (bonuses have no employee).
+  - P9 is complete: benefits, deductions, loans and bonuses persist and the separation side effects run.
+- Next: P10a, the payroll engine (`app/Payroll/`, port of `computeLine`, parity tests against `payroll-lines.json`). **Ask the owner first: apply the late policy as a deduction?** (It is configured but the TypeScript engine ignores it.) Then P10b, the runs. PLAN.md P10.
+- Gotchas:
+  - Bonuses send no notification yet: `Notifier` works per employee and a bonus often has many or none. Add it if the owner wants approvers told.
+  - `payroll_admin` has no access to the employee records, so on the Bonuses page the recipients of a bonus show as 0 employees for that role (the employee list is empty for it). The company admin sees them. P10 can give payroll a slim employee list, as P8 did for statutory (`api/statutory/employees`).
+  - The payroll engine still reads the mock bonuses by period label (see the ledger), so an approved bonus is not paid by a payroll run until P10.
+  - Not browser-tested: the add, edit, submit and decision dialogs. Checked: the three demo bonuses load from the API.
+- Checks: php artisan test 252 (248 passed, 4 skipped); tsc clean; build clean.
+
 
 ### P9b - 2026-10-23
 - Branch: backend/p09b-loans (pushed: no)

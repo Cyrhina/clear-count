@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Http\Controllers\OvertimeController;
 use App\Models\AttendanceRecord;
 use App\Models\BenefitPlan;
+use App\Models\BonusIncentive;
 use App\Models\Branch;
 use App\Models\BranchDepartment;
 use App\Models\Company;
@@ -209,6 +210,14 @@ class DemoSeeder extends Seeder
         ]));
         if ($employees->has(1)) {
             EmployeeDeduction::create(['company_id' => $company->id, 'employee_id' => $employees[1]->id, 'name' => 'Uniform', 'kind' => 'one_time', 'amount' => 900, 'due_date' => now()->addDays(10)->toDateString(), 'reason' => 'Company uniform']);
+        }
+
+        foreach ([['Year-end Bonus', 'company', 'approved', 'December '.now()->year, 5000], ['Sales Incentive', 'department', 'pending', now()->format('F Y'), 3000], ['Spot Award', 'employee', 'draft', now()->format('F Y'), 1500]] as [$name, $target, $status, $label, $amount]) {
+            BonusIncentive::create([
+                'company_id' => $company->id, 'name' => $name, 'bonus_type' => 'fixed_amount', 'target_type' => $target, 'target_department' => $target === 'department' ? 'Sales' : null,
+                'target_employee_id' => $target === 'employee' ? $employees[0]->id : null, 'amount' => $amount, 'period_label' => $label, 'taxable' => true, 'frequency' => 'one_time',
+                'payout_mode' => 'regular_payroll', 'status' => $status, 'decided_at' => $status === 'approved' ? now() : null,
+            ]);
         }
 
         LoanDefaults::ensure($company->id);

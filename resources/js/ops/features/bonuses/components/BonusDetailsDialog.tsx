@@ -15,7 +15,7 @@ import { BONUS_PAYOUT_MODE_LABEL, bonusPayoutMode, resolveBonusRecipients } from
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { buildPayslipEmail } from '@ops/lib/payroll/payslipEmail'
-import { decideBonus, submitBonusForApproval } from '@ops/lib/services/bonusService'
+import { decideBonus, submitBonusForApproval } from '@ops/lib/services/bonusApiService'
 import { computeSeparateBonusPayslip } from '@ops/lib/services/payrollService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { BonusIncentive, Employee } from '@ops/types/domain'
@@ -97,7 +97,7 @@ export function BonusDetailsDialog({
 
   async function handleDecision(decision: 'approved' | 'rejected') {
     if (!bonus) return
-    await decideBonus(user, bonus.id, decision)
+    await decideBonus(bonus.id, decision)
     notify({ title: `Bonus ${decision === 'approved' ? 'approved' : 'rejected'}`, tone: decision === 'approved' ? 'success' : 'default' })
     onChanged()
     onClose()
@@ -105,7 +105,7 @@ export function BonusDetailsDialog({
 
   async function handleSubmit() {
     if (!bonus) return
-    await submitBonusForApproval(user, bonus.id)
+    await submitBonusForApproval(bonus.id)
     notify({ title: 'Submitted for approval', tone: 'success' })
     onChanged()
     onClose()

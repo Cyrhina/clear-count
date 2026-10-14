@@ -11,9 +11,8 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { useSession } from '@ops/hooks/useSession'
 import { BONUS_PAYOUT_MODE_LABEL, bonusPayoutMode } from '@ops/lib/payroll/bonusMatching'
-import { createBonus, updateBonus, type CreateBonusInput } from '@ops/lib/services/bonusService'
+import { createBonus, updateBonus, type CreateBonusInput } from '@ops/lib/services/bonusApiService'
 import { cn } from '@ops/lib/utils/cn'
 import type { BonusIncentive, BonusPayoutMode, Employee } from '@ops/types/domain'
 
@@ -118,7 +117,6 @@ export function BonusFormDialog({
   departments: string[]
   onSaved: () => void
 }) {
-  const { user } = useSession()
   const { notify } = useToast()
   const isEdit = !!bonus
 
@@ -161,10 +159,10 @@ export function BonusFormDialog({
       status: values.saveAsDraft ? 'draft' : 'pending',
     }
     if (bonus) {
-      await updateBonus(user, bonus.id, input)
+      await updateBonus(bonus.id, input)
       notify({ title: 'Bonus/Incentive updated', tone: 'success' })
     } else {
-      await createBonus(user, input)
+      await createBonus(input)
       notify({ title: `Bonus/Incentive ${values.saveAsDraft ? 'saved as draft' : 'submitted for approval'}`, tone: 'success' })
     }
     onOpenChange(false)

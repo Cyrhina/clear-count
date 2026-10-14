@@ -424,7 +424,7 @@ Frontend: `benefitsService`, `loanService`, `loanTypeService`, `bonusService`; t
 
 Done when: all four areas persist and the separation side effects run.
 
-**P9 status:** split into P9a (benefits and deductions), P9b (loans), P9c (bonuses). P9a is done in branch `backend/p09-benefits-loans` (see PROGRESS.md), including the separation side effect. P9b (loans, with the ledger) is done in branch `backend/p09b-loans`.
+**P9 status:** split into P9a (benefits and deductions), P9b (loans), P9c (bonuses). P9a is done in branch `backend/p09-benefits-loans` (see PROGRESS.md), including the separation side effect. P9b (loans, with the ledger) is done in branch `backend/p09b-loans`. P9c (bonuses, Approval kit) is done in branch `backend/p09c-bonuses`; P9 is complete.
 
 ---
 
