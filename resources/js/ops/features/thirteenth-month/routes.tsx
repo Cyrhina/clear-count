@@ -15,7 +15,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { usePayrollEmployees } from '@ops/features/payroll/hooks/usePayroll'
 import { BulkEmailToolbar, RowCheckbox, SelectAllCheckbox } from '@ops/features/payslips/components/email/BulkEmailPayslips'
 import { EmailStatusBadge } from '@ops/features/payslips/components/email/EmailStatusBadge'
 import { PayslipEmailActions } from '@ops/features/payslips/components/email/PayslipEmailActions'
@@ -25,16 +25,16 @@ import { ComputationDrawer } from '@ops/features/thirteenth-month/components/Com
 import { useThirteenthMonthLines, useThirteenthMonthRuns } from '@ops/features/thirteenth-month/hooks/useThirteenthMonth'
 import { ThirteenthMonthPayslipDocument } from '@ops/features/thirteenth-month/ThirteenthMonthPayslipPage'
 import { usePermission } from '@ops/hooks/usePermission'
-import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { buildPayslipEmail } from '@ops/lib/payroll/payslipEmail'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import {
   finalizeThirteenthMonthRun,
   generateThirteenthMonthRun,
   isSeparated,
   previewThirteenthMonthBatch,
   type ThirteenthMonthPreview,
-} from '@ops/lib/services/thirteenthMonthService'
+} from '@ops/lib/services/thirteenthMonthApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Employee, PayrollGroup, ThirteenthMonthLine, ThirteenthMonthRun, ThirteenthMonthSelection, ThirteenthMonthSelectionMode } from '@ops/types/domain'
 
@@ -62,10 +62,9 @@ function selectionLabel(selection: ThirteenthMonthSelection | undefined, groups:
 }
 
 export function ThirteenthMonthPage() {
-  const { user } = useSession()
   const { company } = useTenant()
   const { notify } = useToast()
-  const { employees, isLoading: employeesLoading } = useEmployees()
+  const { employees, isLoading: employeesLoading } = usePayrollEmployees()
   const { groups } = usePayrollGroups()
   const { runs, isLoading: runsLoading, refetch: refetchRuns } = useThirteenthMonthRuns()
   const canManage = usePermission('thirteenth_month.manage')
@@ -95,14 +94,22 @@ export function ThirteenthMonthPage() {
 
   // Live preview of who the selection covers (eligibility depends on year + cutoff date).
   useEffect(() => {
+    if (!selectionComplete) {
+      setPreview(null)
+      return
+    }
     let cancelled = false
-    previewThirteenthMonthBatch(user, { year, generationDate, payoutPeriodLabel, selection }).then((p) => {
-      if (!cancelled) setPreview(p)
-    })
+    previewThirteenthMonthBatch({ year, selection }, employees).then(
+      (p) => {
+        if (!cancelled) setPreview(p)
+      },
+      () => undefined,
+    )
     return () => {
       cancelled = true
     }
-  }, [user, year, generationDate, payoutPeriodLabel, selection, runs])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, selection, selectionComplete, employees, runs])
 
   const eligible = useMemo(() => preview?.eligible ?? [], [preview])
   // Regular batches cover active employees only; separated/resigned employees have their own batch.
@@ -159,23 +166,33 @@ export function ThirteenthMonthPage() {
 
   async function handleGenerate() {
     setBusy(true)
-    const { run, lines: generated, skippedAlreadyPaid } = await generateThirteenthMonthRun(user, { year, generationDate, payoutPeriodLabel, selection })
-    setBusy(false)
-    setSelectedRunId(run.id)
-    notify({
-      title: '13th Month Pay batch generated',
-      description: `${generated.length} standalone payslip(s) prepared${skippedAlreadyPaid ? ` · ${skippedAlreadyPaid} already paid this year, skipped` : ''}.`,
-      tone: 'success',
-    })
-    refetchRuns()
-    refetchLines()
+    try {
+      const { run, skippedAlreadyPaid } = await generateThirteenthMonthRun({ year, generationDate, payoutPeriodLabel, selection })
+      setSelectedRunId(run.id)
+      notify({
+        title: '13th Month Pay batch generated',
+        description: `${preview?.included.length ?? 0} standalone payslip(s) prepared${skippedAlreadyPaid ? ` · ${skippedAlreadyPaid} already paid this year, skipped` : ''}.`,
+        tone: 'success',
+      })
+    } catch (error) {
+      notify({ title: 'The batch was not generated', description: apiErrorMessage(error), tone: 'danger' })
+    } finally {
+      setBusy(false)
+      refetchRuns()
+      refetchLines()
+    }
   }
 
   async function handleFinalize() {
     if (!activeRun) return
-    await finalizeThirteenthMonthRun(user, activeRun.id)
-    notify({ title: '13th Month Pay finalized', description: `${lines.length} separate 13th Month payslip(s) issued for "${activeRun.payoutPeriodLabel}".`, tone: 'success' })
-    refetchRuns()
+    try {
+      await finalizeThirteenthMonthRun(activeRun.id)
+      notify({ title: '13th Month Pay finalized', description: `${lines.length} separate 13th Month payslip(s) issued for "${activeRun.payoutPeriodLabel}".`, tone: 'success' })
+    } catch (error) {
+      notify({ title: 'The batch was not finalized', description: apiErrorMessage(error), tone: 'danger' })
+    } finally {
+      refetchRuns()
+    }
   }
 
   // Row actions shared by the card and table views: icon-only on phones, with text labels from `sm`.

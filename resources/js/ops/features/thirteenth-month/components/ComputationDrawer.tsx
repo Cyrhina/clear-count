@@ -3,7 +3,7 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { ThirteenthMonthBreakdown } from '@ops/features/thirteenth-month/components/ThirteenthMonthBreakdown'
-import { THIRTEENTH_MONTH_TAX_EXEMPT_CEILING } from '@ops/lib/services/thirteenthMonthService'
+import { THIRTEENTH_MONTH_TAX_EXEMPT_CEILING } from '@ops/lib/services/thirteenthMonthApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Employee, ThirteenthMonthLine, ThirteenthMonthRun } from '@ops/types/domain'
 
@@ -51,7 +51,7 @@ export function ComputationDrawer({
         </div>
 
         <div className="mt-4">
-          <ThirteenthMonthBreakdown employee={employee} line={line} run={run} />
+          <ThirteenthMonthBreakdown line={line} />
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground">

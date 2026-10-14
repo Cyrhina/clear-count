@@ -12,7 +12,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { AddBonusDialog, BonusFormDialog } from '@ops/features/bonuses/components/AddBonusDialog'
 import { BonusDetailsDialog } from '@ops/features/bonuses/components/BonusDetailsDialog'
 import { useBonuses } from '@ops/features/bonuses/hooks/useBonuses'
-import { useAllEmployees } from '@ops/features/employees/hooks/useAllEmployees'
+import { usePayrollEmployees } from '@ops/features/payroll/hooks/usePayroll'
 import { usePermission } from '@ops/hooks/usePermission'
 import { bonusPayoutMode, resolveBonusRecipients } from '@ops/lib/payroll/bonusMatching'
 import { MONTH_NAMES } from '@ops/lib/payroll/complianceDeadlines'
@@ -53,7 +53,7 @@ function bonusMonthYear(bonus: BonusIncentive): { year: string; month: string } 
 
 export function BonusesPage() {
   const { bonuses, isLoading, refetch } = useBonuses()
-  const { employees } = useAllEmployees()
+  const { employees } = usePayrollEmployees()
   const canManage = usePermission('bonuses.manage')
   const departments = useMemo(() => [...new Set(employees.map((e) => e.employment.department))].sort(), [employees])
   const [selectedBonus, setSelectedBonus] = useState<BonusIncentive | null>(null)

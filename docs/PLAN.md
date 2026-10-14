@@ -483,6 +483,8 @@ Frontend: `thirteenthMonthService`, the Bonuses payslip page.
 
 Done when: parity holds and both payslip types download and email.
 
+**P12 status:** done in branch `backend/p12-thirteenth-month` (see PROGRESS.md). The golden file has results only, so parity rebuilds each line's inputs from its numbers.
+
 ---
 
 ### P13. Employee and manager self-service (M)

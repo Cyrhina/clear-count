@@ -27,6 +27,7 @@ use App\Models\WfhArrangement;
 use App\Models\WorkLog;
 use App\Models\WorkSchedule;
 use App\Payroll\PayrollRun;
+use App\Payroll\ThirteenthMonthRuns;
 use App\Support\AttendanceStatusResolver;
 use App\Support\LeaveDefaults;
 use App\Support\LeaveLedger;
@@ -86,6 +87,7 @@ class DemoSeeder extends Seeder
         User::where('email', 'employee.consignado@frontlinebusiness.com.ph')->update(['employee_id' => $own?->id]);
 
         $this->seedPayrollRuns($company);
+        $this->seedThirteenthMonth($company);
 
         // Last, so the approvers belong to the company by now.
         $this->notifyPending();
@@ -140,6 +142,19 @@ class DemoSeeder extends Seeder
             }
             if ($status === 'finalized') {
                 PayrollRun::finalize($period, $admin);
+            }
+        }
+    }
+
+    /** Last year's 13th month is paid (finalized) and this year's is ready as a draft, made with the real steps. */
+    private function seedThirteenthMonth(Company $company): void
+    {
+        $admin = User::where('email', 'andrea.villareal@fbs.com')->firstOrFail();
+        $year = (int) now()->format('Y');
+        foreach ([$year - 1, $year] as $y) {
+            $result = ThirteenthMonthRuns::generate($company->id, ['year' => $y, 'generation_date' => "{$y}-12-15", 'payout_period_label' => "December {$y}", 'selection' => ['mode' => 'all']]);
+            if ($y < $year) {
+                ThirteenthMonthRuns::finalize($result['run'], $admin);
             }
         }
     }
@@ -272,11 +287,11 @@ class DemoSeeder extends Seeder
             EmployeeDeduction::create(['company_id' => $company->id, 'employee_id' => $employees[1]->id, 'name' => 'Uniform', 'kind' => 'one_time', 'amount' => 900, 'due_date' => now()->addDays(10)->toDateString(), 'reason' => 'Company uniform']);
         }
 
-        foreach ([['Year-end Bonus', 'company', 'approved', 'December '.now()->year, 5000], ['Sales Incentive', 'department', 'pending', now()->format('F Y'), 3000], ['Spot Award', 'employee', 'draft', now()->format('F Y'), 1500]] as [$name, $target, $status, $label, $amount]) {
+        foreach ([['Year-end Bonus', 'company', 'approved', 'December '.now()->year, 5000], ['Sales Incentive', 'department', 'pending', now()->format('F Y'), 3000], ['Spot Award', 'employee', 'draft', now()->format('F Y'), 1500], ['Performance Incentive', 'company', 'approved', now()->format('F Y'), 2000]] as [$name, $target, $status, $label, $amount]) {
             BonusIncentive::create([
                 'company_id' => $company->id, 'name' => $name, 'bonus_type' => 'fixed_amount', 'target_type' => $target, 'target_department' => $target === 'department' ? 'Sales' : null,
                 'target_employee_id' => $target === 'employee' ? $employees[0]->id : null, 'amount' => $amount, 'period_label' => $label, 'taxable' => true, 'frequency' => 'one_time',
-                'payout_mode' => 'regular_payroll', 'status' => $status, 'decided_at' => $status === 'approved' ? now() : null,
+                'payout_mode' => $name === 'Performance Incentive' ? 'separate_payslip' : 'regular_payroll', 'status' => $status, 'decided_at' => $status === 'approved' ? now() : null,
             ]);
         }
 

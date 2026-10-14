@@ -375,47 +375,6 @@ function computeLine(session: SessionUser, period: PayrollPeriod, config: Statut
   }
 }
 
-export interface SeparateBonusPayslip {
-  bonus: BonusIncentive
-  employee: Employee
-  grossBonus: number
-  withholdingTax: number
-  netPay: number
-  /** Marginal bracket rate applied to a taxable bonus (0 for non-taxable). */
-  taxRate: number
-}
-
-/**
- * The standalone payslip for a bonus set to "Generate Separate Payslip". It carries only the bonus:
- * no basic pay, allowances or statutory contributions (those stay on the regular payroll payslip).
- * A taxable bonus is withheld at the employee's marginal bracket rate, exactly as the regular run
- * withholds a bonus included there. Read-only; nothing is saved.
- */
-export function computeSeparateBonusPayslip(session: SessionUser, bonus: BonusIncentive, employee: Employee): SeparateBonusPayslip | undefined {
-  const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
-  if (!config) return undefined
-
-  const grossBonus = bonusAmountFor(bonus, employee)
-  const taxRate = bonus.taxable ? marginalTaxRateFor(session, employee) : 0
-  const withholdingTax = Math.round(grossBonus * taxRate)
-  return { bonus, employee, grossBonus, withholdingTax, netPay: Math.round(grossBonus - withholdingTax), taxRate }
-}
-
-/** The employee's marginal withholding bracket rate — the same simplified rate the regular run applies to taxable bonuses. */
-function marginalTaxRate(config: StatutoryConfig, employee: Employee, frequency?: PayrollFrequency, periodsPerMonth?: number): number {
-  return monthlyStatutoryFor(config, employee, frequency, periodsPerMonth).marginalRate
-}
-
-/** Marginal withholding rate for an employee under the company's statutory config (0 if none configured). */
-export function marginalTaxRateFor(session: SessionUser, employee: Employee, basis: 'pay_date' | 'annual' = 'pay_date'): number {
-  const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)
-  if (!config) return 0
-  if (basis === 'annual') return monthlyStatutoryFor(config, employee).annualMarginalRate
-  const group = findEmployeePayrollGroup(db.payrollGroups.filter((g) => g.companyId === session.companyId), employee.id)
-  const frequency = group?.frequency ?? 'semi_monthly'
-  return marginalTaxRate(config, employee, frequency, periodsPerMonthFor(frequency, group))
-}
-
 /** Computes a line the way the browser engine did, without saving it — for report previews only. The runs are computed on the server. mock: remove in P14. */
 export function previewPayrollLine(session: SessionUser, period: PayrollPeriod, employee: Employee): PayrollLine | undefined {
   const config = db.statutoryConfigs.find((c) => c.companyId === session.companyId)

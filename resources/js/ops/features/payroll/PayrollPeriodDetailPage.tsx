@@ -38,7 +38,7 @@ import { fetchStatutoryConfig } from '@ops/lib/services/statutoryApiService'
 import { companyHeaderFor, downloadReportWorkbook } from '@ops/features/reports/reportExport'
 import { approvePayroll, fetchDeductionConfigsForPayslips, fetchPeriodRecords, finalizePayroll, holdEmployeesInPeriod, releaseEmployeesInPeriod, runPayroll } from '@ops/lib/services/payrollApiService'
 import { apiErrorMessage } from '@ops/lib/api/http'
-import { getThirteenthMonthLines, getThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthService'
+import { fetchThirteenthMonthLines, fetchThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type {
   AttendanceRecord,
@@ -94,9 +94,9 @@ export function PayrollPeriodDetailPage() {
     fetchLoans().then(setLoans)
     fetchStatutoryConfig().then(setStatutoryConfig)
     fetchBonuses().then(setBonuses)
-    getThirteenthMonthRuns(user).then((runs) => {
+    fetchThirteenthMonthRuns().then((runs) => {
       const finalizedRun = runs.find((r) => r.status === 'finalized' && r.payoutPeriodLabel.trim().toLowerCase() === (periodLabel ?? '').trim().toLowerCase())
-      if (finalizedRun) getThirteenthMonthLines(user, finalizedRun.id).then(setThirteenthMonthLines)
+      if (finalizedRun) fetchThirteenthMonthLines(finalizedRun.id).then(setThirteenthMonthLines)
       else setThirteenthMonthLines([])
     })
   }, [user, periodLabel])

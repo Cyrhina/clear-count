@@ -1,40 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getThirteenthMonthLines, getThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthService'
-import type { ThirteenthMonthLine, ThirteenthMonthRun } from '@ops/types/domain'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchThirteenthMonthLines, fetchThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthApiService'
 
 export function useThirteenthMonthRuns() {
-  const { user } = useSession()
-  const [runs, setRuns] = useState<ThirteenthMonthRun[] | null>(null)
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: ['thirteenth-month', 'runs'], queryFn: fetchThirteenthMonthRuns })
 
-  const refetch = useCallback(() => {
-    getThirteenthMonthRuns(user).then(setRuns)
-  }, [user])
-
-  useEffect(() => {
-    setRuns(null)
-    refetch()
-  }, [refetch])
-
-  return { runs: runs ?? [], isLoading: runs === null, refetch }
+  return { runs: query.data ?? [], isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: ['thirteenth-month'] }) }
 }
 
 export function useThirteenthMonthLines(runId: string | undefined) {
-  const { user } = useSession()
-  const [lines, setLines] = useState<ThirteenthMonthLine[] | null>(null)
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: ['thirteenth-month', 'lines', runId], queryFn: () => fetchThirteenthMonthLines(runId!), enabled: !!runId })
 
-  const refetch = useCallback(() => {
-    if (!runId) {
-      setLines([])
-      return
-    }
-    getThirteenthMonthLines(user, runId).then(setLines)
-  }, [user, runId])
-
-  useEffect(() => {
-    setLines(null)
-    refetch()
-  }, [refetch])
-
-  return { lines: lines ?? [], isLoading: lines === null, refetch }
+  return { lines: query.data ?? [], isLoading: query.isPending && !!runId, refetch: () => void queryClient.invalidateQueries({ queryKey: ['thirteenth-month'] }) }
 }
