@@ -46,3 +46,9 @@ test('every ops page route except forbidden requires a capability', function () 
 
     expect($unguarded)->toBe([]);
 });
+
+test('no two routes share a name, so php artisan route:cache (run on every deploy) works', function () {
+    $names = collect(Illuminate\Support\Facades\Route::getRoutes()->getRoutes())->map(fn ($r) => $r->getName())->filter();
+
+    expect($names->duplicates()->all())->toBe([]);
+});
