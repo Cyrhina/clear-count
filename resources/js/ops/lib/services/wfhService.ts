@@ -1,9 +1,6 @@
 import { statusForPunch } from '@ops/lib/attendance/status'
-import { getEmployees } from '@ops/lib/services/employeeService'
-import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { db } from '@ops/mock-data'
-import { validateWfhInput, type WfhInput } from '@ops/lib/services/wfhArrangementService'
-import type { Employee, Schedule, SessionUser, WfhArrangement } from '@ops/types/domain'
+import type { Employee, Schedule, WfhArrangement } from '@ops/types/domain'
 
 /*
  * Work-from-home arrangements. One record per employee, made one at a time or in bulk (a batch id ties a bulk apply together).
@@ -22,28 +19,7 @@ const addDays = (date: string, days: number) => {
 export const todayKey = () => key(new Date())
 const dow = (date: string) => parse(date).getDay()
 
-let version = 0
 let lastMaterialized = ''
-
-function logActivity(session: SessionUser, action: string, kind: string, details?: string) {
-  db.activityLog.unshift({
-    id: crypto.randomUUID(),
-    companyId: session.companyId,
-    timestamp: new Date().toISOString(),
-    actor: session.name,
-    actorRole: session.role,
-    action,
-    details,
-    module: 'Attendance',
-    kind,
-    title: action,
-  })
-}
-
-export async function getWfhArrangements(session: SessionUser): Promise<WfhArrangement[]> {
-  const ids = new Set((await getEmployees(session)).map((e) => e.id))
-  return db.wfhArrangements.filter((a) => a.companyId === session.companyId && ids.has(a.employeeId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-}
 
 /** Does this arrangement cover the date (range + chosen weekdays)? Leave, rest days and holidays are judged separately. */
 export function arrangementCovers(a: WfhArrangement, date: string): boolean {
@@ -84,87 +60,6 @@ export function scheduleOn(employee: Pick<Employee, 'id' | 'companyId'>, date: s
 const isHoliday = (companyId: string, date: string) => db.holidays.some((h) => h.companyId === companyId && h.date === date)
 const hasLeave = (employeeId: string, date: string) => db.leaveRequests.some((r) => r.employeeId === employeeId && r.status === 'approved' && r.dateFrom <= date && r.dateTo >= date)
 
-const overlaps = (a: Pick<WfhArrangement, 'dateFrom' | 'dateTo'>, b: Pick<WfhArrangement, 'dateFrom' | 'dateTo'>) => a.dateFrom <= (b.dateTo ?? '9999-12-31') && b.dateFrom <= (a.dateTo ?? '9999-12-31')
-
-export interface WfhBatchResult {
-  created: WfhArrangement[]
-  skipped: { employeeId: string; reason: string }[]
-}
-
-// mock: remove in P13. getWfhArrangements, createWfhBatch and cancelWfh serve the ESS request page; the Attendance WFH screens use wfhArrangementService.
-/**
- * Creates one arrangement per employee. People who can adjust attendance (HR, admins, managers for their team) save them as approved;
- * anyone else — an employee asking for themselves — saves a pending request for a manager to decide.
- */
-export async function createWfhBatch(session: SessionUser, input: WfhInput): Promise<WfhBatchResult> {
-  const error = validateWfhInput(input)
-  if (error) throw new Error(error)
-  const canApprove = roleHasCapability(session.role, 'attendance.adjust')
-  const allowed = new Set((await getEmployees(session)).map((e) => e.id))
-  const targets = canApprove ? input.employeeIds : session.employeeId ? [session.employeeId] : []
-  const batchId = crypto.randomUUID()
-  const result: WfhBatchResult = { created: [], skipped: [] }
-  const probe = { dateFrom: input.dateFrom, dateTo: input.dateTo } as WfhArrangement
-
-  for (const employeeId of targets) {
-    if (!allowed.has(employeeId) && employeeId !== session.employeeId) {
-      result.skipped.push({ employeeId, reason: 'Not in your scope' })
-      continue
-    }
-    const overlapping = db.wfhArrangements.filter((a) => a.employeeId === employeeId && a.kind === input.kind && (a.status === 'approved' || a.status === 'pending') && overlaps(a, probe))
-    if (overlapping.length && !input.replaceOverlaps) {
-      result.skipped.push({ employeeId, reason: 'Already has a WFH arrangement in these dates' })
-      continue
-    }
-    if (overlapping.length) cancelWfhSilently(overlapping.map((a) => a.id))
-    const arrangement: WfhArrangement = {
-      id: crypto.randomUUID(),
-      companyId: session.companyId,
-      employeeId,
-      kind: input.kind,
-      dateFrom: input.dateFrom,
-      dateTo: input.dateTo,
-      daysOfWeek: input.daysOfWeek,
-      times: input.times,
-      custom: input.times === 'custom' ? input.custom : undefined,
-      reason: input.reason.trim(),
-      status: canApprove ? 'approved' : 'pending',
-      requestedBy: session.name,
-      decidedBy: canApprove ? session.name : undefined,
-      createdAt: new Date().toISOString(),
-      batchId,
-    }
-    db.wfhArrangements.push(arrangement)
-    result.created.push(arrangement)
-  }
-  version++
-  if (result.created.length) {
-    const span = input.dateTo ? `${input.dateFrom} to ${input.dateTo}` : `from ${input.dateFrom}`
-    logActivity(
-      session,
-      `${canApprove ? 'Applied' : 'Requested'} ${input.kind} WFH for ${result.created.length} employee${result.created.length === 1 ? '' : 's'} (${span})`,
-      canApprove ? 'Added' : 'Requested',
-      input.reason.trim(),
-    )
-  }
-  return result
-}
-
-function cancelWfhSilently(ids: string[]) {
-  const set = new Set(ids)
-  for (const a of db.wfhArrangements) if (set.has(a.id)) a.status = 'cancelled'
-  db.attendanceRecords = db.attendanceRecords.filter((r) => !(r.autoRecorded && r.wfhId && set.has(r.wfhId)))
-  version++
-}
-
-/** Cancels arrangements and removes the days they filled in by themselves. Real punches and hand-logged days stay. */
-export async function cancelWfh(session: SessionUser, ids: string[]): Promise<number> {
-  const mine = db.wfhArrangements.filter((a) => ids.includes(a.id) && a.companyId === session.companyId && a.status !== 'cancelled')
-  cancelWfhSilently(mine.map((a) => a.id))
-  if (mine.length) logActivity(session, `Cancelled ${mine.length} WFH arrangement${mine.length === 1 ? '' : 's'}`, 'Cancelled')
-  return mine.length
-}
-
 // ---------------------------------------------------------------------------------------------------- auto-recording (mock attendance)
 
 /** How far back approved arrangements are filled in. */
@@ -177,7 +72,7 @@ const MATERIALIZE_DAYS = 92
  */
 export function materializeWfhRecords(): void {
   const today = todayKey()
-  const stamp = `${today}|${version}|${db.wfhArrangements.length}`
+  const stamp = `${today}|${db.wfhArrangements.length}`
   if (stamp === lastMaterialized) return
   lastMaterialized = stamp
   const horizon = addDays(today, -MATERIALIZE_DAYS)

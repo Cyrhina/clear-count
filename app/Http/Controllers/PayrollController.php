@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\LoanRepayment;
 use App\Models\PayrollLine;
 use App\Models\PayrollPeriod;
 use App\Models\User;
@@ -109,12 +110,16 @@ class PayrollController extends Controller
         return response()->json(['data' => $period]);
     }
 
-    /** Tells each employee with a login that their payslip is available. */
+    /** Tells each employee with a login that their payslip is available, and about each loan payment the run took. */
     private function notifyPayslipsReady(PayrollPeriod $period): void
     {
         $lines = $period->lines()->get()->keyBy('employee_id');
-        User::where('company_id', $period->company_id)->whereIn('employee_id', $lines->keys())->get()
-            ->each(fn (User $u) => $u->notify(new ApprovalNotice("Your payslip for \"{$period->label}\" is now available", 'success', '/ess/payslips', null, $lines[$u->employee_id]->id)));
+        $users = User::where('company_id', $period->company_id)->whereIn('employee_id', $lines->keys())->get()->keyBy('employee_id');
+        $users->each(fn (User $u) => $u->notify(new ApprovalNotice("Your payslip for \"{$period->label}\" is now available", 'success', '/ess/payslips', null, $lines[$u->employee_id]->id)));
+
+        LoanRepayment::where('payroll_period_id', $period->id)->with(['loan' => fn ($q) => $q->withoutGlobalScopes()])->get()->each(function (LoanRepayment $r) use ($users): void {
+            $users->get($r->loan->employee_id)?->notify(new ApprovalNotice('Loan payment of ₱'.number_format((float) $r->amount, 2)." processed for \"{$r->loan->label}\"", 'success', '/ess/loans', null, $r->loan->id));
+        });
     }
 
     /** @return list<int> */

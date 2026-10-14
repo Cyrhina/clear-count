@@ -6,7 +6,8 @@ use Illuminate\Support\Facades\Route;
 // Required inside the auth + verified + active group in routes/web.php.
 
 Route::prefix('api/schedules')->name('schedules.')->group(function () {
-    Route::middleware('permission:schedules.view')->group(function () {
+    // Self-service reads their own roster through the employee scope.
+    Route::middleware('permission:schedules.view|ess.view')->group(function () {
         Route::get('templates', [ShiftRosterController::class, 'templates'])->name('templates');
         Route::get('roster', [ShiftRosterController::class, 'index'])->name('roster');
     });

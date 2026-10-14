@@ -1,59 +1,62 @@
-import { Plus, Upload, UploadCloud } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
-import { otRateOptionLabel, usePayrollRatesStore } from '@ops/features/company-settings/payrollRatesStore'
-import { computeTotalHours, useOtApplicationStore } from '@ops/features/ess/otApplicationStore'
-import type { OtApplicationType } from '@ops/features/ess/otApplicationStore'
+import { formatMultiplierPct } from '@ops/features/company-settings/payrollRatesStore'
+import { useOvertimeRates } from '@ops/features/overtime/hooks/useOvertime'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fileOvertime } from '@ops/lib/services/overtimeApiService'
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_FORM = { type: 'regular' as OtApplicationType, date: todayKey(), startTime: '', endTime: '', reason: '' }
+/** Hours between two times, to a tenth; an end before the start crosses midnight (night differential). The server works out the same figure. */
+function totalHoursOf(startTime: string, endTime: string): number {
+  if (!startTime || !endTime) return 0
+  const [startH, startM] = startTime.split(':').map(Number)
+  const [endH, endM] = endTime.split(':').map(Number)
+  let minutes = endH * 60 + endM - (startH * 60 + startM)
+  if (minutes <= 0) minutes += 24 * 60
+  return Math.round((minutes / 60) * 10) / 10
+}
 
+const EMPTY_FORM = { type: 'regular', date: todayKey(), startTime: '', endTime: '', reason: '' }
+
+/** An employee asks to be paid overtime or night differential for a day; their manager decides. */
 export function OvertimeApplicationDialog({ employeeId, onSubmitted }: { employeeId: string; onSubmitted?: () => void }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [file, setFile] = useState<File | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const addApplication = useOtApplicationStore((s) => s.addApplication)
-  const otRates = usePayrollRatesStore((s) => s.otRates)
-  const typeOptions = otRates.map((r) => ({ value: r.id, label: otRateOptionLabel(r) }))
+  const [saving, setSaving] = useState(false)
+  const { rates } = useOvertimeRates()
+  const typeOptions = rates.map((r) => ({ value: r.key, label: `${r.label} (${formatMultiplierPct(r.multiplier)})` }))
   const { notify } = useToast()
 
-  const totalHours = computeTotalHours(form.startTime, form.endTime)
+  const totalHours = totalHoursOf(form.startTime, form.endTime)
   const canSubmit = form.date && form.startTime && form.endTime && form.reason.trim().length > 0
-
-  function reset() {
-    setForm(EMPTY_FORM)
-    setFile(null)
-  }
 
   function onOpenChange(next: boolean) {
     setOpen(next)
-    if (!next) reset()
+    if (!next) setForm(EMPTY_FORM)
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSubmit) return
-    addApplication({
-      employeeId,
-      type: form.type,
-      date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      reason: form.reason.trim(),
-      attachmentName: file?.name,
-    })
+    setSaving(true)
+    try {
+      await fileOvertime({ employeeId, type: form.type, date: form.date, startTime: form.startTime, endTime: form.endTime, reason: form.reason.trim(), source: 'ess' })
+    } catch (error) {
+      notify({ title: "Couldn't submit the application", description: apiErrorMessage(error), tone: 'danger' })
+      return
+    } finally {
+      setSaving(false)
+    }
     notify({ title: 'Application submitted', description: 'Your request is now pending approval.', tone: 'success' })
-    setOpen(false)
-    reset()
+    onOpenChange(false)
     onSubmitted?.()
   }
 
@@ -68,11 +71,7 @@ export function OvertimeApplicationDialog({ employeeId, onSubmitted }: { employe
 
         <div className="mt-5 grid grid-cols-2 gap-4">
           <FormField label="Application Type" required className="col-span-2">
-            <Select
-              value={form.type}
-              onValueChange={(v) => setForm((f) => ({ ...f, type: v as OtApplicationType }))}
-              options={typeOptions}
-            />
+            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))} options={typeOptions} />
           </FormField>
 
           <FormField label="Date of Rendering" required className="col-span-2">
@@ -100,53 +99,11 @@ export function OvertimeApplicationDialog({ employeeId, onSubmitted }: { employe
             />
           </FormField>
 
-          <FormField label="Attachment / Proof (Optional)" className="col-span-2">
-            <div
-              onDragOver={(e) => {
-                e.preventDefault()
-                setIsDragging(true)
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault()
-                setIsDragging(false)
-                const dropped = e.dataTransfer.files?.[0]
-                if (dropped) setFile(dropped)
-              }}
-              className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                isDragging ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
-              }`}
-            >
-              <UploadCloud className="size-6 text-muted-foreground" />
-              {file ? (
-                <p className="text-sm font-medium">{file.name}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Drag a file here, or choose one below (screenshot, approval, etc.)</p>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                icon={<Upload className="size-3.5" />}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Choose File
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </div>
-          </FormField>
-
           <div className="col-span-2 mt-2 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="button" disabled={!canSubmit} onClick={handleSubmit}>
+            <Button type="button" disabled={!canSubmit} isLoading={saving} onClick={handleSubmit}>
               Submit Application
             </Button>
           </div>

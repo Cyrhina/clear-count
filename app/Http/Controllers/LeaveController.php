@@ -147,6 +147,7 @@ class LeaveController extends Controller
     /** Cancels a pending or approved request. An approved one gives its days back with a reversal entry. */
     public function cancel(Request $request, LeaveRequest $leaveRequest): JsonResponse
     {
+        $this->ownOrManaged($request, $leaveRequest->employee_id);
         if (! in_array($leaveRequest->status, ['pending', 'approved'], true)) {
             throw new ConflictException('This request can no longer be cancelled.');
         }
@@ -226,7 +227,7 @@ class LeaveController extends Controller
     /** @return array<string, mixed> */
     private function filingRules(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'employee_id' => ['required', 'integer'],
             'leave_type_id' => ['required', 'integer', Rule::exists('leave_types', 'id')->where('company_id', $request->user()->company_id)],
             'date_from' => ['required', 'date_format:Y-m-d'],
@@ -234,6 +235,15 @@ class LeaveController extends Controller
             'day_portion' => ['sometimes', Rule::in(['full', 'half_am', 'half_pm'])],
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
+        $this->ownOrManaged($request, (int) $data['employee_id']);
+
+        return $data;
+    }
+
+    /** Self-service (`ess.view`) files and cancels only for themselves; anyone else needs `leave.request`. */
+    private function ownOrManaged(Request $request, int $employeeId): void
+    {
+        abort_unless($request->user()->can('leave.request') || $request->user()->employee_id === $employeeId, 403);
     }
 
     /** @return array{0: Employee, 1: LeaveType} */

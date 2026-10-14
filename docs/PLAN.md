@@ -501,6 +501,8 @@ Frontend: the ESS pages that read the mock store directly (`EssHomePage`, `EssLo
 
 Done when: an employee sees only their own data and a manager sees only their team, in every ESS and manager page.
 
+**P13 status:** done in branch `backend/p13-self-service` (see PROGRESS.md). `api/ess/summary` was not needed: the ESS home uses the existing endpoints.
+
 ---
 
 ### P14. Dashboards, reports, tax compliance (L)

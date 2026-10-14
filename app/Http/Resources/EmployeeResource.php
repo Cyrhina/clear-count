@@ -14,12 +14,18 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class EmployeeResource extends JsonResource
 {
+    /** Pay and bank are for people with `employees.pay.view`, and for the employee whose record it is. */
+    public static function seesPay(Request $request, int $employeeId): bool
+    {
+        return $request->user()->can('employees.pay.view') || $request->user()->employee_id === $employeeId;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        $canSeePay = $request->user()->can('employees.pay.view');
+        $canSeePay = self::seesPay($request, $this->id);
 
         return [
             'id' => $this->id,

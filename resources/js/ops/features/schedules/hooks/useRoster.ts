@@ -29,17 +29,26 @@ export interface RosterData {
   stateFor: (employeeId: string, date: string) => DayState
 }
 
-/** Loads everything the roster needs for a date range (employees, shift templates, assignments, approved leave, supervisors). */
-export function useRoster(from: string, to: string): RosterData {
+/**
+ * Loads everything the roster needs for a date range (employees, shift templates, assignments, approved leave, supervisors).
+ * Pass `self` for the employee portal: it shows one person, who cannot list employees or branches, so only they are used.
+ */
+export function useRoster(from: string, to: string, self?: Employee): RosterData {
   const { user } = useSession()
   const [data, setData] = useState<{ employees: Employee[]; templates: Schedule[]; assignments: RosterEntry[]; leaves: Leaves; departments: DepartmentRecord[] } | null>(null)
 
   const refetch = useCallback(() => {
     // Leave is still the mock until the Leave module (P6), so it does not match real employees yet.
-    Promise.all([fetchAllEmployees(), fetchShiftTemplates(), fetchRoster(from, to), fetchApprovedLeaves(from, to), fetchBranchDepartments()]).then(
+    Promise.all([
+      self ? Promise.resolve([self]) : fetchAllEmployees(),
+      fetchShiftTemplates(),
+      fetchRoster(from, to),
+      fetchApprovedLeaves(from, to),
+      self ? Promise.resolve([] as DepartmentRecord[]) : fetchBranchDepartments(),
+    ]).then(
       ([employees, templates, assignments, leaves, departments]) => setData({ employees, templates, assignments, leaves, departments }),
     )
-  }, [user, from, to])
+  }, [user, from, to, self])
 
   useEffect(() => {
     refetch()

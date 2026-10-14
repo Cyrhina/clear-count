@@ -52,10 +52,27 @@ export interface OvertimeFilingInput {
   endTime: string
   type: string
   reason?: string
+  /** 'ess' when an employee files their own request. */
+  source?: 'admin' | 'ess'
 }
 
 export const fileOvertime = (input: OvertimeFilingInput) =>
-  api.post('/api/overtime', { employee_id: Number(input.employeeId), work_date: input.date, start_time: input.startTime, end_time: input.endTime, type: input.type, reason: input.reason || null })
+  api.post('/api/overtime', { employee_id: Number(input.employeeId), work_date: input.date, start_time: input.startTime, end_time: input.endTime, type: input.type, reason: input.reason || null, source: input.source })
+
+/** Withdraws a request that is still pending. */
+export const withdrawOvertime = (id: string) => api.delete(`/api/overtime/${id}`)
+
+export interface OvertimeRate {
+  key: string
+  label: string
+  multiplier: number
+}
+
+/** The overtime and night differential rates a request can be filed under. */
+export async function fetchOvertimeRates(): Promise<OvertimeRate[]> {
+  const res = await api.get<{ data: OvertimeRate[] }>('/api/overtime/rates')
+  return res.data.map((r) => ({ ...r, multiplier: Number(r.multiplier) }))
+}
 
 /** Approves or rejects the pending requests; returns how many were decided. */
 export async function decideOvertime(ids: string[], decision: 'approved' | 'rejected'): Promise<number> {

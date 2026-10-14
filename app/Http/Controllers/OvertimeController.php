@@ -62,6 +62,25 @@ class OvertimeController extends Controller
         return response()->json(['data' => $overtime], 201);
     }
 
+    /** The overtime and night differential rates a request can be filed under (self-service has no access to Payroll Settings). */
+    public function rates(Request $request): JsonResponse
+    {
+        PayrollDefaults::ensureOvertimeRates($request->user()->company_id);
+
+        return response()->json(['data' => OvertimeRate::where('group', 'overtime')->orderBy('id')->get(['key', 'label', 'multiplier'])]);
+    }
+
+    /** Withdraws a request that is still pending. */
+    public function destroy(OvertimeRecord $overtime): JsonResponse
+    {
+        if ($overtime->status !== 'pending') {
+            throw new ConflictException('Only a pending request can be withdrawn.');
+        }
+        $overtime->delete();
+
+        return response()->json(['data' => ['deleted' => true]]);
+    }
+
     /** Approve or reject several at once; the ones already decided are skipped. */
     public function decide(Request $request): JsonResponse
     {

@@ -11,7 +11,6 @@ import {
   UserCircle2,
   Zap,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Badge, StatusBadge } from '@ops/components/ui/Badge'
@@ -20,14 +19,14 @@ import { EmptyState } from '@ops/components/ui/EmptyState'
 import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useMyPayslips } from '@ops/features/payroll/hooks/usePayroll'
+import { useMyAttendance } from '@ops/features/ess/hooks/useMyAttendance'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
+import { useLeaveRequestList, useLeaveTypeList } from '@ops/features/leave/hooks/useLeaveData'
+import { useLoans } from '@ops/features/loans-deductions/hooks/useLoans'
 import { useNotifications } from '@ops/features/notifications/hooks/useNotifications'
 import { useSession } from '@ops/hooks/useSession'
-import { getAttendanceForEmployee } from '@ops/lib/services/attendanceService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import { db } from '@ops/mock-data'
 import type { AttendanceRecord, AttendanceStatus } from '@ops/types/domain'
 
 function todayKey() {
@@ -107,15 +106,11 @@ export function EssHomePage() {
   const { employee, isLoading } = useSelfEmployee()
   const { payslips: myPayslips } = useMyPayslips()
   const { user } = useSession()
-  const { requests, isLoading: isLoadingLeave } = useLeaveRequests()
-  const { leaveTypes } = useLeaveTypes()
+  const { requests, isLoading: isLoadingLeave } = useLeaveRequestList()
+  const { leaveTypes } = useLeaveTypeList()
+  const { loans } = useLoans()
   const { notifications } = useNotifications()
-  const [records, setRecords] = useState<AttendanceRecord[] | null>(null)
-
-  useEffect(() => {
-    if (!employee) return
-    getAttendanceForEmployee(user, employee.id).then(setRecords)
-  }, [user, employee])
+  const { records } = useMyAttendance(!!employee)
 
   if (isLoading || (employee && (records === null || isLoadingLeave))) return <Skeleton className="h-96" />
   if (!employee) {
@@ -140,7 +135,7 @@ export function EssHomePage() {
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
   const totalLeaveCredits = Object.values(employee.benefits.leaveCreditsByType).reduce((sum, days) => sum + days, 0)
 
-  const activeLoans = db.loans.filter((l) => l.employeeId === employee.id && l.status === 'active')
+  const activeLoans = loans.filter((l) => l.employeeId === employee.id && l.status === 'active')
   const totalMonthlyDeduction = activeLoans.reduce((sum, l) => sum + l.monthlyDeduction, 0)
 
   const finalizedLines = myPayslips.slice().reverse() // oldest first, like the history below expects

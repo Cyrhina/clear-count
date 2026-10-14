@@ -68,7 +68,8 @@ test('attendance is read by day, range and employee, and only the permitted can 
     $this->actingAs($admin)->getJson('/api/attendance')->assertUnprocessable();
 
     $employee = companyUser('employee', $admin->company);
-    $this->actingAs($employee)->getJson('/api/attendance?date='.MON)->assertForbidden();
+    // Self-service reads attendance, but only its own: an account with no employee record sees nothing.
+    $this->actingAs($employee)->getJson('/api/attendance?date='.MON)->assertOk()->assertJsonCount(0, 'data');
     $this->actingAs($employee)->postJson('/api/attendance/log', logPayload([$a->id]))->assertForbidden();
 });
 

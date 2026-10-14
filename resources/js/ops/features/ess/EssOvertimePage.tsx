@@ -11,37 +11,15 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { useToast } from '@ops/components/ui/Toast'
 import { OvertimeApplicationDialog } from '@ops/features/ess/components/OvertimeApplicationDialog'
-import { getOtRateById, usePayrollRatesStore } from '@ops/features/company-settings/payrollRatesStore'
+import { useOvertimeRates, useOvertimeRecords } from '@ops/features/overtime/hooks/useOvertime'
 import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useMyOtApplications, useOtApplicationStore } from '@ops/features/ess/otApplicationStore'
-import type { OtApplication, OtApplicationType } from '@ops/features/ess/otApplicationStore'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { withdrawOvertime } from '@ops/lib/services/overtimeApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
+import type { OvertimeRecord } from '@ops/types/domain'
 
-/** Fallback labels/multipliers for the demo's pre-seeded applications, filed under the old
- * hardcoded type ids before the Type dropdown started reading from Payroll Settings. Any type id
- * that matches a configured rate (`payrollRatesStore.ts`) takes precedence over these. */
-const LEGACY_TYPE_LABEL: Record<string, string> = {
-  overtime: 'OT',
-  night_diff: 'Night Diff',
-  overtime_night_diff: 'OT + Night Diff',
-}
-
-const LEGACY_MULTIPLIER: Record<string, number> = {
-  overtime: 1.25,
-  night_diff: 1.1,
-  overtime_night_diff: 1.35,
-}
-
-function otTypeLabel(type: OtApplicationType): string {
-  return getOtRateById(type)?.label ?? LEGACY_TYPE_LABEL[type] ?? type
-}
-
-function otTypeMultiplier(type: OtApplicationType): number {
-  return getOtRateById(type)?.multiplier ?? LEGACY_MULTIPLIER[type] ?? 1.25
-}
-
-const OT_STATUS_TONE: Record<OtApplication['status'], 'warning' | 'success' | 'danger'> = {
+const OT_STATUS_TONE: Record<OvertimeRecord['status'], 'warning' | 'success' | 'danger'> = {
   pending: 'warning',
   approved: 'success',
   rejected: 'danger',
@@ -51,17 +29,17 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function ApplicationDetailsDialog({ application, onOpenChange }: { application: OtApplication | null; onOpenChange: (open: boolean) => void }) {
+function ApplicationDetailsDialog({ application, typeLabel, onOpenChange }: { application: OvertimeRecord | null; typeLabel: (type: string) => string; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={!!application} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogTitle>Application Details</DialogTitle>
-        <DialogDescription>{application && `Filed ${formatDate(application.date)}`}</DialogDescription>
+        <DialogDescription>{application && `Filed ${formatDate(application.requestedAt.slice(0, 10))}`}</DialogDescription>
         {application && (
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-muted-foreground">Application Type</span>
-              <Badge tone="brand">{otTypeLabel(application.type)}</Badge>
+              <Badge tone="brand">{typeLabel(application.type)}</Badge>
             </div>
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-muted-foreground">Date of Rendering</span>
@@ -75,7 +53,7 @@ function ApplicationDetailsDialog({ application, onOpenChange }: { application: 
             </div>
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-muted-foreground">Total Hours</span>
-              <span className="font-medium">{application.totalHours.toFixed(1)} hrs</span>
+              <span className="font-medium">{application.hours.toFixed(1)} hrs</span>
             </div>
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-muted-foreground">Status</span>
@@ -83,15 +61,9 @@ function ApplicationDetailsDialog({ application, onOpenChange }: { application: 
                 {application.status}
               </Badge>
             </div>
-            {application.attachmentName && (
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Attachment</span>
-                <span className="font-medium">{application.attachmentName}</span>
-              </div>
-            )}
             <div>
               <p className="text-muted-foreground">Reason / Justification</p>
-              <p className="mt-1 font-medium">{application.reason}</p>
+              <p className="mt-1 font-medium">{application.reason ?? '—'}</p>
             </div>
           </div>
         )}
@@ -102,28 +74,35 @@ function ApplicationDetailsDialog({ application, onOpenChange }: { application: 
 
 export function EssOvertimePage() {
   const { employee, isLoading } = useSelfEmployee()
-  const applications = useMyOtApplications(employee?.id ?? '')
-  const cancelApplication = useOtApplicationStore((s) => s.cancelApplication)
-  usePayrollRatesStore((s) => s.otRates) // re-render when Payroll Settings rates change
+  const { records, isLoading: isLoadingRecords, refetch } = useOvertimeRecords()
+  const { rates } = useOvertimeRates()
   const { notify } = useToast()
-  const [viewing, setViewing] = useState<OtApplication | null>(null)
+  const [viewing, setViewing] = useState<OvertimeRecord | null>(null)
 
-  if (isLoading) return <Skeleton className="h-72" />
+  if (isLoading || isLoadingRecords) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
+
+  const applications = records.filter((r) => r.employeeId === employee.id)
+  const otTypeLabel = (type: string) => rates.find((r) => r.key === type)?.label ?? type
 
   const thisMonth = todayKey().slice(0, 7)
   const approvedThisMonth = applications.filter((a) => a.status === 'approved' && a.date.slice(0, 7) === thisMonth)
-  const totalApprovedHours = approvedThisMonth.reduce((sum, a) => sum + a.totalHours, 0)
+  const totalApprovedHours = approvedThisMonth.reduce((sum, a) => sum + a.hours, 0)
   const pendingCount = applications.filter((a) => a.status === 'pending').length
 
   const hourlyRate = (employee.compensation.basicPay > 0 ? employee.compensation.basicPay : 30000) / (22 * 8)
   const estimatedPay = applications
     .filter((a) => a.status !== 'rejected')
-    .reduce((sum, a) => sum + a.totalHours * hourlyRate * otTypeMultiplier(a.type), 0)
+    .reduce((sum, a) => sum + a.hours * hourlyRate * a.multiplier, 0)
 
-  function handleCancel(application: OtApplication) {
-    cancelApplication(application.id)
+  async function handleCancel(application: OvertimeRecord) {
+    try {
+      await withdrawOvertime(application.id)
+    } catch (error) {
+      return notify({ title: "Couldn't withdraw the application", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Application withdrawn', description: 'Your pending request has been cancelled.' })
+    refetch()
   }
 
   return (
@@ -131,7 +110,7 @@ export function EssOvertimePage() {
       <PageHeader
         title="Overtime & Night Differential"
         description="Submit and track your overtime and night differential render requests."
-        actions={<OvertimeApplicationDialog employeeId={employee.id} />}
+        actions={<OvertimeApplicationDialog employeeId={employee.id} onSubmitted={refetch} />}
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>:last-child:nth-child(odd)]:col-span-2 sm:[&>:last-child:nth-child(odd)]:col-span-1">
@@ -186,7 +165,7 @@ export function EssOvertimePage() {
                   }
                   stats={[
                     { label: 'Type', value: otTypeLabel(app.type) },
-                    { label: 'Total Hours', value: `${app.totalHours.toFixed(1)} hrs` },
+                    { label: 'Total Hours', value: `${app.hours.toFixed(1)} hrs` },
                     { label: 'Reason', value: <span className="line-clamp-2">{app.reason}</span> },
                   ]}
                   actions={
@@ -227,7 +206,7 @@ export function EssOvertimePage() {
                     <TableCell className="whitespace-nowrap">
                       {app.startTime} – {app.endTime}
                     </TableCell>
-                    <TableCell>{app.totalHours.toFixed(1)} hrs</TableCell>
+                    <TableCell>{app.hours.toFixed(1)} hrs</TableCell>
                     <TableCell className="max-w-xs truncate" title={app.reason}>
                       {app.reason}
                     </TableCell>
@@ -258,7 +237,7 @@ export function EssOvertimePage() {
         </Card.Body>
       </Card>
 
-      <ApplicationDetailsDialog application={viewing} onOpenChange={(open) => !open && setViewing(null)} />
+      <ApplicationDetailsDialog application={viewing} typeLabel={otTypeLabel} onOpenChange={(open) => !open && setViewing(null)} />
     </div>
   )
 }

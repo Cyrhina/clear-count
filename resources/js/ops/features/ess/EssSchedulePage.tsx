@@ -1,16 +1,18 @@
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { RequestWfhDialog } from '@ops/features/ess/components/RequestWfhDialog'
 import { WfhArrangementCards } from '@ops/features/ess/components/WfhArrangementCards'
-import { useSession } from '@ops/hooks/useSession'
-import { cancelWfh, getWfhArrangements } from '@ops/lib/services/wfhService'
-import type { WfhArrangement } from '@ops/types/domain'
+import { useWfh } from '@ops/features/attendance/hooks/useWfh'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { cancelWfh } from '@ops/lib/services/wfhArrangementService'
+import type { Employee } from '@ops/types/domain'
+import { useToast } from '@ops/components/ui/Toast'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { dayMonth, dayShort, fromDateKey, monthDays, rangeLabel, shiftAnchor, shiftRangeLabel, todayKey, viewRange, weekDays, type RosterView } from '@ops/features/schedules/dateUtil'
 import { useRoster, type DayState } from '@ops/features/schedules/hooks/useRoster'
@@ -35,22 +37,23 @@ export function EssSchedulePage() {
 }
 
 function EssScheduleContent() {
-  const { employee, isLoading: loadingEmployee } = useSelfEmployee()
+  const { employee, isLoading } = useSelfEmployee()
+  if (isLoading) return <Skeleton className="h-72" />
+  if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
+  return <EssScheduleView employee={employee} />
+}
+
+function EssScheduleView({ employee }: { employee: Employee }) {
   const [view, setView] = useState<RosterView>('week')
   const [anchor, setAnchor] = useState(todayKey())
   const range = viewRange(anchor, view)
-  const roster = useRoster(range.from, range.to)
+  const roster = useRoster(range.from, range.to, employee)
   const today = todayKey()
-  const { user } = useSession()
-  const [wfh, setWfh] = useState<WfhArrangement[]>([])
-  const employeeId = employee?.id
-  const loadWfh = useCallback(() => {
-    if (employeeId) getWfhArrangements(user).then((l) => setWfh(l.filter((a) => a.employeeId === employeeId)))
-  }, [user, employeeId])
-  useEffect(loadWfh, [loadWfh])
+  const { notify } = useToast()
+  const { arrangements, refetch: loadWfh } = useWfh()
+  const wfh = (arrangements ?? []).filter((a) => a.employeeId === employee.id)
 
-  if (loadingEmployee || roster.isLoading) return <Skeleton className="h-72" />
-  if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
+  if (roster.isLoading) return <Skeleton className="h-72" />
 
   const stateFor = (date: string) => roster.stateFor(employee.id, date)
   const colorIndex = new Map(roster.templates.map((t, i) => [t.id, i]))
@@ -200,7 +203,7 @@ function EssScheduleContent() {
           {wfh.length === 0 ? (
             <p className="text-sm text-muted-foreground">No WFH requests yet.</p>
           ) : (
-            <WfhArrangementCards items={wfh} onWithdraw={(a) => cancelWfh(user, [a.id]).then(loadWfh)} />
+            <WfhArrangementCards items={wfh} onWithdraw={(a) => cancelWfh([a.id]).then(loadWfh, (error) => notify({ title: "Couldn't withdraw the request", description: apiErrorMessage(error), tone: 'danger' }))} />
           )}
         </div>
       </Card>
