@@ -61,6 +61,11 @@ final class Notifier
     /** Tells whoever filed the request, and the employee it is for, how it was decided. */
     public static function decided(Model $request): void
     {
+        // Bonuses and other approvals without an employee have no notice yet.
+        if (! isset(self::KINDS[$request::class])) {
+            return;
+        }
+
         if (self::isRepeatInBatch($request, $request->status)) {
             return;
         }

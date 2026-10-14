@@ -1,20 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getBonuses } from '@ops/lib/services/bonusService'
-import type { BonusIncentive } from '@ops/types/domain'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchBonuses } from '@ops/lib/services/bonusApiService'
 
 export function useBonuses() {
-  const { user } = useSession()
-  const [bonuses, setBonuses] = useState<BonusIncentive[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getBonuses(user).then(setBonuses)
-  }, [user])
-
-  useEffect(() => {
-    setBonuses(null)
-    refetch()
-  }, [refetch])
-
-  return { bonuses: bonuses ?? [], isLoading: bonuses === null, refetch }
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: ['bonuses'], queryFn: fetchBonuses })
+  return { bonuses: query.data ?? [], isLoading: query.isPending, refetch: () => void queryClient.invalidateQueries({ queryKey: ['bonuses'] }) }
 }
