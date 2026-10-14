@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsurePlanFeature;
+use App\Http\Middleware\EnsureUserHasCompany;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,
             'active' => EnsureUserIsActive::class,
+            'plan' => EnsurePlanFeature::class,
+            'company' => EnsureUserHasCompany::class,
         ]);
 
         $middleware->redirectUsersTo(

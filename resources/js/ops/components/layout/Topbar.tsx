@@ -3,7 +3,7 @@ import { LogOut, Menu, UserCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@ops/components/ui/Avatar'
 import { ThemeToggle } from '@ops/components/ui/ThemeToggle'
-import { ROLE_LABELS, RoleSwitcherDropdown, TierSwitcherDropdown } from '@ops/components/layout/DemoSwitchers'
+import { ROLE_LABELS, RoleSwitcherDropdown } from '@ops/components/layout/DemoSwitchers'
 import { usePermission } from '@ops/hooks/usePermission'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
@@ -40,13 +40,8 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav?: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Demo Portal tier preview + role switcher — desktop/tablet only (>=768px). On mobile
+        {/* Demo role switcher — desktop/tablet only (>=768px). On mobile
             these move to the fixed bottom nav (MobileDemoBar) to keep the header uncluttered. */}
-        {user.role === 'company_admin' && (
-          <div className="hidden md:block">
-            <TierSwitcherDropdown />
-          </div>
-        )}
         <div className="hidden md:block">
           <RoleSwitcherDropdown />
         </div>

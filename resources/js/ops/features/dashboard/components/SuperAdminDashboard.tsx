@@ -1,15 +1,17 @@
 import { ArrowRight, Building2, CalendarDays, History, KeyRound, ShieldCheck, UserPlus, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { Link } from 'react-router-dom'
 import { Badge } from '@ops/components/ui/Badge'
 import { Card } from '@ops/components/ui/Card'
 import { MetricCard } from '@ops/components/ui/MetricCard'
+import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useSession } from '@ops/hooks/useSession'
 import { PLAN_DETAILS } from '@ops/lib/plans'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { getPlatformDashboard } from '@ops/lib/services/subscriptionService'
 import { formatDate } from '@ops/lib/utils/format'
-import { db } from '@ops/mock-data'
 import { ROLE_LABELS } from '@ops/components/layout/DemoSwitchers'
 
 const ROLE_COLORS = ['var(--color-primary)', 'var(--color-accent)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-danger)', 'var(--color-muted-foreground)']
@@ -45,37 +47,28 @@ function SectionHeader({ title, description, viewAll }: { title: string; descrip
   )
 }
 
-/** Platform-wide overview for the Super Admin, built entirely from what is in the demo data. */
+/** Platform-wide overview for the Super Admin: the totals, the split by company and role, and the latest activity come from the server. */
 export function SuperAdminDashboard() {
   const { user } = useSession()
+  const query = useQuery({ queryKey: ['platform', 'dashboard'], queryFn: getPlatformDashboard })
+  const d = query.data
 
-  const data = useMemo(() => {
-    const users = db.users
-    const companies = db.companies
-    const employeesByCompany = companies.map((c) => ({ company: c, count: db.employees.filter((e) => e.companyId === c.id).length }))
-    const roleCounts = new Map<string, number>()
-    for (const u of users) roleCounts.set(u.role, (roleCounts.get(u.role) ?? 0) + 1)
-    const byRole = [...roleCounts].map(([role, count], i) => ({ role, label: ROLE_LABELS[role] ?? role, count, color: ROLE_COLORS[i % ROLE_COLORS.length] })).sort((a, b) => b.count - a.count)
-    const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? ''
-    const activity = [...db.activityLog]
-      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      .slice(0, 6)
-      .map((a) => ({ id: a.id, title: a.title ?? a.action, subtitle: [a.actor, companyName(a.companyId)].filter(Boolean).join(' · '), timestamp: a.timestamp }))
-    return {
-      totalUsers: users.length,
-      activeUsers: users.filter((u) => u.isActive !== false && !u.isSuspended).length,
-      totalCompanies: companies.length,
-      totalEmployees: db.employees.length,
-      activeEmployees: db.employees.filter((e) => e.employment.status === 'active').length,
-      roleCount: roleCounts.size,
-      byRole,
-      employeesByCompany,
-      maxEmployees: Math.max(1, ...employeesByCompany.map((e) => e.count)),
-      recentCompanies: [...companies].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-      employeeCountOf: (id: string) => employeesByCompany.find((e) => e.company.id === id)?.count ?? 0,
-      activity,
-    }
-  }, [])
+  const data = d && {
+    totalUsers: d.totals.users,
+    activeUsers: d.totals.activeUsers,
+    totalCompanies: d.totals.companies,
+    totalEmployees: d.totals.employees,
+    activeEmployees: d.totals.activeEmployees,
+    roleCount: d.usersByRole.length,
+    byRole: d.usersByRole.map((r, i) => ({ ...r, color: ROLE_COLORS[i % ROLE_COLORS.length] })),
+    employeesByCompany: d.employeesByCompany,
+    maxEmployees: Math.max(1, ...d.employeesByCompany.map((e) => e.count)),
+    recentCompanies: d.recentCompanies,
+    activity: d.activity.map((a) => ({ id: a.id, title: a.title, subtitle: [a.actor, a.company].filter(Boolean).join(' · '), timestamp: a.createdAt })),
+  }
+
+  if (query.error) return <p className="text-sm text-danger">{apiErrorMessage(query.error)}</p>
+  if (!data) return <Skeleton className="h-96" />
 
   return (
     <div className="dashboard-elevated space-y-6">
@@ -105,10 +98,10 @@ export function SuperAdminDashboard() {
               <div>
                 <p className="mb-3 text-sm font-semibold">Employees by Company</p>
                 <div className="space-y-3">
-                  {data.employeesByCompany.map(({ company, count }) => (
-                    <div key={company.id}>
+                  {data.employeesByCompany.map(({ id, name, count }) => (
+                    <div key={id}>
                       <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate font-medium">{company.name}</span>
+                        <span className="truncate font-medium">{name}</span>
                         <span className="tabular-nums text-muted-foreground">{count}</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -143,7 +136,7 @@ export function SuperAdminDashboard() {
                         <span className="size-2 shrink-0 rounded-full" style={{ background: r.color }} />
                         <span className="min-w-0 flex-1 truncate">{r.label}</span>
                         <span className="tabular-nums text-muted-foreground">
-                          {r.count} ({Math.round((r.count / data.totalUsers) * 100)}%)
+                          {r.count} ({Math.round((r.count / Math.max(1, data.totalUsers)) * 100)}%)
                         </span>
                       </li>
                     ))}
@@ -175,14 +168,14 @@ export function SuperAdminDashboard() {
                             </span>
                             <span className="min-w-0">
                               <span className="block truncate font-medium">{c.name}</span>
-                              {c.nextRenewalDate && <span className="block text-[11px] text-muted-foreground">Renews {formatDate(c.nextRenewalDate, { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                              {c.planRenewsOn && <span className="block text-[11px] text-muted-foreground">Renews {formatDate(c.planRenewsOn, { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
                             </span>
                           </div>
                         </td>
                         <td className="py-2.5 pr-3">
-                          <Badge tone="brand">{PLAN_DETAILS[c.planTier].label}</Badge>
+                          <Badge tone={c.status === 'suspended' ? 'danger' : 'brand'}>{c.status === 'suspended' ? 'Suspended' : PLAN_DETAILS[c.planTier].label}</Badge>
                         </td>
-                        <td className="py-2.5 text-right tabular-nums">{data.employeeCountOf(c.id)}</td>
+                        <td className="py-2.5 text-right tabular-nums">{c.employees}</td>
                       </tr>
                     ))}
                   </tbody>

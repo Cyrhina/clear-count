@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 // Required inside the auth + verified + active group in routes/web.php.
 
+// The signed-in user's own company (name, logo, plan, addresses): every screen and printed page needs it, whatever the role.
+Route::get('api/company', [CompanyInfoController::class, 'show'])->middleware('permission:notifications.view|ess.view')->name('company.show');
+
 // Company Info tab of Company & Payroll Settings. Payroll admins can read it; only company admins change it.
 // POST is accepted too because PHP does not parse multipart bodies on PUT.
 Route::prefix('api/company-info')->name('company-info.')->group(function () {

@@ -40,20 +40,6 @@ export interface CompanyRegistration {
 }
 
 /** An upgrade the company has paid for (by QR) that the FBS Pay billing team has not verified yet. */
-export interface PendingPlanChange {
-  targetTier: PlanTier
-  /** Code the company puts in the payment note, so the billing team can match the payment. */
-  paymentReference: string
-  /** The transaction / reference number from the company's own payment receipt. */
-  receiptReference: string
-  amountPhp: number
-  /** Photo / screenshot of the payment receipt, as a data URL (mock storage; the real thing is an uploaded file). */
-  proofImage: string
-  /** When the submitter agreed to the Terms & Conditions and Privacy Policy. */
-  termsAcceptedAt: string
-  submittedAt: string
-}
-
 export interface Company {
   id: string
   name: string
@@ -75,7 +61,6 @@ export interface Company {
   /** ISO date of the next scheduled charge/renewal for the current plan, shown on the Subscription Overview card. */
   nextRenewalDate?: string
   /** Set while an upgrade payment awaits verification; the plan only changes once the billing team confirms it. */
-  pendingPlanChange?: PendingPlanChange
   timezone: string
   payrollFrequency: 'semi_monthly' | 'monthly' | 'weekly'
   createdAt: string

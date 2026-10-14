@@ -1,4 +1,5 @@
 import { api } from '@ops/lib/api/http'
+import { queryClient } from '@ops/lib/api/queryClient'
 import type { Address, Company, CompanyContact, CompanyRegistration } from '@ops/types/domain'
 
 /** Company Info tab, backed by `/api/company-info`. The screen keeps the `Company` shape of `types/domain.ts`; this file converts it. */
@@ -121,6 +122,12 @@ function toCompany(c: CompanyInfoDto): Company {
   }
 }
 
+/** The signed-in user's own company, for any role (the screens, payslips and printed pages show its name, logo and addresses). */
+export async function getOwnCompany(): Promise<Company> {
+  const res = await api.get<{ data: CompanyInfoDto }>('/api/company')
+  return toCompany(res.data)
+}
+
 export async function getCompanyInfo(): Promise<Company> {
   const res = await api.get<{ data: CompanyInfoDto }>('/api/company-info')
   return toCompany(res.data)
@@ -160,6 +167,7 @@ export async function updateCompanyInfo(input: CompanyInfoInput): Promise<Compan
     payroll_contact: fromContact(input.payrollContact),
     hr_contact: fromContact(input.hrContact),
   })
+  void queryClient.invalidateQueries({ queryKey: ['company'] })
   return toCompany(res.data)
 }
 
@@ -168,5 +176,6 @@ export async function uploadCompanyLogo(file: File): Promise<Company> {
   const form = new FormData()
   form.append('logo', file)
   const res = await api.upload<{ data: CompanyInfoDto }>('/api/company-info/logo', form)
+  void queryClient.invalidateQueries({ queryKey: ['company'] })
   return toCompany(res.data)
 }

@@ -46,10 +46,13 @@ class Company extends Model
         'registered_address', 'office_address', 'same_as_registered', 'primary_contact', 'payroll_contact', 'hr_contact',
     ];
 
+    protected $attributes = ['status' => 'active'];
+
     protected function casts(): array
     {
         return [
             'profile' => 'array',
+            'plan_renews_on' => 'date',
             'use_logo_colors' => 'boolean',
             'same_as_registered' => 'boolean',
             'registered_address' => 'array',

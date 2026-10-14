@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateUserStatusRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\Plans;
 use App\Support\Roles;
 use App\Support\UserInvites;
 use Illuminate\Http\JsonResponse;
@@ -88,6 +89,11 @@ class UserController extends Controller
     public function toggleStatus(UpdateUserStatusRequest $request, User $user): JsonResponse
     {
         $active = isset($request->validated()['status']) ? $request->validated('status') === 'active' : ! $user->is_active;
+
+        // Turning an admin or manager account back on takes a seat of the plan again.
+        if ($active && ! $user->is_active && $user->company && ! $user->hasRole('employee')) {
+            Plans::assertSeats($user->company);
+        }
 
         $user->forceFill(['is_active' => $active])->save();
         ActivityLogger::log(module: 'User Access', action: $active ? 'Reactivated' : 'Deactivated', title: 'User account', description: $user->email, subject: $user);

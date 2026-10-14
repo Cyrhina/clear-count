@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/comp
 import { FormField } from '@ops/components/ui/FormField'
 import { Input } from '@ops/components/ui/Input'
 import { TermsDialog, type LegalDoc } from '@ops/features/subscription/components/TermsDialog'
-import { useSession } from '@ops/hooks/useSession'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { PLAN_DETAILS, formatEmployeeLimit } from '@ops/lib/plans'
 import { getUpgradeAmount, newPaymentReference, submitUpgradePayment } from '@ops/lib/services/subscriptionService'
 import { formatCurrency } from '@ops/lib/utils/format'
@@ -21,11 +21,11 @@ const PROOF_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const PROOF_MAX_BYTES = 2 * 1024 * 1024
 
 export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { targetPlan: PlanTier | null; onClose: () => void; onSubmitted: () => void }) {
-  const { user } = useSession()
   const [amount, setAmount] = useState<number | null | undefined>(undefined)
   const [paymentReference, setPaymentReference] = useState('')
   const [receiptReference, setReceiptReference] = useState('')
-  const [proof, setProof] = useState<string | null>(null)
+  const [proof, setProof] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [proofError, setProofError] = useState<string | null>(null)
   const [agreed, setAgreed] = useState(false)
@@ -45,17 +45,23 @@ export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { tar
     setAgreeError(false)
     setAmount(undefined)
     setPaymentReference(newPaymentReference(targetPlan))
-    void getUpgradeAmount(user, targetPlan).then(setAmount)
-  }, [targetPlan, user])
+    void getUpgradeAmount(targetPlan).then(setAmount, () => setAmount(null))
+  }, [targetPlan])
+
+  // A local preview of the chosen photo, freed when it changes.
+  useEffect(() => {
+    if (!proof) return setProofPreview(null)
+    const url = URL.createObjectURL(proof)
+    setProofPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [proof])
 
   function pickProof(file: File | undefined) {
     setProofError(null)
     if (!file) return
     if (!PROOF_TYPES.includes(file.type)) return setProofError('Upload a PNG, JPG or WebP photo.')
     if (file.size > PROOF_MAX_BYTES) return setProofError('The photo is too large (2 MB maximum).')
-    const reader = new FileReader()
-    reader.onload = () => setProof(String(reader.result))
-    reader.readAsDataURL(file)
+    setProof(file)
   }
 
   async function submit() {
@@ -66,10 +72,15 @@ export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { tar
     setAgreeError(!agreed)
     if (refInvalid || !proof || !agreed) return
     setIsSubmitting(true)
-    await submitUpgradePayment(user, { targetTier: targetPlan, paymentReference, receiptReference: receiptReference.trim(), amountPhp: amount, proofImage: proof })
-    setIsSubmitting(false)
-    setSubmitted(true)
-    onSubmitted()
+    try {
+      await submitUpgradePayment({ targetTier: targetPlan, paymentReference, receiptReference: receiptReference.trim(), proof })
+      setSubmitted(true)
+      onSubmitted()
+    } catch (e) {
+      setError(apiErrorMessage(e))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const plan = targetPlan ? PLAN_DETAILS[targetPlan] : null
@@ -118,9 +129,9 @@ export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { tar
             </FormField>
 
             <FormField label="Proof of payment" error={proofError ?? undefined} hint="A photo or screenshot of your receipt (PNG, JPG or WebP, up to 2 MB).">
-              {proof ? (
+              {proof && proofPreview ? (
                 <div className="relative w-fit">
-                  <img src={proof} alt="Proof of payment" className="max-h-40 rounded-lg border border-border" />
+                  <img src={proofPreview} alt="Proof of payment" className="max-h-40 rounded-lg border border-border" />
                   <button type="button" onClick={() => setProof(null)} aria-label="Remove photo" className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-soft hover:text-foreground">
                     <X className="size-3.5" />
                   </button>

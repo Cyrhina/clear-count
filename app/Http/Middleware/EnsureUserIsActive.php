@@ -11,12 +11,15 @@ class EnsureUserIsActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && ! $request->user()->is_active) {
+        $user = $request->user();
+
+        // An inactive account, or any account of a company the super admin has suspended, is signed out.
+        if ($user && (! $user->is_active || $user->company?->status === 'suspended')) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login');
+            return $request->expectsJson() ? response()->json(['message' => 'This account is not active.'], 401) : redirect()->route('login');
         }
 
         return $next($request);
