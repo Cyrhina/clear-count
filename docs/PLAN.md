@@ -518,6 +518,8 @@ Frontend: `dashboardService`, `reportService`, `taxComplianceService`. The xlsx 
 
 Done when: no dashboard or report reads the mock store.
 
+**P14 status:** done in branch `backend/p14-dashboards-reports` (see PROGRESS.md). Only the dashboards have server endpoints; the reports compute in the browser from API reads.
+
 ---
 
 ### P15. Platform and subscriptions (L)

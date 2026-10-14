@@ -62,7 +62,11 @@ test('summaries carry the headcount and no pay totals yet', function () {
 });
 
 test('branches need the branches.manage permission', function () {
-    $this->actingAs(companyUser('payroll_admin'))->getJson('/api/branches')->assertForbidden();
+    // The report and payroll roles read the list for their branch filters, but never change it.
+    $payroll = companyUser('payroll_admin');
+    $this->actingAs($payroll)->getJson('/api/branches')->assertOk();
+    $this->actingAs($payroll)->postJson('/api/branches', ['name' => 'X'])->assertForbidden();
+    $this->actingAs(companyUser('employee'))->getJson('/api/branches')->assertForbidden();
     $this->actingAs(companyUser('employee'))->postJson('/api/branches', ['name' => 'X'])->assertForbidden();
 });
 

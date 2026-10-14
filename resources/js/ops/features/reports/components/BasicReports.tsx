@@ -32,7 +32,7 @@ import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
 import { PAY_RATE_TYPE_LABEL, formatBaseRateShort } from '@ops/lib/payroll/payRate'
 import { hourlyRateFor } from '@ops/lib/payroll/rateBasis'
 import { exportEmployeeMasterlistCsv } from '@ops/lib/services/integrationService'
-import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
+import { getDeductionConfigs } from '@ops/lib/services/payrollConfigService'
 import { exportOvertimeSummaryCsv } from '@ops/lib/services/overtimeService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { BenefitCategory, DeductionConfig, Employee, PayrollGroup } from '@ops/types/domain'
@@ -1481,7 +1481,7 @@ export function LoansDeductionsReportView() {
   const [deductionConfigs, setDeductionConfigs] = useState<DeductionConfig[]>([])
 
   useEffect(() => {
-    getDeductionConfigs(user).then(setDeductionConfigs)
+    getDeductionConfigs().then((list) => setDeductionConfigs(list.map((c) => ({ ...c, companyId: '' }))))
   }, [user])
 
   const employeeById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])

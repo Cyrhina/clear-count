@@ -1,8 +1,10 @@
-import { leaveRequestDays } from '@ops/lib/leave/leaveDays'
-import { formatPayrollNumber } from '@ops/lib/payroll/payrollNumber'
+import { memoRead } from '@ops/lib/api/memo'
+import { getAttendanceRecords } from '@ops/lib/services/attendanceService'
 import { getEmployees } from '@ops/lib/services/employeeService'
-import { getPayrollLines, getPayrollPeriods, previewPayrollLine } from '@ops/lib/services/payrollService'
-import { db } from '@ops/mock-data'
+import { fetchLeaveTypes } from '@ops/lib/services/leaveApiService'
+import { getLeaveRequests } from '@ops/lib/services/leaveService'
+import { fetchReportPayrollLines } from '@ops/lib/services/payrollApiService'
+import { getPayrollLines, getPayrollPeriods } from '@ops/lib/services/payrollService'
 import type { AttendanceStatus, Employee, PayrollLine, PayrollPeriod, SessionUser } from '@ops/types/domain'
 
 export interface PayrollRegisterRow {
@@ -17,7 +19,7 @@ export interface PayrollRegisterRow {
 }
 
 export interface PayrollRegisterReport {
-  period: (typeof db.payrollPeriods)[number] | undefined
+  period: PayrollPeriod | undefined
   rows: PayrollRegisterRow[]
   totals: {
     grossPay: number
@@ -73,12 +75,12 @@ export interface AttendanceSummaryRow {
 }
 
 export async function getAttendanceSummary(session: SessionUser): Promise<AttendanceSummaryRow[]> {
-  const employees = await getEmployees(session)
+  const [employees, records] = await Promise.all([getEmployees(session), getAttendanceRecords(session)])
   const employeeIds = new Set(employees.map((e) => e.id))
   const counts = new Map<string, Record<AttendanceStatus, number>>()
 
-  for (const record of db.attendanceRecords) {
-    if (record.companyId !== session.companyId || !employeeIds.has(record.employeeId)) continue
+  for (const record of records) {
+    if (!employeeIds.has(record.employeeId)) continue
     const bucket = counts.get(record.employeeId) ?? { present: 0, late: 0, undertime: 0, absent: 0 }
     bucket[record.status] += 1
     counts.set(record.employeeId, bucket)
@@ -99,17 +101,16 @@ export interface LeaveSummaryRow {
 }
 
 export async function getLeaveSummary(session: SessionUser): Promise<LeaveSummaryRow[]> {
-  const employees = await getEmployees(session)
+  const [employees, requests, leaveTypes] = await Promise.all([getEmployees(session), getLeaveRequests(session), fetchLeaveTypes()])
   const employeeById = new Map(employees.map((e) => [e.id, e]))
-  const leaveTypeById = new Map(db.leaveTypes.filter((lt) => lt.companyId === session.companyId).map((lt) => [lt.id, lt]))
+  const leaveTypeById = new Map(leaveTypes.map((lt) => [lt.id, lt]))
 
   const totals = new Map<string, number>()
-  for (const request of db.leaveRequests) {
-    if (request.companyId !== session.companyId || request.status !== 'approved') continue
-    if (!employeeById.has(request.employeeId)) continue
+  for (const request of requests) {
+    if (request.status !== 'approved' || !employeeById.has(request.employeeId)) continue
     const key = `${request.employeeId}::${request.leaveTypeId}`
-    const days = leaveRequestDays(request)
-    totals.set(key, (totals.get(key) ?? 0) + days)
+    // The server worked out the days when the request was filed (rest days and holidays left out).
+    totals.set(key, (totals.get(key) ?? 0) + (request.days ?? 0))
   }
 
   const rows: LeaveSummaryRow[] = []
@@ -136,104 +137,31 @@ export interface PayrollLineWithContext {
 }
 
 /**
- * Every payroll line ever run for this company, joined with its period and employee — the shared
- * dataset behind every multi-period report (Payroll Summary, statutory/BIR reports, Advanced
- * Analytics) so they all read the same real payroll history instead of each re-deriving it.
+ * The payroll lines of the last two calendar years and this one, joined with their period and employee — the shared dataset behind
+ * every multi-period report (Payroll Summary, statutory/BIR reports, Advanced Analytics) so they all read the same payroll history.
+ * shortcut: one request carries up to the last two years; a longer history needs a date range picker on the reports.
  */
 export async function getAllPayrollLines(session: SessionUser): Promise<PayrollLineWithContext[]> {
-  const [periods, employees] = await Promise.all([getPayrollPeriods(session), getEmployees(session)])
+  const [{ periods, lines }, employees] = await Promise.all([memoRead(`report-lines:${session.id}`, () => fetchReportPayrollLines()), getEmployees(session)])
   const employeeById = new Map(employees.map((e) => [e.id, e]))
+  const periodById = new Map(periods.map((p) => [p.id, p]))
 
   const rows: PayrollLineWithContext[] = []
-  for (const period of periods) {
-    const lines = await getPayrollLines(session, period.id)
-    for (const line of lines) {
-      const employee = employeeById.get(line.employeeId)
-      if (employee) rows.push({ period, line, employee })
-    }
+  for (const line of lines) {
+    const period = periodById.get(line.periodId)
+    const employee = employeeById.get(line.employeeId)
+    if (period && employee) rows.push({ period, line, employee })
   }
   return rows.sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))
 }
 
-const SAMPLE_CUTOFF_COUNT = 3
-
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-/** The most recent semi-monthly cutoffs (1st–15th, 16th–end of month) that have fully ended, newest first. */
-function recentCompletedCutoffs(count: number): { startDate: string; endDate: string; label: string }[] {
-  const cutoffs: { startDate: string; endDate: string; label: string }[] = []
-  const today = new Date()
-  let year = today.getFullYear()
-  let month = today.getMonth()
-  let secondHalf = today.getDate() > 15
-  while (cutoffs.length < count) {
-    // Step back to the cutoff before the one containing today, then keep stepping back.
-    if (secondHalf) {
-      secondHalf = false
-    } else {
-      secondHalf = true
-      month -= 1
-      if (month < 0) {
-        month = 11
-        year -= 1
-      }
-    }
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const start = new Date(year, month, secondHalf ? 16 : 1)
-    const end = new Date(year, month, secondHalf ? lastDay : 15)
-    const monthName = start.toLocaleString('en-US', { month: 'short' })
-    cutoffs.push({
-      startDate: toDateKey(start),
-      endDate: toDateKey(end),
-      label: `${monthName} ${start.getDate()} – ${end.getDate()}, ${year}`,
-    })
-  }
-  return cutoffs
-}
-
 export interface StatutoryContributionData {
   rows: PayrollLineWithContext[]
-  /** True when no payroll has been run yet and `rows` are an engine-computed preview, not saved payroll. */
+  /** Always false now: the report reads saved payroll only. Kept for the report's "sample data" notice. */
   isSample: boolean
 }
 
-/**
- * Real payroll lines when any payroll has been run. Otherwise, a preview of the last few completed
- * cutoffs computed by the real payroll engine (same statutory brackets and tax table) without
- * saving anything — so the consolidated report is never empty in a fresh demo, while no fake
- * periods leak into the rest of the app.
- */
+/** The payroll lines of finalized runs the consolidated statutory report is built from. */
 export async function getStatutoryContributionData(session: SessionUser): Promise<StatutoryContributionData> {
-  const real = await getAllPayrollLines(session)
-  if (real.length > 0) return { rows: real, isSample: false }
-
-  const employees = (await getEmployees(session)).filter((e) => e.employment.status === 'active')
-  const rows: PayrollLineWithContext[] = []
-  const sampleSequence = new Map<number, number>()
-  for (const cutoff of recentCompletedCutoffs(SAMPLE_CUTOFF_COUNT)) {
-    const year = Number(cutoff.endDate.slice(0, 4))
-    sampleSequence.set(year, (sampleSequence.get(year) ?? 0) + 1)
-    const payDate = new Date(`${cutoff.endDate}T00:00:00`)
-    payDate.setDate(payDate.getDate() + 5)
-    const period: PayrollPeriod = {
-      id: `sample_${cutoff.startDate}`,
-      companyId: session.companyId,
-      // Illustrative numbering (PR001 per year) — these sample periods are not real runs.
-      payrollNumber: formatPayrollNumber(sampleSequence.get(year) ?? 1),
-      payrollYear: year,
-      label: cutoff.label,
-      startDate: cutoff.startDate,
-      endDate: cutoff.endDate,
-      payDate: toDateKey(payDate),
-      // Draft, so hourly/output employees are costed from their approved (not-yet-locked) work logs.
-      status: 'draft',
-    }
-    for (const employee of employees) {
-      const line = previewPayrollLine(session, period, employee)
-      if (line) rows.push({ period, line, employee })
-    }
-  }
-  return { rows: rows.sort((a, b) => a.period.startDate.localeCompare(b.period.startDate)), isSample: true }
+  return { rows: (await getAllPayrollLines(session)).filter((r) => r.period.status === 'finalized'), isSample: false }
 }

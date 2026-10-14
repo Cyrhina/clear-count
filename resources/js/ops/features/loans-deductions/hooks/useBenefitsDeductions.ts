@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import { fetchBenefitPlans, fetchDeductionPlans, fetchEmployeeBenefits, fetchEmployeeDeductions } from '@ops/lib/services/benefitsApiService'
 import { fetchLoanTypes } from '@ops/lib/services/loanApiService'
-import { getDeductionConfigs } from '@ops/lib/services/payrollSettingsService'
+import { getDeductionConfigs } from '@ops/lib/services/payrollConfigService'
 import type { BenefitCategory, DeductionConfig } from '@ops/types/domain'
 
 /** Key of benefits and deductions; a save invalidates plans and enrolments together. */
@@ -43,7 +43,7 @@ export function useDeductionConfigs() {
   const { user } = useSession()
   const [configs, setConfigs] = useState<DeductionConfig[]>([])
   useEffect(() => {
-    getDeductionConfigs(user).then(setConfigs)
+    getDeductionConfigs().then((list) => setConfigs(list.map((c) => ({ ...c, companyId: '' }))))
   }, [user])
   return configs
 }

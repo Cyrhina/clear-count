@@ -11,7 +11,7 @@ import { CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@op
 import { FilterLabel, ReportFilterBar, ReportScopePicker, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
 import { defaultScope, inScope, scopeLabel, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
-import { useAllPayrollLines, useStatutoryContributionData } from '@ops/features/reports/hooks/useReports'
+import { useFinalizedPayrollLines, useStatutoryContributionData } from '@ops/features/reports/hooks/useReports'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { Employee } from '@ops/types/domain'
@@ -36,7 +36,7 @@ function shareFor(type: ContributionType, line: { sssEmployeeShare: number; sssE
 
 export function StatutoryContributionReport({ type }: { type: ContributionType }) {
   const meta = CONTRIBUTION_META[type]
-  const { rows, isLoading } = useAllPayrollLines()
+  const { rows, isLoading } = useFinalizedPayrollLines()
   const periods = useMemo(() => {
     const seen = new Map<string, (typeof rows)[number]['period']>()
     for (const r of rows) seen.set(r.period.id, r.period)
@@ -156,7 +156,7 @@ export function StatutoryContributionReport({ type }: { type: ContributionType }
 
 export function Bir2316Report() {
   const { employees, isLoading: employeesLoading } = useEmployees()
-  const { rows, isLoading } = useAllPayrollLines()
+  const { rows, isLoading } = useFinalizedPayrollLines()
   const [employeeId, setEmployeeId] = useState<string | undefined>(undefined)
 
   const years = useMemo(() => {
@@ -258,7 +258,7 @@ export function Bir2316Report() {
 }
 
 export function Bir1601CReport() {
-  const { rows, isLoading } = useAllPayrollLines()
+  const { rows, isLoading } = useFinalizedPayrollLines()
 
   const months = useMemo(() => {
     const set = new Set(rows.map((r) => r.period.payDate.slice(0, 7)))

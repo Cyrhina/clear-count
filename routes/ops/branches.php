@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 // Required inside the auth + verified + active group in routes/web.php.
 
 // The employee list filters by branch and department, so anyone who can open it may read them.
-Route::get('api/branches', [BranchController::class, 'index'])->middleware('permission:branches.manage|employees.view')->name('branches.index');
+Route::get('api/branches', [BranchController::class, 'index'])->middleware('permission:branches.manage|employees.view|reports.view|payroll.view')->name('branches.index');
 Route::get('api/branch-departments', [BranchDepartmentController::class, 'index'])->middleware('permission:branches.manage|employees.view')->name('branch-departments.index');
 
 Route::middleware('permission:branches.manage')->group(function () {

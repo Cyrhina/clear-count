@@ -1,12 +1,11 @@
 import { camelizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
 import { statusForPunch } from '@ops/lib/attendance/status'
-import { fetchAllEmployees, getEmployees } from '@ops/lib/services/employeeService'
+import { memoRead } from '@ops/lib/api/memo'
+import { fetchAllEmployees } from '@ops/lib/services/employeeService'
+import { fetchApprovedLeaves } from '@ops/lib/services/leaveApiService'
 import { fetchShiftTemplates } from '@ops/lib/services/scheduleService'
-import { materializeWfhRecords } from '@ops/lib/services/wfhService'
-import { scopeToCompany } from '@ops/lib/tenancy/tenantScope'
-import { db } from '@ops/mock-data'
-import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveRequest, Schedule, SessionUser } from '@ops/types/domain'
+import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, Schedule, SessionUser } from '@ops/types/domain'
 
 // ---- On the API: daily attendance, adjustments, biometrics import -------------------------------------------------------
 
@@ -185,38 +184,16 @@ export async function logAttendance(input: LogAttendanceInput): Promise<LogAtten
   return res.data
 }
 
-// ---- Still the mock until their modules move: reports and dashboards (P14), the payroll display helpers (P17) --------------------
+// ---- Read helpers for the reports, dashboards and notifications (the same data, on the API) ---------------------------------------
 
-async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
-  const employees = await getEmployees(session)
-  return new Set(employees.map((e) => e.id))
-}
+/** Every attendance record of the last year the user may see. */
+export const getAttendanceRecords = (session: SessionUser): Promise<AttendanceRecord[]> => memoRead(`attendance:${session.id}`, fetchAttendanceHistory)
 
-export async function getSchedules(session: SessionUser) {
-  return scopeToCompany(db.schedules, session.companyId)
-}
-
-/** Every attendance record in scope, unfiltered by date — used to derive Daily/Hourly Basic Pay for a Payroll Run. */
-export async function getAttendanceRecords(session: SessionUser): Promise<AttendanceRecord[]> {
-  materializeWfhRecords()
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
-}
-
-export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.attendanceAdjustments.filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId)).sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))
+export async function getAttendanceAdjustments(_session: SessionUser): Promise<AttendanceAdjustment[]> {
+  return (await memoRead(`adjustments:${_session.id}`, fetchAdjustments)).slice().sort((x, y) => y.requestedAt.localeCompare(x.requestedAt))
 }
 
 export { statusForPunch }
 
 /** Approved leave requests overlapping a date range, with their leave type — for leave-aware attendance status. */
-export async function getApprovedLeavesInRange(session: SessionUser, from: string, to: string): Promise<{ request: LeaveRequest; typeName: string; isPaid: boolean }[]> {
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.leaveRequests
-    .filter((r) => r.companyId === session.companyId && r.status === 'approved' && employeeIds.has(r.employeeId) && r.dateFrom <= to && r.dateTo >= from)
-    .map((request) => {
-      const type = db.leaveTypes.find((t) => t.id === request.leaveTypeId)
-      return { request, typeName: type?.name ?? 'Leave', isPaid: type?.isPaid !== false }
-    })
-}
+export const getApprovedLeavesInRange = (_session: SessionUser, from: string, to: string) => fetchApprovedLeaves(from, to)

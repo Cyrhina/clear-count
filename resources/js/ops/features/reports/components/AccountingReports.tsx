@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { FilterLabel,ReportFilterBar, ReportScopePicker, ReportViewShell } from '@ops/features/reports/components/shared'
 import { defaultScope, inScope, scopeLabel, type ReportScope } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
-import { useAllPayrollLines } from '@ops/features/reports/hooks/useReports'
+import { useFinalizedPayrollLines } from '@ops/features/reports/hooks/useReports'
 import { formatCurrency } from '@ops/lib/utils/format'
 
 interface AccountRow {
@@ -16,7 +16,7 @@ interface AccountRow {
 }
 
 export function DebitCreditReport() {
-  const { rows, isLoading } = useAllPayrollLines()
+  const { rows, isLoading } = useFinalizedPayrollLines()
   const periods = useMemo(() => {
     const seen = new Map<string, (typeof rows)[number]['period']>()
     for (const r of rows) seen.set(r.period.id, r.period)

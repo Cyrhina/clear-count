@@ -4,8 +4,9 @@
 import type { EmployeePage, EmployeeListParams, EmployeeRecord } from '@ops/features/employees/types'
 import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
+import { memoRead } from '@ops/lib/api/memo'
+import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import { ensureBranchDepartment } from '@ops/lib/services/branchDepartmentService'
-import { scopeForSession } from '@ops/lib/tenancy/tenantScope'
 import { db } from '@ops/mock-data'
 import type {
   Employee,
@@ -18,11 +19,17 @@ import type {
 } from '@ops/types/domain'
 
 /**
- * Mock-backed today, swappable for real HTTP calls later without changing
- * callers: keep the same async signatures and return shapes.
+ * The employees the signed-in user may see, for the reports, dashboards and the other screens that read a plain list. The roles that
+ * open the employee records get them; the payroll role, which may not, gets the payroll directory (names, jobs, pay). A manager gets
+ * their branch and an employee only themselves: the server cuts the list down.
  */
 export async function getEmployees(session: SessionUser): Promise<Employee[]> {
-  return scopeForSession(db.employees, session, { employeeIdField: 'id' })
+  return memoRead(`employees:${session.id}`, () => (roleHasCapability(session.role, 'employees.view') ? fetchAllEmployees() : fetchPayrollDirectory()))
+}
+
+async function fetchPayrollDirectory(): Promise<Employee[]> {
+  const res = await api.get<{ data: unknown[] }>('/api/payroll/employees')
+  return camelizeKeys<Employee[]>(res.data).map((e) => ({ ...e, companyId: '', compensation: e.compensation ?? { basicPay: 0, payType: 'monthly', allowances: [] }, bank: {}, government: e.government ?? {} }))
 }
 
 export interface CreateEmployeeInput {

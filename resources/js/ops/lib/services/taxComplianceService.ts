@@ -9,10 +9,12 @@ import {
   worstStatus,
   type TaxStatus,
 } from '@ops/lib/payroll/taxCompliance'
+import { fetchBonuses } from '@ops/lib/services/bonusApiService'
+import { fetchEmployeeBenefits } from '@ops/lib/services/benefitsApiService'
 import { getEmployees } from '@ops/lib/services/employeeService'
 import { getAllPayrollLines } from '@ops/lib/services/reportService'
-import { db } from '@ops/mock-data'
-import type { Employee, SessionUser } from '@ops/types/domain'
+import { fetchThirteenthMonthLines, fetchThirteenthMonthRuns } from '@ops/lib/services/thirteenthMonthApiService'
+import type { Employee, SessionUser, ThirteenthMonthLine } from '@ops/types/domain'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
@@ -73,12 +75,15 @@ export interface TaxComplianceData {
 
 /** One employee's tax picture for a calendar year, from the real payroll lines plus a full-year projection of benefits and 13th month. */
 export async function getTaxComplianceData(session: SessionUser, year: number): Promise<TaxComplianceData> {
-  const [lines, employees] = await Promise.all([getAllPayrollLines(session), getEmployees(session)])
-  const bonuses = db.bonuses.filter((b) => b.companyId === session.companyId)
-  const benefits = db.employeeBenefits.filter((b) => b.companyId === session.companyId)
-  const runs = db.thirteenthMonthRuns.filter((r) => r.companyId === session.companyId && r.year === year)
-  const runIds = new Set(runs.map((r) => r.id))
-  const thirteenthLines = db.thirteenthMonthLines.filter((l) => l.companyId === session.companyId && runIds.has(l.runId))
+  // A role that may not read one of these gets none of it, rather than no report.
+  const [lines, employees, bonuses, benefits, runs] = await Promise.all([
+    getAllPayrollLines(session).then((all) => all.filter((l) => l.period.status === 'finalized')),
+    getEmployees(session),
+    fetchBonuses().catch(() => []),
+    fetchEmployeeBenefits().catch(() => []),
+    fetchThirteenthMonthRuns().catch(() => []),
+  ])
+  const thirteenthLines: ThirteenthMonthLine[] = (await Promise.all(runs.filter((r) => r.year === year && r.status === 'finalized').map((r) => fetchThirteenthMonthLines(r.id).catch(() => [])))).flat()
 
   const years = [...new Set([new Date().getFullYear(), ...lines.map((l) => Number(l.period.payDate.slice(0, 4)))])].sort((a, b) => b - a)
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import {
   getAllPayrollLines,
@@ -94,7 +94,13 @@ export function useAllPayrollLines() {
   return { rows: rows ?? [], isLoading: rows === null }
 }
 
-/** Real payroll lines, or an engine-computed sample when no payroll has been run — powers the consolidated statutory report. */
+/** The payroll lines of finalized runs only: what the statutory, tax and accounting reports are built from (a run still in review is not a remittance yet). */
+export function useFinalizedPayrollLines() {
+  const { rows, isLoading } = useAllPayrollLines()
+  return { rows: useMemo(() => rows.filter((r) => r.period.status === 'finalized'), [rows]), isLoading }
+}
+
+/** The saved payroll lines of finalized runs, for the consolidated statutory report. */
 export function useStatutoryContributionData() {
   const { user } = useSession()
   const [data, setData] = useState<StatutoryContributionData | null>(null)
