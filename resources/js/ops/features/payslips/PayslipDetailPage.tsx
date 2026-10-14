@@ -1,4 +1,4 @@
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
@@ -48,9 +48,14 @@ export function PayslipDetailPage() {
           <ArrowLeft className="size-3.5" />
           {from?.from ? `Back to ${from.fromLabel ?? 'previous page'}` : 'Back to payslips'}
         </Link>
-        <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
-          Print / Download
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" icon={<Download className="size-4" />} onClick={() => window.location.assign(`/api/payslips/${line.id}/pdf`)}>
+            Download PDF
+          </Button>
+          <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
+            Print
+          </Button>
+        </div>
       </div>
 
       <PayslipCard

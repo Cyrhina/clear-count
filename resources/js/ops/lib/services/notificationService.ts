@@ -1,4 +1,4 @@
-import { buildSampleLoans, buildSamplePayslips } from '@ops/features/ess/sampleData'
+import { buildSampleLoans } from '@ops/features/ess/sampleData'
 import { getAttendanceRecords } from '@ops/lib/services/attendanceService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
@@ -6,7 +6,7 @@ import { formatCurrency } from '@ops/lib/utils/format'
 import { db } from '@ops/mock-data'
 import type { SessionUser } from '@ops/types/domain'
 
-// mock: remove in P10 (payroll), P11 (payslips), P14 (reports). Requests waiting for approval and their decisions are stored notifications now (notificationApiService); only these derived ones remain.
+// mock: remove in P13 (loan notice), P14 (reports). Payslip notices are stored notifications now (sent when a run is finalized). Requests waiting for approval and their decisions are stored notifications now (notificationApiService); only these derived ones remain.
 export interface AppNotification {
   id: string
   /** Stored notifications only: false until opened. */
@@ -52,38 +52,8 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
   }
 
   if (session.employeeId) {
-    const finalizedPeriods = db.payrollPeriods.filter(
-      (p) => p.status === 'finalized' && db.payrollLines.some((l) => l.periodId === p.id && l.employeeId === session.employeeId),
-    )
-    finalizedPeriods.forEach((p) => {
-      const line = db.payrollLines.find((l) => l.periodId === p.id && l.employeeId === session.employeeId)
-      notifications.push({
-        id: `payslip-ready-${p.id}`,
-        message: `Your payslip for "${p.label}" is now available`,
-        tone: 'success',
-        timestamp: new Date().toISOString(),
-        link: '/ess/payslips',
-        highlightId: line?.id,
-      })
-    })
-
     const employee = db.employees.find((e) => e.id === session.employeeId)
     if (employee) {
-      // Payroll hasn't been run yet this session (payroll periods/lines reset on every full
-      // reload) — surface the same illustrative payslip shown on `/ess/payslips` so the
-      // notification's highlight always lands on a visible row.
-      if (finalizedPeriods.length === 0) {
-        const latestSample = buildSamplePayslips(employee, employee.companyId).at(-1)!
-        notifications.push({
-          id: `payslip-ready-${latestSample.line.id}`,
-          message: `Your payslip for "${latestSample.period.label}" is now available`,
-          tone: 'success',
-          timestamp: new Date().toISOString(),
-          link: '/ess/payslips',
-          highlightId: latestSample.line.id,
-        })
-      }
-
       // Loan payment confirmation — from real repayment history if this employee has one,
       // else the same illustrative sample loan shown on `/ess/loans` when there's no real
       // loan yet.

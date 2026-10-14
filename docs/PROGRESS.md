@@ -25,8 +25,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
 | P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
 | P9 | Benefits, loans, deductions, bonuses (a, b, c) | done (merged #14, #15, #16) | backend/p09-benefits-loans, backend/p09b-loans, backend/p09c-bonuses | #14, #15, #16 | 2026-10-24 |
-| P10 | Payroll engine and runs (a: engine, b: runs) | in progress: P10b in review (P10a merged #17) | backend/p10a-payroll-engine, backend/p10b-payroll-runs | #17, #18 | |
-| P11 | Payslips, PDF, email | not started | | | |
+| P10 | Payroll engine and runs (a: engine, b: runs) | done (merged #17, #18) | backend/p10a-payroll-engine, backend/p10b-payroll-runs | #17, #18 | 2026-10-26 |
+| P11 | Payslips, PDF, email | in progress: in review | backend/p11-payslips | #19 | |
 | P12 | 13th month and separate bonus payslips | not started | | | |
 | P13 | Employee and manager self-service | not started | | | |
 | P14 | Dashboards, reports, tax compliance | not started | | | |
@@ -70,12 +70,13 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `leaveService` (mock): getLeaveTypes, getLeaveRequests, getLeaveBalance, planLeaveRequest, submitLeaveRequest; `features/leave/hooks/useLeave.ts`; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | ESS leave pages, dashboards, notifications, manager service, 13th month, reports (late and absence, team) | P13 (ESS), P14 (dashboards, reports) | P6 |
 | `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords`; `features/ess/otApplicationStore.ts` (ESS-only OT applications) | dashboards, reports (basic, team), manager service, notifications, ESS overtime page | P13 (ESS), P14 (dashboards, reports) | P7 |
 | `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, work log card and rate basis display, dashboards, reports, manager service | P13 (ESS), P14 (dashboards, reports) | P7 |
-| `notificationService` (mock): getNotifications (team absence, payroll reminders, payslip and loan notices only) | the bell and Notifications page, merged with the stored ones | P10, P11 (payroll, payslips), P14 | P7 |
+| `notificationService` (mock): getNotifications (team absence, payroll reminders and the loan payment notice only) | the bell and Notifications page, merged with the stored ones | P13 (loan notice), P14 | P7 |
 | `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, marginalTaxRateFor, computeSeparateBonusPayslip, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | report previews (`reportService`), 13th month (marginal rate), separate bonus payslips, the Computation drawer and PayslipCard (they explain a stored line with these helpers), reports, approvals and notifications (periods through the wrappers) | P12 (13th month, bonus payslips), P14 (reports), P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | tax and compliance report, report previews | P14 (reports) | P9a |
 | `loanService` (mock): getLoans; `db.loans`, `db.loanTypes` (mock-data generators); the ESS loans store (`features/ess` sample loans) | ESS loans page, notifications (loan payment notice), report previews | P13 (ESS), P14 | P9b |
 | `bonusService` (mock): getBonuses; `db.bonuses` (mock-data generator) | 13th month and separate bonus payslips (`BonusPayslipPage`), report previews | P12 (separate payslips), P14 | P9c |
-| `db.payrollPeriods`, `db.payrollLines` (never filled now: the runs are on the API and the demo runs come from the seeder) | ESS home, payslips and payslip detail (`features/ess`), `dashboardService` (payroll cards), `notificationService` (payslip notices) | P11 (payslips), P13 (ESS), P14 (dashboards) | P10b |
+| `db.payrollPeriods`, `db.payrollLines` (never filled now: the runs are on the API and the demo runs come from the seeder) | `dashboardService` (payroll cards) | P14 (dashboards) | P10b |
+| `payslipEmailService` (mock): the 13th month and bonus kinds (`sendPayslipEmail`, `db.payslipEmails`); `lib/payroll/payslipEmail.ts` (client-side email preview) | the 13th month and bonus payslip pages | P12 | P11 |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -94,6 +95,28 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P11 - 2026-10-26
+- Branch: backend/p11-payslips (pushed: no)
+- Owner decision: PDF package is `barryvdh/laravel-dompdf` (pure PHP, no Chrome in the Docker image).
+- Done:
+  - `GET api/payslips` (the signed-in employee's own finalized lines with their runs), `GET api/payslips/{line}`, `GET api/payslips/{line}/pdf`. Payroll and HR roles (`payslips.view`, `payroll.view`) open any payslip of their company; an employee only their own; a line of a run that is not finalized answers 404.
+  - The PDF is `resources/views/pdf/payslip.blade.php` rendered by `App\Support\PayslipPdf` (company header, employee, period, earnings, deductions, benefits, net pay).
+  - `payslip_emails` (kind, source, employee, subject, recipient, status queued/sent/failed, attempts, error, sent time and sender), `App\Jobs\SendPayslipEmail` (one job per employee, delayed one second apart so a bulk send is throttled; a missing or invalid address fails the row with the reason, without trying) and `PayslipMail` (PDF attached). `GET api/payslip-emails?kind=payroll&source_id=` and `POST api/payslip-emails` (`payslips.generate`; 409 until the run is finalized). The recipient is the employee's `personalEmail`. The container already runs `queue:work` (s6 `queue-worker`).
+  - Finalizing a run notifies each employee who has a login ("Your payslip for ... is now available", opens `/ess/payslips` and highlights the line); this replaces the mock payslip notices.
+  - Frontend: `payslipEmailService` calls the API for the `payroll` kind (queued reads as "sending" and the hook polls every 3 s while any is queued); a Download PDF button on the payslip pages; the ESS payslips list, detail and home read `GET api/payslips`. The illustrative sample payslips and the preview dialog on the ESS page are gone (an employee with no finalized run now sees an empty list).
+  - Demo: the login-page Employee account now has an employee record, so the ESS pages have data.
+  - Tests: `PayslipTest` (3: finalize notice and 404 before finalization; PDF for payroll and own employee only; queued email, outcome record, missing address, permission). The run-test helpers moved to `tests/Pest.php`. Pest 270 (266 pass, 4 skipped); `tsc` and the build pass.
+  - Browser-tested as the demo Employee: ESS payslips list (3 payslips), PDF download (200, `application/pdf`, named by run and employee), another employee's payslip 404.
+- Next: P12, 13th month and separate bonus payslips (they reuse the payslip email table with kinds `thirteenth_month` and `bonus`, and the PDF view).
+- Gotchas:
+  - Not checked visually: how the PDF looks, and that the peso sign shows (DejaVu Sans has it; the browser pane could not render the PDF). Open one before sending real payslips.
+  - Not tested end to end: a real send. `MAIL_MAILER` is `log` in `.env.example`; set a real mailer in Coolify. The PDF is about 880 KB because the font is embedded.
+  - The mail's "View My Payslips" button points to `/ess/payslips` (the employee must log in).
+  - The Payslip Report and the admin payslip list were not changed. The email preview text is still built in the browser (`lib/payroll/payslipEmail.ts`); the sent email's subject is the one the screen sends, the body is the server's `mail.payslip` view.
+  - Not browser-tested: the bulk email buttons and the status column as Payroll Admin.
+- Checks: php artisan test 270 (266 passed, 4 skipped); tsc and the build pass.
+
 
 ### P10b - 2026-10-25
 - Branch: backend/p10b-payroll-runs (pushed: no)

@@ -1,38 +1,10 @@
 <?php
 
 use App\Models\AttendanceRecord;
-use App\Models\Branch;
-use App\Models\Company;
 use App\Models\Employee;
-use App\Models\EmployeeCompensation;
 use App\Models\EmployeeDeduction;
 use App\Models\Loan;
-use App\Models\PayrollGroup;
 use App\Models\WorkLog;
-use App\Models\WorkSchedule;
-
-/** A semi-monthly group with one salaried employee on a Mon-Fri schedule. */
-function runStaff(Company $company, array $compensation = []): array
-{
-    $schedule = WorkSchedule::firstOrCreate(['company_id' => $company->id, 'name' => 'Day'], ['shift_type' => 'day', 'start_time' => '09:00', 'end_time' => '18:00', 'break_minutes' => 60, 'grace_period_minutes' => 10, 'days_of_week' => [1, 2, 3, 4, 5], 'rest_days' => [6, 7]]);
-    $group = PayrollGroup::firstOrCreate(['company_id' => $company->id, 'name' => 'Semi'], [
-        'frequency' => 'semi_monthly', 'cutoff_config' => ['start_day' => 1], 'pay_date_config' => ['type' => 'fixed'], 'deduction_schedule' => 'DIVIDED', 'work_schedule_id' => $schedule->id, 'effective_date' => '2024-01-01',
-    ]);
-    $employee = Employee::factory()->create([
-        'company_id' => $company->id, 'branch_id' => Branch::factory()->create(['company_id' => $company->id])->id, 'payroll_group_id' => $group->id,
-        'employment' => ['position' => 'Clerk', 'department' => 'Sales', 'employmentType' => 'regular', 'dateHired' => '2020-01-01', 'status' => 'active', 'category' => 'regular'],
-        'compensation' => ['payType' => 'monthly', 'basicPay' => 30000, 'allowances' => [], ...$compensation],
-    ]);
-    EmployeeCompensation::create(['company_id' => $company->id, 'employee_id' => $employee->id, 'effective_from' => '2020-01-01', 'rate_type' => $employee->compensation['payType'], 'basic_rate' => $employee->compensation['basicPay'], 'allowances' => [], 'reason' => 'Initial Hire']);
-
-    return [$employee, $group];
-}
-
-function newRun($test, $admin, ?int $groupId, array $over = []): int
-{
-    return $test->actingAs($admin)->postJson('/api/payroll', ['label' => 'Oct 1 – 15, 2026', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $groupId, ...$over])
-        ->assertCreated()->json('data.id');
-}
 
 test('a run goes draft, review, approved, finalized; finalizing posts the loan, settles the one-time deduction and locks the run', function () {
     $admin = companyUser('payroll_admin');

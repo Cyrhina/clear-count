@@ -19,6 +19,7 @@ import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { MetricCard } from '@ops/components/ui/MetricCard'
 import { Skeleton } from '@ops/components/ui/Skeleton'
+import { useMyPayslips } from '@ops/features/payroll/hooks/usePayroll'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
 import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
 import { useNotifications } from '@ops/features/notifications/hooks/useNotifications'
@@ -104,6 +105,7 @@ function AttendanceCalendar({ records }: { records: AttendanceRecord[] }) {
 
 export function EssHomePage() {
   const { employee, isLoading } = useSelfEmployee()
+  const { payslips: myPayslips } = useMyPayslips()
   const { user } = useSession()
   const { requests, isLoading: isLoadingLeave } = useLeaveRequests()
   const { leaveTypes } = useLeaveTypes()
@@ -141,15 +143,10 @@ export function EssHomePage() {
   const activeLoans = db.loans.filter((l) => l.employeeId === employee.id && l.status === 'active')
   const totalMonthlyDeduction = activeLoans.reduce((sum, l) => sum + l.monthlyDeduction, 0)
 
-  const finalizedLines = db.payrollLines
-    .filter((l) => l.employeeId === employee.id)
-    .filter((l) => db.payrollPeriods.find((p) => p.id === l.periodId)?.status === 'finalized')
-  const latestFinalizedLine = finalizedLines.at(-1)
-  const latestPeriod = latestFinalizedLine && db.payrollPeriods.find((p) => p.id === latestFinalizedLine.periodId)
-  const payHistory = finalizedLines.slice(-6).map((line) => {
-    const period = db.payrollPeriods.find((p) => p.id === line.periodId)
-    return { label: period?.label ?? '', grossPay: line.grossPay, netPay: line.netPay }
-  })
+  const finalizedLines = myPayslips.slice().reverse() // oldest first, like the history below expects
+  const latestFinalizedLine = finalizedLines.at(-1)?.line
+  const latestPeriod = finalizedLines.at(-1)?.period
+  const payHistory = finalizedLines.slice(-6).map(({ line, period }) => ({ label: period.label, grossPay: line.grossPay, netPay: line.netPay }))
 
   const QUICK_ACTIONS = [
     { label: 'File Leave', icon: CalendarPlus, to: '/ess/leave' },

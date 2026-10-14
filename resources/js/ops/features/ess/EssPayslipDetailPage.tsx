@@ -1,22 +1,22 @@
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
+import { useMyPayslips } from '@ops/features/payroll/hooks/usePayroll'
 import { PayslipCard } from '@ops/features/payslips/components/PayslipCard'
-import { db } from '@ops/mock-data'
 
 export function EssPayslipDetailPage() {
   const { lineId } = useParams<{ lineId: string }>()
   const { employee, isLoading } = useSelfEmployee()
+  const { payslips, isLoading: loadingPayslips } = useMyPayslips()
 
-  if (isLoading) return <Skeleton className="h-96" />
+  if (isLoading || loadingPayslips) return <Skeleton className="h-96" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
 
-  const line = db.payrollLines.find((l) => l.id === lineId && l.employeeId === employee.id)
-  if (!line) return <p className="text-sm text-muted-foreground">Payslip not found.</p>
-
-  const period = db.payrollPeriods.find((p) => p.id === line.periodId)
+  const mine = payslips.find((p) => p.line.id === lineId)
+  if (!mine) return <p className="text-sm text-muted-foreground">Payslip not found.</p>
+  const { line, period } = mine
 
   return (
     <div className="space-y-5">
@@ -25,9 +25,14 @@ export function EssPayslipDetailPage() {
           <ArrowLeft className="size-3.5" />
           Back to my payslips
         </Link>
-        <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
-          Print / Download
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" icon={<Download className="size-4" />} onClick={() => window.location.assign(`/api/payslips/${line.id}/pdf`)}>
+            Download PDF
+          </Button>
+          <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
+            Print
+          </Button>
+        </div>
       </div>
 
       <PayslipCard employee={employee} period={period} line={line} />

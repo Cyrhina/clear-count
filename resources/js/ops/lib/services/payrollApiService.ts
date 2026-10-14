@@ -100,3 +100,17 @@ export async function fetchPeriodRecords(periodId: string): Promise<PeriodRecord
   const raw = camelizeKeys<{ attendance: ApiRecord[]; overtime: ApiOvertime[]; workLogs: ApiWorkLog[] }>(res.data)
   return { attendance: raw.attendance.map(toAttendanceRecord), overtime: raw.overtime.map(toOvertimeRecord), workLogs: raw.workLogs.map(toWorkLog) }
 }
+
+export interface MyPayslip {
+  line: PayrollLine
+  period: PayrollPeriod
+}
+
+/** The signed-in employee's own payslips: their lines in finalized runs, newest pay date first. */
+export async function fetchMyPayslips(): Promise<MyPayslip[]> {
+  const res = await api.get<{ data: { line: unknown; period: unknown }[] }>('/api/payslips')
+  return res.data.map((r) => ({ line: camelizeKeys<PayrollLine>(r.line), period: toPeriod(camelizeKeys<ApiPeriod>(r.period)) }))
+}
+
+/** One payslip the signed-in user may open: payroll and HR any, an employee only their own. */
+export const fetchPayslip = async (lineId: string): Promise<PayrollLine> => camelizeKeys<PayrollLine>((await api.get<{ data: unknown }>(`/api/payslips/${lineId}`)).data)

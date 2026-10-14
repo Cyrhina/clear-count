@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Button } from '@ops/components/ui/Button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { FilterField, SortControl } from '@ops/components/ui/FiltersPopover'
 import type { SortDirection } from '@ops/components/ui/FiltersPopover'
@@ -13,16 +12,12 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { buildSamplePayslips } from '@ops/features/ess/sampleData'
-import type { SamplePayslip } from '@ops/features/ess/sampleData'
 import { useOvertimeRecords } from '@ops/features/overtime/hooks/useOvertime'
-import { PayslipCard } from '@ops/features/payslips/components/PayslipCard'
+import { useMyPayslips } from '@ops/features/payroll/hooks/usePayroll'
 import { useHighlightTarget } from '@ops/hooks/useHighlightTarget'
-import { useTenant } from '@ops/hooks/useTenant'
-import { db } from '@ops/mock-data'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { PayrollLine, PayrollPeriod } from '@ops/types/domain'
+import type { PayrollLine } from '@ops/types/domain'
 
 function statutoryTotal(line: PayrollLine): number {
   return line.sssEmployeeShare + line.philhealthEmployeeShare + line.pagibigEmployeeShare + line.withholdingTax
@@ -30,33 +25,25 @@ function statutoryTotal(line: PayrollLine): number {
 
 export function EssPayslipsPage() {
   const { employee, isLoading } = useSelfEmployee()
-  const { company } = useTenant()
+  const { payslips, isLoading: loadingPayslips } = useMyPayslips()
   const { records: overtimeRecords } = useOvertimeRecords()
   const { highlightId } = useHighlightTarget()
   const navigate = useNavigate()
-  const [preview, setPreview] = useState<{ period: PayrollPeriod; line: PayrollLine } | null>(null)
   const [search, setSearch] = useState('')
   const [year, setYear] = useState('all')
   const [sortBy, setSortBy] = useState('payDate')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
-  if (isLoading) return <Skeleton className="h-72" />
+  if (isLoading || loadingPayslips) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
 
-  const realLines = db.payrollLines
-    .filter((l) => l.employeeId === employee.id)
-    .filter((l) => db.payrollPeriods.find((p) => p.id === l.periodId)?.status === 'finalized')
-
-  const isSample = realLines.length === 0
-  const rows: SamplePayslip[] = isSample
-    ? buildSamplePayslips(employee, employee.companyId)
-    : realLines.map((line) => {
-        const period = db.payrollPeriods.find((p) => p.id === line.periodId)!
-        const otHours = overtimeRecords
-          .filter((r) => r.employeeId === employee.id && r.status === 'approved' && r.date >= period.startDate && r.date <= period.endDate)
-          .reduce((sum, r) => sum + r.hours, 0)
-        return { line, period, otHours }
-      })
+  const rows = payslips.map(({ line, period }) => ({
+    line,
+    period,
+    otHours: overtimeRecords
+      .filter((r) => r.employeeId === employee.id && r.status === 'approved' && r.date >= period.startDate && r.date <= period.endDate)
+      .reduce((sum, r) => sum + r.hours, 0),
+  }))
 
   const years = [...new Set(rows.map((r) => r.period.payDate.slice(0, 4)))].sort().reverse()
   const query = search.trim().toLowerCase()
@@ -125,10 +112,10 @@ export function EssPayslipsPage() {
             ]}
             actions={
               <>
-                <Button size="sm" variant="secondary" icon={<Eye className="size-3.5" />} onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}>
+                <Button size="sm" variant="secondary" icon={<Eye className="size-3.5" />} onClick={() => navigate(`/ess/payslips/${line.id}`)}>
                   View
                 </Button>
-                <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}>
+                <Button size="sm" variant="secondary" icon={<Download className="size-3.5" />} onClick={() => window.location.assign(`/api/payslips/${line.id}/pdf`)}>
                   Download
                 </Button>
               </>
@@ -167,7 +154,7 @@ export function EssPayslipsPage() {
                     size="sm"
                     variant="secondary"
                     icon={<Eye className="size-3.5" />}
-                    onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}
+                    onClick={() => navigate(`/ess/payslips/${line.id}`)}
                   >
                     View
                   </Button>
@@ -175,7 +162,7 @@ export function EssPayslipsPage() {
                     size="sm"
                     variant="secondary"
                     icon={<Download className="size-3.5" />}
-                    onClick={() => (isSample ? setPreview({ period, line }) : navigate(`/ess/payslips/${line.id}`))}
+                    onClick={() => window.location.assign(`/api/payslips/${line.id}/pdf`)}
                   >
                     Download
                   </Button>
@@ -188,21 +175,6 @@ export function EssPayslipsPage() {
       </EssTableView>
       </>
       )}
-
-      <Dialog open={!!preview} onOpenChange={(open) => !open && setPreview(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogTitle>
-            {preview?.period.label}
-            {preview && <span className="ml-2 text-sm font-normal text-muted-foreground">{preview.period.payrollNumber}</span>}
-          </DialogTitle>
-          <DialogDescription>Payslip preview &mdash; use Print / Download inside the full payslip for a PDF copy.</DialogDescription>
-          {preview && (
-            <div className="mt-4">
-              <PayslipCard company={company} employee={employee} period={preview.period} line={preview.line} />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
