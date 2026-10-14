@@ -5,14 +5,15 @@ namespace App\Providers;
 use App\Models\Holiday;
 use App\Support\MailLink;
 use App\Support\Notifier;
+use App\Support\Webhooks;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
@@ -53,6 +54,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Notifier::watch();
+        Webhooks::watch();
+
+        // The public API: 60 calls a minute per key (per user when no key is sent, so a bad caller cannot hide behind the key limit).
+        RateLimiter::for('api-keys', fn (Request $request) => Limit::perMinute(60)->by('api-key:'.($request->user()?->currentAccessToken()?->id ?? $request->ip())));
 
         // Feeds the "Last login" column and tells pending invites apart from active users.
         Event::listen(Login::class, fn (Login $event) => $event->user->forceFill(['last_login_at' => now()])->saveQuietly());

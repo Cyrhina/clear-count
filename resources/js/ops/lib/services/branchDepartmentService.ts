@@ -1,37 +1,7 @@
-// mock: remove in P16. addBranchDepartment and ensureBranchDepartment still serve the mock createEmployee of the Integrations CSV import.
-// The Branches, Employees and Schedules screens use the API functions at the bottom.
+// Departments of the Branches, Employees and Schedules screens, backed by `/api/branch-departments`.
 import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
-import { db } from '@ops/mock-data'
 import type { DepartmentRecord } from '@ops/features/branches/types'
-import type { BranchDepartment, SessionUser } from '@ops/types/domain'
-
-export type DepartmentResult = { ok: true; department: BranchDepartment } | { ok: false; error: string }
-
-const normalize = (name: string) => name.trim().replace(/\s+/g, ' ')
-const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
-
-function branchOf(session: SessionUser, branchId: string) {
-  return db.branches.find((b) => b.id === branchId && b.companyId === session.companyId)
-}
-
-export async function addBranchDepartment(session: SessionUser, branchId: string, name: string): Promise<DepartmentResult> {
-  const clean = normalize(name)
-  if (!branchOf(session, branchId)) return { ok: false, error: 'Branch not found.' }
-  if (!clean) return { ok: false, error: 'Enter a department name.' }
-  if (db.branchDepartments.some((d) => d.branchId === branchId && sameName(d.name, clean))) return { ok: false, error: `${clean} already exists in this branch.` }
-  const department: BranchDepartment = { id: crypto.randomUUID(), companyId: session.companyId, branchId, name: clean, supervisorEmployeeId: null }
-  db.branchDepartments.push(department)
-  return { ok: true, department }
-}
-
-/** Idempotent create — used when an employee moves to (or is imported into) a branch that doesn't have their department yet. Returns true if it was created. */
-export async function ensureBranchDepartment(session: SessionUser, branchId: string, name: string): Promise<boolean> {
-  const clean = normalize(name)
-  if (!clean || !branchOf(session, branchId)) return false
-  if (db.branchDepartments.some((d) => d.branchId === branchId && sameName(d.name, clean))) return false
-  return (await addBranchDepartment(session, branchId, clean)).ok
-}
 
 /** Departments on the Branches page, backed by `/api/branch-departments`. */
 

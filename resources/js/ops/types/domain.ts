@@ -754,24 +754,6 @@ export interface LoanRecord {
   repaymentHistory?: LoanRepaymentEntry[]
 }
 
-export interface ApiKey {
-  id: string
-  companyId: string
-  label: string
-  tokenPreview: string
-  createdAt: string
-}
-
-export type WebhookEvent = 'payroll.finalized' | 'employee.created' | 'leave.approved'
-
-export interface Webhook {
-  id: string
-  companyId: string
-  url: string
-  event: WebhookEvent
-  createdAt: string
-}
-
 export type OvertimeType = 'regular' | 'rest_day_holiday' | 'night_diff'
 
 export interface OvertimeRecord {

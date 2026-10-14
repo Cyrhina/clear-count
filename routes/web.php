@@ -60,7 +60,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         'employees' => [], 'payroll-settings' => [], 'holidays' => [], 'company-info' => [], 'branches' => [], 'schedules' => ['schedules'],
         'attendance' => ['attendance'], 'leave' => ['leave'], 'overtime' => ['overtime_night_diff'], 'statutory' => [], 'benefits' => ['loans_deductions'],
         'loans' => ['loans_deductions'], 'bonuses' => ['bonuses_incentives'], 'payroll' => [], 'payslips' => [], 'thirteenth-month' => ['thirteenth_month'],
-        'self-service' => [], 'dashboard' => [],
+        'self-service' => [], 'dashboard' => [], 'integrations' => ['api_integrations'],
     ];
     foreach ($modules as $module => $features) {
         Route::middleware(['company', ...array_map(fn ($f) => "plan:{$f},writes", $features)])->group(fn () => require __DIR__."/ops/{$module}.php");
