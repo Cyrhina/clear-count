@@ -24,8 +24,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P6 | Leave | done (merged #11) | backend/p06-leave | #11 | 2026-10-19 |
 | P7 | Overtime, work logs, approvals inbox, notifications | done (merged #12) | backend/p07-overtime | #12 | 2026-10-20 |
 | P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
-| P9 | Benefits, loans, deductions, bonuses (a: benefits and deductions, b: loans, c: bonuses) | in progress: P9a, P9b done (merged #14, #15), P9c in review | backend/p09c-bonuses | | |
-| P10 | Payroll engine and runs (a, b) | not started | | | |
+| P9 | Benefits, loans, deductions, bonuses (a, b, c) | done (merged #14, #15, #16) | backend/p09-benefits-loans, backend/p09b-loans, backend/p09c-bonuses | #14, #15, #16 | 2026-10-24 |
+| P10 | Payroll engine and runs (a: engine, b: runs) | in progress: P10a in review | backend/p10a-payroll-engine | | |
 | P11 | Payslips, PDF, email | not started | | | |
 | P12 | 13th month and separate bonus payslips | not started | | | |
 | P13 | Employee and manager self-service | not started | | | |
@@ -51,6 +51,7 @@ Decisions made during the phases (PLAN.md marks each one with **Confirm with the
 | 2026-10-13 | P6 | How do leave credits come in? | The full yearly credits are granted at once (at hire and at the start of each leave year). No monthly accrual, so there is no `leave:accrue`. |
 | 2026-10-13 | P6 | How is the leave year counted, and mid-year hires? | Calendar year. A hire gets the credits pro-rated by the months left in the hire year (to the half day). |
 | 2026-10-13 | P6 | What happens to unused credits at year end? | Carried over up to the leave type's max carry-over; the rest expires (an `expiry` ledger entry). No cash conversion. |
+| 2026-10-25 | P10 | Apply the late policy as a deduction in the payroll engine? | Not yet. The PHP engine matches the browser engine, which ignores the late policy. It can be added as a separate step later. |
 | 2026-10-12 | P0 | Give company_admin, super_admin and manager `profile.view`? | Yes, on the server and in the client copy. `ess.view` was not added to admins. |
 
 ## Mock-removal ledger
@@ -92,6 +93,25 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P10a - 2026-10-25
+- Branch: backend/p10a-payroll-engine (pushed: no)
+- Scope: P10 is split like P5. P10a is the engine (this PR); P10b is the runs (periods, lines, run, hold, release, approve, finalize, the endpoints and the frontend). P10a has no screen change: Payroll Runs, payslips and the Payroll Inputs page still use the browser engine until P10b.
+- Done:
+  - `App\Payroll\Num` (JavaScript-style rounding: halves go up), `PayFrequency` (pay schedule, cutoff index, the monthly split and the allocation methods), `RateBasis` (basic pay by rate type, daily and hourly rates, monthly equivalent, work logs of a period), `BonusMatching`, and `ComputeLine` (every step of `computeLine`: basic pay, absences, paid leave, overtime, bonuses, benefits, final-pay proration, loans, statutory shares, withholding tax with overtime and taxable bonuses at the marginal rate, the deduction waterfall so net pay never goes negative). They are pure: they take arrays in the shapes of `types/domain.ts` and return a line in the shape of `PayrollLine`.
+  - `PayrollInputs` collects a period's inputs from the database in those shapes and runs the engine over the period's employees: `PayrollInputs::lines(companyId, period)`. Employees: active, plus anyone separated within the period (final pay), limited to the period's payroll group, without the held ones. The pay rate is the compensation row in force on the period's last day; the statutory tables are the ones in force on the pay date (P8, dated). Work schedules are mapped from the database's Monday 1 to Sunday 7 to the engine's Sunday 0; the database names SSS, PhilHealth and Pag-IBIG are mapped to the names the allocation settings use.
+  - Parity: `PayrollParityTest` replays the 34 golden periods oldest first, finalizing the finalized ones so loans and one-time deductions carry over, and all 162 lines match the browser engine on every field (a test that changes one rule fails). `PayrollInputsTest` covers the database collector: salaried line with absence, overtime, bonus and loan; work logs (approved, not yet paid by another run); pay rate by date; benefits and deductions; final pay, held employees and settled one-time deductions. Tests: 259 (255 pass, 4 skipped).
+  - `Notifier` no longer fails when the permissions are not seeded yet.
+- Next: P10b, the runs. `payroll_periods` and `payroll_lines` (the line's earning and deduction lines in a `breakdown` JSON), the actions (create, run, hold, release, approve, finalize; finalize posts the loan repayments with `LoanLedger::repay`, settles the one-time deductions, locks the run), the endpoints, `GET api/payroll-inputs`, and the frontend (delete the engine in `lib/services/payrollService.ts` and `lib/payroll/*`; stop seeding the sample runs). PLAN.md P10.
+- Gotchas:
+  - Accepted difference from the browser engine: output-based pay now comes only from approved work logs. The browser engine paid an invented quantity (`mockOutputQuantity`) to an output-based employee with no logs; the PHP engine pays 0 and labels the line "Output / Piece-Rate Pay". The golden data has no such line, so the parity test shows none skipped.
+  - The late policy is not applied (owner decision above).
+  - The run's work logs are locked by P10b (`work_logs.payroll_period_id` exists since P7): `RateBasis::workLogsForPeriod` already pays only unlocked logs or the run's own.
+  - The deduction schedule options (`lib/payroll/deductionSchedule.ts`) are only used by the group screens, not by the engine, so they were not ported. The engine allocates by the deduction types' own allocation settings.
+  - Overtime types the three the browser knows (regular, night differential, rest day) get their own earning label; any other rate key of the company's table is labelled "Overtime Pay".
+  - Not checked: a run on a big company (the engine runs one line at a time over arrays loaded for the whole period; fine for hundreds of employees; P10b should say when to move it to a queued job).
+- Checks: php artisan test 259 (255 passed, 4 skipped); the golden parity passes on 162 lines.
+
 
 ### P9c - 2026-10-24
 - Branch: backend/p09c-bonuses (pushed: no)
