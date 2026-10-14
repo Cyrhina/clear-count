@@ -11,6 +11,7 @@ use App\Models\WfhArrangement;
 use App\Models\WorkLog;
 use App\Notifications\ApprovalNotice;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * Stored notifications for the approval flow. A new pending request notifies the people who can approve it (a manager only for
@@ -50,7 +51,13 @@ final class Notifier
             return;
         }
 
-        $approvers = User::where('company_id', $employee->company_id)->where('is_active', true)->permission($permission)->get()
+        // Roles not seeded yet (a fresh database, a console run): nobody to tell.
+        try {
+            $approvers = User::where('company_id', $employee->company_id)->where('is_active', true)->permission($permission)->get();
+        } catch (PermissionDoesNotExist) {
+            return;
+        }
+        $approvers = $approvers
             ->filter(fn (User $u) => $u->id !== $request->requested_by && (! $u->hasRole('manager') || ! $u->branch_id || $u->branch_id === $employee->branch_id));
 
         $a = preg_match('/^[aeiou]/i', $label) ? 'an' : 'a';
