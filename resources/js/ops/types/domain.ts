@@ -900,6 +900,12 @@ export interface ThirteenthMonthLine {
   withholdingTax?: number
   /** Take-home on the standalone 13th Month payslip. */
   netPay?: number
+  /** The month by month basic salary earned and what the deductions were charged at, kept with the line so the screens only show it. */
+  months?: { key: string; label: string; detail: string; fraction: number; amount: number }[]
+  hourlyRate?: number
+  dailyRate?: number
+  undertimeDates?: string[]
+  absenceDates?: string[]
 }
 
 /** Which payslip an email carries: a regular payroll run, a 13th Month Pay batch, or a separate bonus payslip. */

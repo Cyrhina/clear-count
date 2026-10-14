@@ -12,7 +12,7 @@ import { useAllPayrollLines } from '@ops/features/reports/hooks/useReports'
 import type { ExcelExport, ReportMetaItem } from '@ops/features/reports/reportExport'
 import { useThirteenthMonthRuns } from '@ops/features/thirteenth-month/hooks/useThirteenthMonth'
 import { useSession } from '@ops/hooks/useSession'
-import { getThirteenthMonthLines } from '@ops/lib/services/thirteenthMonthService'
+import { fetchThirteenthMonthLines } from '@ops/lib/services/thirteenthMonthApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Employee, ThirteenthMonthLine } from '@ops/types/domain'
 
@@ -325,7 +325,7 @@ export function ThirteenthMonthPayReport() {
   useEffect(() => {
     if (runsLoading) return
     let cancelled = false
-    Promise.all(runs.map(async (run) => [run.id, await getThirteenthMonthLines(user, run.id)] as const)).then((entries) => {
+    Promise.all(runs.map(async (run) => [run.id, await fetchThirteenthMonthLines(run.id).catch(() => [])] as const)).then((entries) => {
       if (!cancelled) setLinesByRun(new Map(entries))
     })
     return () => {

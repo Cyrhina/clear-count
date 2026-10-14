@@ -5,6 +5,7 @@ import { Button } from '@ops/components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@ops/components/ui/Dialog'
 import { useToast } from '@ops/components/ui/Toast'
 import { BonusPayslipDocument } from '@ops/features/bonuses/BonusPayslipPage'
+import { useBonusPayslips } from '@ops/features/bonuses/hooks/useBonuses'
 import { usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { BulkEmailToolbar, RowCheckbox, SelectAllCheckbox } from '@ops/features/payslips/components/email/BulkEmailPayslips'
 import { EmailStatusBadge } from '@ops/features/payslips/components/email/EmailStatusBadge'
@@ -12,11 +13,9 @@ import { PayslipEmailActions } from '@ops/features/payslips/components/email/Pay
 import { usePayslipEmails } from '@ops/features/payslips/hooks/usePayslipEmails'
 import { usePayslipSelection } from '@ops/features/payslips/hooks/usePayslipSelection'
 import { BONUS_PAYOUT_MODE_LABEL, bonusPayoutMode, resolveBonusRecipients } from '@ops/lib/payroll/bonusMatching'
-import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { buildPayslipEmail } from '@ops/lib/payroll/payslipEmail'
 import { decideBonus, submitBonusForApproval } from '@ops/lib/services/bonusApiService'
-import { computeSeparateBonusPayslip } from '@ops/lib/services/payrollService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { BonusIncentive, Employee } from '@ops/types/domain'
 
@@ -60,7 +59,6 @@ export function BonusDetailsDialog({
   /** Opens the edit form for a Draft / Pending Approval bonus. */
   onEdit: (bonus: BonusIncentive) => void
 }) {
-  const { user } = useSession()
   const { company } = useTenant()
   const { periods } = usePayrollPeriods()
   const { notify } = useToast()
@@ -68,8 +66,11 @@ export function BonusDetailsDialog({
   const recipients = bonus ? resolveBonusRecipients(bonus, employees) : []
   const totalPayout = bonus ? recipients.length * bonus.amount : 0
   const isSeparate = bonus ? bonusPayoutMode(bonus) === 'separate_payslip' : false
-  const separatePayslips =
-    bonus && isSeparate && bonus.status === 'approved' ? recipients.map((e) => computeSeparateBonusPayslip(user, bonus, e)).filter((p) => p !== undefined) : []
+  const { rows: payslipRows } = useBonusPayslips(bonus?.id, isSeparate && bonus?.status === 'approved')
+  const separatePayslips = payslipRows.flatMap((row) => {
+    const employee = employees.find((e) => e.id === row.employeeId)
+    return employee && bonus ? [{ ...row, bonus, employee }] : []
+  })
   const emails = usePayslipEmails('bonus', bonus?.id)
   const payslipSelection = usePayslipSelection(separatePayslips.map((p) => p.employee.id))
   const emailLabel = bonus ? `${bonus.name} (${bonus.periodLabel})` : ''

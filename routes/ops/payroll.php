@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 // Required inside the auth + verified + active group in routes/web.php.
 
-Route::prefix('api/payroll')->name('payroll.')->group(function () {
+Route::prefix('api/payroll')->name('api.payroll.')->group(function () {
     Route::middleware('permission:payroll.view|payslips.view')->group(function () {
         Route::get('/', [PayrollController::class, 'index'])->name('index');
         Route::get('employees', [PayrollController::class, 'employees'])->name('employees');

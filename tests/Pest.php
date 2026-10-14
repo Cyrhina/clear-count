@@ -72,7 +72,7 @@ function otherCompany(): Company
 }
 
 /** A semi-monthly group with one salaried employee on a Mon-Fri schedule. */
-function runStaff(Company $company, array $compensation = []): array
+function runStaff(Company $company, array $compensation = [], array $employment = []): array
 {
     $schedule = WorkSchedule::firstOrCreate(['company_id' => $company->id, 'name' => 'Day'], ['shift_type' => 'day', 'start_time' => '09:00', 'end_time' => '18:00', 'break_minutes' => 60, 'grace_period_minutes' => 10, 'days_of_week' => [1, 2, 3, 4, 5], 'rest_days' => [6, 7]]);
     $group = PayrollGroup::firstOrCreate(['company_id' => $company->id, 'name' => 'Semi'], [
@@ -80,7 +80,7 @@ function runStaff(Company $company, array $compensation = []): array
     ]);
     $employee = Employee::factory()->create([
         'company_id' => $company->id, 'branch_id' => Branch::factory()->create(['company_id' => $company->id])->id, 'payroll_group_id' => $group->id,
-        'employment' => ['position' => 'Clerk', 'department' => 'Sales', 'employmentType' => 'regular', 'dateHired' => '2020-01-01', 'status' => 'active', 'category' => 'regular'],
+        'employment' => ['position' => 'Clerk', 'department' => 'Sales', 'employmentType' => 'regular', 'dateHired' => '2020-01-01', 'status' => 'active', 'category' => 'regular', ...$employment],
         'compensation' => ['payType' => 'monthly', 'basicPay' => 30000, 'allowances' => [], ...$compensation],
     ]);
     EmployeeCompensation::create(['company_id' => $company->id, 'employee_id' => $employee->id, 'effective_from' => '2020-01-01', 'rate_type' => $employee->compensation['payType'], 'basic_rate' => $employee->compensation['basicPay'], 'allowances' => [], 'reason' => 'Initial Hire']);

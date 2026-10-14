@@ -26,8 +26,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P8 | Statutory tables and withholding tax | done (merged #13) | backend/p08-statutory | #13 | 2026-10-21 |
 | P9 | Benefits, loans, deductions, bonuses (a, b, c) | done (merged #14, #15, #16) | backend/p09-benefits-loans, backend/p09b-loans, backend/p09c-bonuses | #14, #15, #16 | 2026-10-24 |
 | P10 | Payroll engine and runs (a: engine, b: runs) | done (merged #17, #18) | backend/p10a-payroll-engine, backend/p10b-payroll-runs | #17, #18 | 2026-10-26 |
-| P11 | Payslips, PDF, email | in progress: in review | backend/p11-payslips | #19 | |
-| P12 | 13th month and separate bonus payslips | not started | | | |
+| P11 | Payslips, PDF, email | done (merged #19, #20) | backend/p11-payslips, backend/fix-composer-lock | #19, #20 | 2026-10-27 |
+| P12 | 13th month and separate bonus payslips | in progress: in review | backend/p12-thirteenth-month | #21 | |
 | P13 | Employee and manager self-service | not started | | | |
 | P14 | Dashboards, reports, tax compliance | not started | | | |
 | P15 | Platform and subscriptions | not started | | | |
@@ -71,12 +71,11 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords`; `features/ess/otApplicationStore.ts` (ESS-only OT applications) | dashboards, reports (basic, team), manager service, notifications, ESS overtime page | P13 (ESS), P14 (dashboards, reports) | P7 |
 | `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, work log card and rate basis display, dashboards, reports, manager service | P13 (ESS), P14 (dashboards, reports) | P7 |
 | `notificationService` (mock): getNotifications (team absence, payroll reminders and the loan payment notice only) | the bell and Notifications page, merged with the stored ones | P13 (loan notice), P14 | P7 |
-| `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, marginalTaxRateFor, computeSeparateBonusPayslip, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | report previews (`reportService`), 13th month (marginal rate), separate bonus payslips, the Computation drawer and PayslipCard (they explain a stored line with these helpers), reports, approvals and notifications (periods through the wrappers) | P12 (13th month, bonus payslips), P14 (reports), P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
+| `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | report previews (`reportService`), the Computation drawer and PayslipCard (they explain a stored payroll line with these helpers), reports, approvals and notifications (periods through the wrappers) | P14 (reports), P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | tax and compliance report, report previews | P14 (reports) | P9a |
 | `loanService` (mock): getLoans; `db.loans`, `db.loanTypes` (mock-data generators); the ESS loans store (`features/ess` sample loans) | ESS loans page, notifications (loan payment notice), report previews | P13 (ESS), P14 | P9b |
-| `bonusService` (mock): getBonuses; `db.bonuses` (mock-data generator) | 13th month and separate bonus payslips (`BonusPayslipPage`), report previews | P12 (separate payslips), P14 | P9c |
 | `db.payrollPeriods`, `db.payrollLines` (never filled now: the runs are on the API and the demo runs come from the seeder) | `dashboardService` (payroll cards) | P14 (dashboards) | P10b |
-| `payslipEmailService` (mock): the 13th month and bonus kinds (`sendPayslipEmail`, `db.payslipEmails`); `lib/payroll/payslipEmail.ts` (client-side email preview) | the 13th month and bonus payslip pages | P12 | P11 |
+| `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing writes them now) | `taxComplianceService` (13th month totals) | P14 (tax compliance) | P12 |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
 | `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
 | `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
@@ -95,6 +94,28 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P12 - 2026-10-27
+- Branch: backend/p12-thirteenth-month (pushed: no)
+- Done:
+  - 13th month: `thirteenth_month_runs` and `thirteenth_month_lines` (totals as columns, the whole line in `breakdown`: month by month earnings, the hourly and daily rates, the dates of undertime and unpaid absences). `App\Payroll\ThirteenthMonth` is the engine (coverage = the calendar year, active window, eligibility, who a batch covers, `basicEarningsByMonth`, undertime and unpaid absences with paid leave covering a day, the computation, tax above the 90,000 ceiling at the annual marginal rate); `ThirteenthMonthRuns` reads the database and does preview, generate and finalize. Generating replaces the draft with the same year and recipients; someone already in a finalized batch of the year is skipped, and a draft that lists someone paid meanwhile cannot be finalized (409); a finalized batch answers 409 to everything.
+  - Endpoints (`routes/ops/thirteenth-month.php`): `GET api/thirteenth-month`, `{run}/lines`, `POST preview` (who a batch covers, as ids), `POST api/thirteenth-month` (generate), `{run}/finalize`, `GET lines/{line}/pdf` (payroll roles, or the employee it is about; 404 until finalized).
+  - Separate bonus payslips: `App\Payroll\BonusPayslip` (gross by the bonus type, withheld at the employee's marginal rate on the table of their pay frequency; computed when asked, not stored), `GET api/bonuses/{bonus}/payslips` and `{bonus}/payslips/{employee}/pdf`. Only an approved bonus set to a separate payslip has any.
+  - PDF and email: `PayslipPdf` renders three documents (`pdf.payslip`, `pdf.thirteenth-month`, `pdf.bonus-payslip`); the P11 email queue serves the kinds `payroll`, `thirteenth_month` and `bonus` (send needs `payslips.generate`, `thirteenth_month.manage` or `bonuses.manage`). `PayslipMail` now takes a PDF closure.
+  - Parity: `ThirteenthMonthParityTest` rebuilds each of the 48 golden employee-years from their own numbers (the golden file keeps results, not inputs: the monthly basic is searched from the earned total, undertime minutes from the hours, one absent day per unpaid day) and every field matches the browser engine; the rest cover tax above the ceiling, paid leave, pro-rating, selection and the key.
+  - Frontend: `thirteenthMonthApiService`, TanStack hooks, the 13th Month page (the Computation drawer and payslip read the stored breakdown, so the browser calculations are gone), a Download PDF button on both payslip pages, the bonus details dialog and bonus payslip page on the server's rows. The email service and hook are on the API for all three kinds (the mock relay, `bonusService` and the browser 13th month service are deleted). The Bonuses page and payslip page read employees from the payroll directory, so the Payroll Admin now sees the recipients (this closes the "0 recipients" gap).
+  - Demo: a finalized 2025 batch and a draft 2026 batch (all active employees), and an approved Performance Incentive with its own payslip.
+  - Also: the API route names of payroll and payslips are prefixed `api.` (they clashed with the web page names in the generated Wayfinder routes and broke `tsc`).
+  - Tests: Pest 285 (281 pass, 4 skipped); `tsc` and the build pass.
+  - Browser-tested as Payroll Admin: the 13th Month page (12 lines), a Computation drawer, finalize, and the line PDF download (200, `application/pdf`).
+- Next: P13, employee and manager self-service (ESS pages that are still mock: WFH, leave, overtime, work output, loans; the manager screens).
+- Gotchas:
+  - The pay rate used for every month is the employee's current compensation, not the rate in force each month (`shortcut:` comment in `ThirteenthMonth`). A raise during the year is not reflected month by month.
+  - The golden file has no inputs, so parity is on the arithmetic and the rebuilt inputs, not on a replay of the database.
+  - Not checked visually: how the three PDFs look (the browser pane cannot render a PDF). Not tested: a real mail send; the bulk email buttons and the bonus payslip page as Payroll Admin in the browser; the 13th month payslip as an employee (an employee can download the PDF but has no page for it until P13).
+  - The bonus tax rate uses the tables in force today, not the pay date of the period the bonus is tagged to.
+- Checks: php artisan test 285 (281 passed, 4 skipped); tsc and the build pass.
+
 
 ### P11 - 2026-10-26
 - Branch: backend/p11-payslips (pushed: no)

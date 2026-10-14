@@ -1,9 +1,7 @@
 import { Calculator, TrendingDown, TrendingUp } from 'lucide-react'
 import { BreakdownCard, type BreakdownRow } from '@ops/features/payslips/components/PayslipCard'
-import { useSession } from '@ops/hooks/useSession'
-import { basicEarningsByMonth, coverageFor, thirteenthMonthDeductionsFor } from '@ops/lib/services/thirteenthMonthService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { Employee, ThirteenthMonthLine, ThirteenthMonthRun } from '@ops/types/domain'
+import type { ThirteenthMonthLine } from '@ops/types/domain'
 
 function listDates(dates: string[]): string {
   const shown = dates.slice(0, 6).map((d) => formatDate(d, { year: undefined, month: 'short', day: 'numeric' }))
@@ -15,38 +13,32 @@ function listDates(dates: string[]): string {
  * an Earnings panel listing every eligible month's basic salary (pro-rated for the hire /
  * separation month), a separate Deductions panel (undertime, unpaid absences), then the ÷ 12.
  */
-export function ThirteenthMonthBreakdown({ employee, line, run }: { employee: Employee; line: ThirteenthMonthLine; run: ThirteenthMonthRun }) {
-  const { user } = useSession()
-  const coverage = coverageFor(run.year)
-  const from = line.activeFrom ?? coverage.start
-  const to = line.activeTo ?? coverage.end
-
-  const months = basicEarningsByMonth(employee, from, to)
-  const deductions = thirteenthMonthDeductionsFor(user, employee, from, to)
+export function ThirteenthMonthBreakdown({ line }: { line: ThirteenthMonthLine }) {
+  const months = line.months ?? []
 
   const earningRows: BreakdownRow[] = months.map((m) => ({ key: m.key, type: 'Basic Pay', description: m.label, amount: m.amount, hint: m.detail }))
   const earningsTotal = months.reduce((sum, m) => sum + m.amount, 0)
 
-  const undertimeAmount = line.undertimeDeduction ?? deductions.undertime.amount
-  const absenceAmount = line.absenceDeduction ?? deductions.unpaidAbsences.amount
+  const undertimeAmount = line.undertimeDeduction ?? 0
+  const absenceAmount = line.absenceDeduction ?? 0
   const deductionRows: BreakdownRow[] = []
   if (undertimeAmount > 0) {
     deductionRows.push({
       key: 'undertime',
       type: 'Undertime',
-      description: `${line.undertimeHours ?? deductions.undertime.hours} hr × ${formatCurrency(deductions.hourlyRate)}/hr`,
+      description: `${line.undertimeHours ?? 0} hr × ${formatCurrency(line.hourlyRate ?? 0)}/hr`,
       amount: undertimeAmount,
-      hint: deductions.undertime.dates.length ? listDates(deductions.undertime.dates) : undefined,
+      hint: line.undertimeDates?.length ? listDates(line.undertimeDates) : undefined,
     })
   }
   if (absenceAmount > 0) {
-    const days = line.unpaidAbsenceDays ?? deductions.unpaidAbsences.days
+    const days = line.unpaidAbsenceDays ?? 0
     deductionRows.push({
       key: 'absences',
       type: 'Unpaid Absence',
-      description: `${days} day${days === 1 ? '' : 's'} × ${formatCurrency(deductions.dailyRate)}/day`,
+      description: `${days} day${days === 1 ? '' : 's'} × ${formatCurrency(line.dailyRate ?? 0)}/day`,
       amount: absenceAmount,
-      hint: deductions.unpaidAbsences.dates.length ? listDates(deductions.unpaidAbsences.dates) : undefined,
+      hint: line.absenceDates?.length ? listDates(line.absenceDates) : undefined,
     })
   }
   const deductionsTotal = undertimeAmount + absenceAmount

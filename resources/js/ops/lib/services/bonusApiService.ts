@@ -40,3 +40,18 @@ export const createBonus = (input: CreateBonusInput) => api.post('/api/bonuses',
 export const updateBonus = (id: string, input: CreateBonusInput) => api.put(`/api/bonuses/${id}`, body(input))
 export const submitBonusForApproval = (id: string) => api.post(`/api/bonuses/${id}/submit`, {})
 export const decideBonus = (id: string, decision: Extract<BonusApprovalStatus, 'approved' | 'rejected'>) => api.post(`/api/bonuses/${id}/decision`, { decision })
+
+/** The standalone payslip of one employee for a bonus set to "Generate Separate Payslip", as the server worked it out. */
+export interface BonusPayslipRow {
+  employeeId: string
+  grossBonus: number
+  withholdingTax: number
+  netPay: number
+  /** Marginal bracket rate applied to a taxable bonus (0 for non-taxable). */
+  taxRate: number
+}
+
+export async function fetchBonusPayslips(bonusId: string): Promise<BonusPayslipRow[]> {
+  const res = await api.get<{ data: unknown[] }>(`/api/bonuses/${bonusId}/payslips`)
+  return camelizeKeys<BonusPayslipRow[]>(res.data)
+}

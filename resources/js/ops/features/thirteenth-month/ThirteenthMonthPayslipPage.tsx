@@ -1,4 +1,4 @@
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { PoweredByBrand } from '@ops/components/ui/BrandLogo'
 import { Link, useParams } from 'react-router-dom'
 import { Avatar } from '@ops/components/ui/Avatar'
@@ -6,11 +6,11 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Skeleton } from '@ops/components/ui/Skeleton'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
+import { usePayrollEmployees } from '@ops/features/payroll/hooks/usePayroll'
 import { ThirteenthMonthBreakdown } from '@ops/features/thirteenth-month/components/ThirteenthMonthBreakdown'
 import { useThirteenthMonthLines, useThirteenthMonthRuns } from '@ops/features/thirteenth-month/hooks/useThirteenthMonth'
 import { useTenant } from '@ops/hooks/useTenant'
-import { THIRTEENTH_MONTH_TAX_EXEMPT_CEILING } from '@ops/lib/services/thirteenthMonthService'
+import { THIRTEENTH_MONTH_TAX_EXEMPT_CEILING } from '@ops/lib/services/thirteenthMonthApiService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 import type { Company, Employee, ThirteenthMonthLine, ThirteenthMonthRun } from '@ops/types/domain'
 
@@ -43,7 +43,7 @@ export function ThirteenthMonthPayslipPage() {
   const { company } = useTenant()
   const { runs, isLoading: runsLoading } = useThirteenthMonthRuns()
   const { lines, isLoading: linesLoading } = useThirteenthMonthLines(runId)
-  const { employees, isLoading: employeesLoading } = useEmployees()
+  const { employees, isLoading: employeesLoading } = usePayrollEmployees()
 
   if (runsLoading || linesLoading || employeesLoading) return <Skeleton className="h-96" />
 
@@ -71,9 +71,16 @@ export function ThirteenthMonthPayslipPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between print:hidden">
         {back}
-        <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
-          Print / Download
-        </Button>
+        <div className="flex gap-2">
+          {run.status === 'finalized' && (
+            <Button size="sm" variant="secondary" icon={<Download className="size-4" />} onClick={() => window.location.assign(`/api/thirteenth-month/lines/${line.id}/pdf`)}>
+              Download PDF
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
+            Print
+          </Button>
+        </div>
       </div>
 
       <ThirteenthMonthPayslipDocument company={company} run={run} line={line} employee={employee} />
@@ -144,7 +151,7 @@ export function ThirteenthMonthPayslipDocument({
       </div>
 
       <div className="p-6">
-        <ThirteenthMonthBreakdown employee={employee} line={line} run={run} />
+        <ThirteenthMonthBreakdown line={line} />
 
         <table className="mt-4 w-full text-sm">
           <tbody>

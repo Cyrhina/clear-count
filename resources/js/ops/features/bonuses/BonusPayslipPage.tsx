@@ -1,4 +1,4 @@
-import { ArrowLeft, Gift, Printer } from 'lucide-react'
+import { ArrowLeft, Download, Gift, Printer } from 'lucide-react'
 import { PoweredByBrand } from '@ops/components/ui/BrandLogo'
 import { Link, useParams } from 'react-router-dom'
 import { Avatar } from '@ops/components/ui/Avatar'
@@ -6,12 +6,10 @@ import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
 import { Card } from '@ops/components/ui/Card'
 import { Skeleton } from '@ops/components/ui/Skeleton'
-import { useBonuses } from '@ops/features/bonuses/hooks/useBonuses'
-import { useEmployees } from '@ops/features/employees/hooks/useEmployees'
-import { useSession } from '@ops/hooks/useSession'
+import { useBonuses, useBonusPayslips } from '@ops/features/bonuses/hooks/useBonuses'
+import { usePayrollEmployees } from '@ops/features/payroll/hooks/usePayroll'
 import { useTenant } from '@ops/hooks/useTenant'
-import { bonusAppliesToEmployee, bonusPayoutMode } from '@ops/lib/payroll/bonusMatching'
-import { computeSeparateBonusPayslip, type SeparateBonusPayslip } from '@ops/lib/services/payrollService'
+import type { BonusPayslipRow as SeparateBonusPayslip } from '@ops/lib/services/bonusApiService'
 import { formatCurrency } from '@ops/lib/utils/format'
 import type { BonusIncentive, Company, Employee } from '@ops/types/domain'
 
@@ -37,19 +35,16 @@ export function BonusPayslipPage() {
     bonusId: string
     employeeId: string
   }>()
-  const { user } = useSession()
   const { company } = useTenant()
   const { bonuses, isLoading } = useBonuses()
-  const { employees, isLoading: employeesLoading } = useEmployees()
+  const { employees, isLoading: employeesLoading } = usePayrollEmployees()
+  const { rows, isLoading: payslipsLoading } = useBonusPayslips(bonusId, true)
 
-  if (isLoading || employeesLoading) return <Skeleton className="h-96" />
+  if (isLoading || employeesLoading || payslipsLoading) return <Skeleton className="h-96" />
 
   const bonus = bonuses.find((b) => b.id === bonusId)
   const employee = employees.find((e) => e.id === employeeId)
-  const payslip =
-    bonus && employee && bonus.status === 'approved' && bonusPayoutMode(bonus) === 'separate_payslip' && bonusAppliesToEmployee(bonus, employee)
-      ? computeSeparateBonusPayslip(user, bonus, employee)
-      : undefined
+  const payslip = rows.find((r) => r.employeeId === employeeId)
 
   if (!bonus || !employee || !payslip) {
     return (
@@ -72,9 +67,14 @@ export function BonusPayslipPage() {
           <ArrowLeft className="size-3.5" />
           Back to Bonuses & Incentives
         </Link>
-        <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
-          Print / Download
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" icon={<Download className="size-4" />} onClick={() => window.location.assign(`/api/bonuses/${bonus.id}/payslips/${employee.id}/pdf`)}>
+            Download PDF
+          </Button>
+          <Button size="sm" variant="secondary" icon={<Printer className="size-4" />} onClick={() => window.print()}>
+            Print
+          </Button>
+        </div>
       </div>
 
       <BonusPayslipDocument company={company} bonus={bonus} employee={employee} payslip={payslip} />

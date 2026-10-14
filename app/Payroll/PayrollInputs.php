@@ -121,10 +121,7 @@ final class PayrollInputs
                 ->map(fn ($r) => ['employeeId' => (string) $r->employee_id, 'date' => $r->work_date->toDateString(), 'status' => $r->status, 'type' => $r->type, 'hours' => $r->hours, 'multiplier' => $r->multiplier])->all(),
             'workLogs' => $range($in(WorkLog::withoutGlobalScopes()), 'work_date')->get()
                 ->map(fn ($a) => ['id' => (string) $a->id, 'employeeId' => (string) $a->employee_id, 'workDate' => $a->work_date->toDateString(), 'status' => $a->status, 'quantity' => $a->quantity, 'payrollPeriodId' => $a->payroll_period_id ? (string) $a->payroll_period_id : null])->all(),
-            'bonuses' => BonusIncentive::withoutGlobalScopes()->where('company_id', $companyId)->where('status', 'approved')->get()->map(fn ($b) => array_filter([
-                'name' => $b->name, 'status' => $b->status, 'periodLabel' => $b->period_label, 'bonusType' => $b->bonus_type, 'targetType' => $b->target_type, 'amount' => $b->amount, 'taxable' => $b->taxable,
-                'payoutMode' => $b->payout_mode, 'targetEmployeeId' => $b->target_employee_id ? (string) $b->target_employee_id : null, 'targetEmployeeIds' => $b->target_employee_ids, 'targetDepartment' => $b->target_department,
-            ], fn ($v) => $v !== null))->all(),
+            'bonuses' => BonusIncentive::withoutGlobalScopes()->where('company_id', $companyId)->where('status', 'approved')->get()->map(fn (BonusIncentive $b) => self::bonusToEngine($b))->all(),
             'benefits' => $in(EmployeeBenefit::withoutGlobalScopes())->where('status', 'active')->whereDate('start_date', '<=', $period['endDate'])
                 ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $period['startDate']))->get()->map(fn ($b) => array_filter([
                     'employeeId' => (string) $b->employee_id, 'status' => $b->status, 'startDate' => $b->start_date->toDateString(), 'endDate' => $b->end_date?->toDateString(), 'category' => $b->category,
@@ -140,6 +137,15 @@ final class PayrollInputs
             ])->all(),
             'deductionConfigs' => self::deductionConfigs($companyId),
         ];
+    }
+
+    /** A bonus in the shape `BonusMatching` takes. */
+    public static function bonusToEngine(BonusIncentive $b): array
+    {
+        return array_filter([
+            'name' => $b->name, 'status' => $b->status, 'periodLabel' => $b->period_label, 'bonusType' => $b->bonus_type, 'targetType' => $b->target_type, 'amount' => $b->amount, 'taxable' => $b->taxable,
+            'payoutMode' => $b->payout_mode, 'targetEmployeeId' => $b->target_employee_id ? (string) $b->target_employee_id : null, 'targetEmployeeIds' => $b->target_employee_ids, 'targetDepartment' => $b->target_department,
+        ], fn ($v) => $v !== null);
     }
 
     /** @return list<array<string, mixed>> */
