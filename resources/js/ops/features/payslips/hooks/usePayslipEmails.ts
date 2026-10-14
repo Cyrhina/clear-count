@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@ops/components/ui/Toast'
 import { useSession } from '@ops/hooks/useSession'
-import { getPayslipEmails, sendPayslipEmail } from '@ops/lib/services/payslipEmailService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { getPayslipEmails, queuePayrollPayslipEmails, sendPayslipEmail } from '@ops/lib/services/payslipEmailService'
 import type { PayslipEmailKind, PayslipEmailRecord, PayslipEmailStatus } from '@ops/types/domain'
 
 export interface PayslipEmailTarget {
@@ -34,6 +35,14 @@ export function usePayslipEmails(kind: PayslipEmailKind, sourceId: string | unde
     }
   }, [user, kind, sourceId])
 
+  // A payroll email is a queued job on the server: look again while any is still queued.
+  const hasQueued = kind === 'payroll' && Object.values(records).some((r) => r.status === 'sending')
+  useEffect(() => {
+    if (!sourceId || !hasQueued) return
+    const timer = setInterval(() => void getPayslipEmails(user, kind, sourceId).then((list) => setRecords(Object.fromEntries(list.map((r) => [r.employeeId, r])))), 3000)
+    return () => clearInterval(timer)
+  }, [user, kind, sourceId, hasQueued])
+
   const statusFor = useCallback(
     (employeeId: string): PayslipEmailStatus => (sending.has(employeeId) ? 'sending' : (records[employeeId]?.status ?? 'unsent')),
     [records, sending],
@@ -42,6 +51,16 @@ export function usePayslipEmails(kind: PayslipEmailKind, sourceId: string | unde
   const send = useCallback(
     async (targets: PayslipEmailTarget[]) => {
       if (!sourceId || targets.length === 0) return
+      if (kind === 'payroll') {
+        try {
+          const queued = await queuePayrollPayslipEmails(sourceId, targets)
+          setRecords((prev) => ({ ...prev, ...Object.fromEntries(queued.map((r) => [r.employeeId, r])) }))
+          notify({ title: 'Payslips queued', description: `${queued.length} payslip${queued.length === 1 ? ' is' : 's are'} being emailed, one a second. The status updates here.`, tone: 'success' })
+        } catch (error) {
+          notify({ title: 'Payslips were not queued', description: apiErrorMessage(error), tone: 'danger' })
+        }
+        return
+      }
       setSending((prev) => new Set([...prev, ...targets.map((t) => t.employeeId)]))
 
       const results: PayslipEmailRecord[] = []

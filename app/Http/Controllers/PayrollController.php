@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\PayrollLine;
 use App\Models\PayrollPeriod;
+use App\Models\User;
+use App\Notifications\ApprovalNotice;
 use App\Payroll\PayrollRun;
 use App\Support\ActivityLogger;
 use Illuminate\Http\JsonResponse;
@@ -102,8 +104,17 @@ class PayrollController extends Controller
     {
         $period = PayrollRun::finalize($period, $request->user());
         ActivityLogger::log(module: 'Payroll', action: 'Finalized', title: 'Payroll run', description: "{$period->payroll_number} · {$period->label}", subject: $period);
+        $this->notifyPayslipsReady($period);
 
         return response()->json(['data' => $period]);
+    }
+
+    /** Tells each employee with a login that their payslip is available. */
+    private function notifyPayslipsReady(PayrollPeriod $period): void
+    {
+        $lines = $period->lines()->get()->keyBy('employee_id');
+        User::where('company_id', $period->company_id)->whereIn('employee_id', $lines->keys())->get()
+            ->each(fn (User $u) => $u->notify(new ApprovalNotice("Your payslip for \"{$period->label}\" is now available", 'success', '/ess/payslips', null, $lines[$u->employee_id]->id)));
     }
 
     /** @return list<int> */

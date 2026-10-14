@@ -82,6 +82,9 @@ class DemoSeeder extends Seeder
         // they would see no users, no company profile and no activity log. The super admin stays company-less.
         User::whereIn('email', UserSeeder::DEMO_LOGIN_EMAILS)->update(['company_id' => $company->id, 'branch_id' => $head->id]);
 
+        // The login-page employee account has an employee record of its own, so the self-service pages (payslips ...) have something to show.
+        User::where('email', 'employee.consignado@frontlinebusiness.com.ph')->update(['employee_id' => $own?->id]);
+
         $this->seedPayrollRuns($company);
 
         // Last, so the approvers belong to the company by now.

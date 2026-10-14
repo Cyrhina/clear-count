@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchPayrollEmployees, fetchPayrollInputs, fetchPayrollLines, fetchPayrollPeriods } from '@ops/lib/services/payrollApiService'
+import { fetchMyPayslips, fetchPayrollEmployees, fetchPayrollInputs, fetchPayrollLines, fetchPayrollPeriods } from '@ops/lib/services/payrollApiService'
 
 export function usePayrollPeriods() {
   const queryClient = useQueryClient()
@@ -23,4 +23,10 @@ export function usePayrollInputs(periodId: string | undefined) {
 export function usePayrollEmployees() {
   const query = useQuery({ queryKey: ['payroll', 'employees'], queryFn: fetchPayrollEmployees })
   return { employees: query.data ?? [], isLoading: query.isPending }
+}
+
+/** The signed-in employee's own payslips (finalized runs only). */
+export function useMyPayslips() {
+  const query = useQuery({ queryKey: ['payslips', 'mine'], queryFn: fetchMyPayslips })
+  return { payslips: query.data ?? [], isLoading: query.isPending }
 }
