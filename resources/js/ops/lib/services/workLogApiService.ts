@@ -7,7 +7,7 @@ import type { ApprovalStatus, CompensationApproval, CompensationApprovalType } f
  * filed. The mock `compensationApprovalService` stays for the ESS page, payroll, dashboards, reports and notifications.
  */
 
-type ApiWorkLog = {
+export type ApiWorkLog = {
   id: string
   employeeId: string
   type: CompensationApprovalType
@@ -24,7 +24,7 @@ type ApiWorkLog = {
   payrollPeriodId?: string
 }
 
-const toLog = (a: ApiWorkLog): CompensationApproval => ({
+export const toWorkLog = (a: ApiWorkLog): CompensationApproval => ({
   id: a.id,
   companyId: '',
   employeeId: a.employeeId,
@@ -44,7 +44,7 @@ const toLog = (a: ApiWorkLog): CompensationApproval => ({
 
 export async function fetchWorkLogs(): Promise<CompensationApproval[]> {
   const res = await api.get<{ data: unknown[] }>('/api/work-logs')
-  return camelizeKeys<ApiWorkLog[]>(res.data).map(toLog)
+  return camelizeKeys<ApiWorkLog[]>(res.data).map(toWorkLog)
 }
 
 /** Approves or rejects the pending logs; returns how many were decided. */

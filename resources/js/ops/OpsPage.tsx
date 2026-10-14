@@ -7,7 +7,6 @@ import { BrandLoader, BrandSplash } from '@ops/components/ui/BrandLogo'
 import { CompanyThemeApplier } from '@ops/components/layout/CompanyThemeApplier'
 import { queryClient } from '@ops/lib/api/queryClient'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
-import { seedSamplePayrollRuns } from '@ops/mock-data/payrollRuns'
 import { users } from '@ops/mock-data/seed/users'
 import { PlanGate } from '@ops/components/ui/PlanGate'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
@@ -25,8 +24,6 @@ function syncMockSession(email: string, role: string | null) {
   const mock = users.find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? users.find((u) => u.role === role) ?? users[0]
   useSessionStore.setState({ currentUserId: mock.id, currentUser: mock, isAuthenticated: true })
 }
-
-let seeded: Promise<void> | null = null
 
 /** Guest pages (login, forgot/reset password): no app shell, no mock session. */
 function GuestPage({ pageKey }: { pageKey: string }) {
@@ -46,8 +43,7 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
 
   useEffect(() => {
     syncMockSession(email, role)
-    seeded ??= seedSamplePayrollRuns().catch((e) => console.error('Sample payroll runs could not be seeded', e))
-    void seeded.then(() => setReady(true))
+    setReady(true)
   }, [email, role])
 
   if (!ready) return <BrandSplash />

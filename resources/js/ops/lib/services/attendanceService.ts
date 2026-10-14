@@ -12,10 +12,10 @@ import type { AttendanceAdjustment, AttendanceRecord, ApprovalStatus, LeaveReque
 
 const hhmm = (time?: string | null) => (time ? time.slice(0, 5) : null)
 
-type ApiRecord = { id: string; employeeId: string; workScheduleId?: string; date: string; timeIn?: string; timeOut?: string; breakOut?: string; breakIn?: string; status: AttendanceRecord['status']; workType?: AttendanceRecord['workType']; autoRecorded?: boolean; wfhId?: string }
+export type ApiRecord = { id: string; employeeId: string; workScheduleId?: string; date: string; timeIn?: string; timeOut?: string; breakOut?: string; breakIn?: string; status: AttendanceRecord['status']; workType?: AttendanceRecord['workType']; autoRecorded?: boolean; wfhId?: string }
 
 /** The API sends HH:MM:SS and no company; the screens use HH:MM and the domain shape. */
-function toAttendanceRecord(r: ApiRecord): AttendanceRecord {
+export function toAttendanceRecord(r: ApiRecord): AttendanceRecord {
   return {
     id: r.id,
     companyId: '',

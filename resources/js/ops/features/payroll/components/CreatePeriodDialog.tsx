@@ -11,8 +11,7 @@ import { Select } from '@ops/components/ui/Select'
 import { useToast } from '@ops/components/ui/Toast'
 import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
 import { WorkLogsRangePreview } from '@ops/features/payroll/components/WorkLogsSummaryCard'
-import { useSession } from '@ops/hooks/useSession'
-import { createPayrollPeriod, getNextPayrollNumber } from '@ops/lib/services/payrollService'
+import { createPayrollPeriod, fetchNextPayrollNumber } from '@ops/lib/services/payrollApiService'
 
 const schema = z.object({
   label: z.string().min(1, 'Required'),
@@ -26,7 +25,6 @@ type FormValues = z.infer<typeof schema>
 
 export function CreatePeriodDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
   const { groups } = usePayrollGroups()
 
@@ -44,8 +42,8 @@ export function CreatePeriodDialog({ onCreated }: { onCreated: () => void }) {
   // The number follows the pay date's year — PR001 again when the year changes.
   useEffect(() => {
     if (!open || !payDate) return setNextNumber(null)
-    void getNextPayrollNumber(user, payDate).then(setNextNumber)
-  }, [open, payDate, user])
+    void fetchNextPayrollNumber(payDate).then(setNextNumber)
+  }, [open, payDate])
 
   const groupOptions = [
     { value: 'all', label: 'All Employees (no Payroll Group filter)' },
@@ -53,7 +51,7 @@ export function CreatePeriodDialog({ onCreated }: { onCreated: () => void }) {
   ]
 
   async function onSubmit(values: FormValues) {
-    await createPayrollPeriod(user, { ...values, payrollGroupId: values.payrollGroupId === 'all' ? undefined : values.payrollGroupId })
+    await createPayrollPeriod({ ...values, payrollGroupId: values.payrollGroupId === 'all' ? undefined : values.payrollGroupId })
     notify({ title: 'Payroll period created', tone: 'success' })
     reset()
     setOpen(false)

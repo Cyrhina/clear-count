@@ -3,16 +3,15 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Button } from '@ops/components/ui/Button'
 import { Skeleton } from '@ops/components/ui/Skeleton'
-import { useEmployee } from '@ops/features/employees/hooks/useEmployee'
-import { usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
+import { usePayrollGroups } from '@ops/features/company-settings/hooks/usePayrollGroups'
+import { usePayrollEmployees, usePayrollPeriods } from '@ops/features/payroll/hooks/usePayroll'
 import { PayslipCard } from '@ops/features/payslips/components/PayslipCard'
 import { useSession } from '@ops/hooks/useSession'
 import { useTenant } from '@ops/hooks/useTenant'
 import { findEmployeePayrollGroup } from '@ops/lib/payroll/groupAssignment'
-import { getLoans } from '@ops/lib/services/loanService'
-import { getPayrollLine } from '@ops/lib/services/payrollService'
-import { getDeductionConfigs, getPayrollGroups } from '@ops/lib/services/payrollSettingsService'
-import type { DeductionConfig, LoanRecord, PayrollGroup, PayrollLine } from '@ops/types/domain'
+import { fetchLoans } from '@ops/lib/services/loanApiService'
+import { fetchDeductionConfigsForPayslips, fetchPayrollLine } from '@ops/lib/services/payrollApiService'
+import type { DeductionConfig, LoanRecord, PayrollLine } from '@ops/types/domain'
 
 export function PayslipDetailPage() {
   const { lineId } = useParams<{ lineId: string }>()
@@ -23,19 +22,19 @@ export function PayslipDetailPage() {
   const [line, setLine] = useState<PayrollLine | null | undefined>(undefined)
   const [deductionConfigs, setDeductionConfigs] = useState<DeductionConfig[]>([])
   const [loans, setLoans] = useState<LoanRecord[]>([])
-  const [payrollGroups, setPayrollGroups] = useState<PayrollGroup[]>([])
+  const { groups: payrollGroups } = usePayrollGroups()
   const { periods } = usePayrollPeriods()
 
   useEffect(() => {
     if (!lineId) return
     setLine(undefined)
-    getPayrollLine(user, lineId).then((result) => setLine(result ?? null))
-    getDeductionConfigs(user).then(setDeductionConfigs)
-    getLoans(user).then(setLoans)
-    getPayrollGroups(user).then(setPayrollGroups)
+    fetchPayrollLine(lineId).then(setLine, () => setLine(null))
+    fetchDeductionConfigsForPayslips().then(setDeductionConfigs)
+    fetchLoans().then(setLoans)
   }, [user, lineId])
 
-  const { employee } = useEmployee(line?.employeeId)
+  const { employees } = usePayrollEmployees()
+  const employee = employees.find((e) => e.id === line?.employeeId)
   const period = periods.find((p) => p.id === line?.periodId)
   const payrollGroup = employee ? findEmployeePayrollGroup(payrollGroups, employee.id) : undefined
 
