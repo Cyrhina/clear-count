@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import {
@@ -8,8 +9,7 @@ import {
   getPayrollDashboard,
   getWorkforceCharts,
 } from '@ops/lib/services/dashboardService'
-import { getManagerDashboard } from '@ops/lib/services/managerService'
-import type { ManagerDashboard } from '@ops/lib/services/managerService'
+import { fetchManagerDashboard } from '@ops/lib/services/managerApiService'
 import { getTaxAlerts, type TaxAlerts } from '@ops/lib/services/taxComplianceService'
 import type { AdminDashboardOverview, DashboardStats, PayrollDashboard, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
 
@@ -124,18 +124,6 @@ export function usePayrollDashboard() {
 
 export function useManagerDashboard() {
   const { user } = useSession()
-  const [data, setData] = useState<ManagerDashboard | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setData(null)
-    getManagerDashboard(user).then((result) => {
-      if (!cancelled) setData(result)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [user])
-
-  return { data, isLoading: data === null }
+  const query = useQuery({ queryKey: ['manager', 'dashboard', user.id], queryFn: fetchManagerDashboard })
+  return { data: query.data ?? null, isLoading: query.isPending }
 }

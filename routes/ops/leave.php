@@ -13,7 +13,8 @@ Route::prefix('api/leave')->name('leave.')->group(function () {
         Route::get('balances', [LeaveController::class, 'balances'])->name('balances');
     });
 
-    Route::middleware('permission:leave.request')->group(function () {
+    // Self-service files and cancels their own; the controller refuses anyone else's without `leave.request`.
+    Route::middleware('permission:leave.request|ess.view')->group(function () {
         Route::post('requests/preview', [LeaveController::class, 'preview'])->name('requests.preview');
         Route::post('requests', [LeaveController::class, 'store'])->name('requests.store');
         Route::post('requests/{leaveRequest}/cancel', [LeaveController::class, 'cancel'])->name('requests.cancel');

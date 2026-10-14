@@ -88,11 +88,11 @@ test('adding loans for many employees uses a fixed type\'s amounts, and skips an
     expect($custom)->toBe(['added' => 1, 'skipped' => 1]);
 });
 
-test('only those who manage loans can change them, and an employee sees nothing here', function () {
+test('only those who manage loans can change them, and an employee sees only their own', function () {
     $admin = companyUser('hr_admin');
     [$e] = loanStaff($admin->company_id);
     $employee = companyUser('employee', $admin->company);
-    $this->actingAs($employee)->getJson('/api/loans')->assertForbidden();
+    $this->actingAs($employee)->getJson('/api/loans')->assertOk()->assertJsonCount(0, 'data');
     $this->actingAs($employee)->postJson('/api/loans', loanBody($e))->assertForbidden();
     $this->actingAs($admin)->postJson('/api/loans', loanBody(loanStaff(otherCompany()->id)[0]))->assertNotFound();
 });

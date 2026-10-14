@@ -1,25 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from '@ops/hooks/useSession'
-import { getEmployee } from '@ops/lib/services/employeeService'
-import type { Employee } from '@ops/types/domain'
+import { fetchMe } from '@ops/lib/services/employeeService'
 
-/** Resolves the Employee record linked to the current session (any role that has an employeeId). */
+export const ME_KEY = 'me'
+
+/** The employee record linked to the signed-in account (any role that has an employee), from `GET api/me`. `employee` is null when there is none. */
 export function useSelfEmployee() {
   const { user } = useSession()
-  const [employee, setEmployee] = useState<Employee | null | undefined>(undefined)
+  const queryClient = useQueryClient()
+  const linked = !!user.employeeId
+  const query = useQuery({ queryKey: [ME_KEY, user.id], queryFn: fetchMe, enabled: linked })
 
-  const refetch = useCallback(() => {
-    if (!user.employeeId) {
-      setEmployee(null)
-      return
-    }
-    getEmployee(user, user.employeeId).then((result) => setEmployee(result ?? null))
-  }, [user])
-
-  useEffect(() => {
-    setEmployee(undefined)
-    refetch()
-  }, [refetch])
-
-  return { employee, isLoading: employee === undefined, refetch }
+  return {
+    employee: linked ? (query.data ?? null) : null,
+    isLoading: linked && query.isPending,
+    refetch: () => void queryClient.invalidateQueries({ queryKey: [ME_KEY] }),
+  }
 }

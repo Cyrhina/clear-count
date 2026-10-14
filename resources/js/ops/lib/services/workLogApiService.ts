@@ -4,7 +4,7 @@ import type { ApprovalStatus, CompensationApproval, CompensationApprovalType } f
 
 /*
  * Work logs (hours of hourly employees, output of output-based ones) on the API. The server sets the rate and amount when a log is
- * filed. The mock `compensationApprovalService` stays for the ESS page, payroll, dashboards, reports and notifications.
+ * filed. The mock `compensationApprovalService` stays for dashboards, reports and notifications.
  */
 
 export type ApiWorkLog = {
@@ -46,6 +46,20 @@ export async function fetchWorkLogs(): Promise<CompensationApproval[]> {
   const res = await api.get<{ data: unknown[] }>('/api/work-logs')
   return camelizeKeys<ApiWorkLog[]>(res.data).map(toWorkLog)
 }
+
+export interface WorkLogInput {
+  employeeId: string
+  workDate: string
+  quantity: number
+  description: string
+}
+
+/** Files hours (hourly) or units completed (output-based) for approval; the server sets the unit, rate and amount. */
+export const fileWorkLog = (input: WorkLogInput) =>
+  api.post('/api/work-logs', { employee_id: Number(input.employeeId), work_date: input.workDate, quantity: input.quantity, description: input.description })
+
+/** Withdraws a log that is still pending. */
+export const withdrawWorkLog = (id: string) => api.delete(`/api/work-logs/${id}`)
 
 /** Approves or rejects the pending logs; returns how many were decided. */
 export async function decideWorkLogs(ids: string[], decision: 'approved' | 'rejected'): Promise<number> {

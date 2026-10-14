@@ -10,6 +10,8 @@ Route::prefix('api/overtime')->name('overtime.')->group(function () {
     Route::get('/', [OvertimeController::class, 'index'])->middleware('permission:overtime.view|ess.view')->name('index');
     // Self-service files their own: the employee scope returns 404 for anyone else.
     Route::post('/', [OvertimeController::class, 'store'])->middleware('permission:overtime.log|ess.view')->name('store');
+    Route::get('rates', [OvertimeController::class, 'rates'])->middleware('permission:overtime.view|overtime.log|ess.view')->name('rates');
+    Route::delete('{overtime}', [OvertimeController::class, 'destroy'])->middleware('permission:overtime.log|ess.view')->name('destroy');
     Route::post('decide', [OvertimeController::class, 'decide'])->middleware('permission:overtime.approve')->name('decide');
 });
 

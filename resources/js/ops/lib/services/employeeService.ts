@@ -1,5 +1,5 @@
 // mock: remove in P17. The Employees screens use the API functions at the bottom of this file. Every other module still reads the
-// mock employees through getEmployees, getEmployee, getEmployeeIdsOnLeaveToday and updateEmployeeSelf until its own phase;
+// mock employees through getEmployees until its own phase; the signed-in employee's own record is on the API (fetchMe, updateMe);
 // createEmployee stays for the Integrations CSV import (P16).
 import type { EmployeePage, EmployeeListParams, EmployeeRecord } from '@ops/features/employees/types'
 import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
@@ -23,11 +23,6 @@ import type {
  */
 export async function getEmployees(session: SessionUser): Promise<Employee[]> {
   return scopeForSession(db.employees, session, { employeeIdField: 'id' })
-}
-
-export async function getEmployee(session: SessionUser, employeeId: string): Promise<Employee | undefined> {
-  const scoped = scopeForSession(db.employees, session, { employeeIdField: 'id' })
-  return scoped.find((e) => e.id === employeeId)
 }
 
 export interface CreateEmployeeInput {
@@ -65,17 +60,6 @@ export interface SelfServiceProfileUpdate {
   address: string
 }
 
-/** Employees may only edit their own allowed profile fields — never payroll, government, or employment data. */
-export async function updateEmployeeSelf(session: SessionUser, updates: SelfServiceProfileUpdate): Promise<void> {
-  if (!session.employeeId) return
-  const employee = db.employees.find((e) => e.id === session.employeeId && e.companyId === session.companyId)
-  if (!employee) return
-
-  employee.personal.contactNumber = updates.contactNumber
-  employee.personal.personalEmail = updates.personalEmail
-  employee.personal.address = updates.address
-}
-
 export const SEPARATION_LABEL = {
   resigned: 'Resigned',
   terminated: 'Terminated',
@@ -101,23 +85,6 @@ export interface UpdateCompensationInput {
 export interface UpdateBenefitsInput {
   hmoPlan?: string
   leaveCreditsByType: Record<string, number>
-}
-
-/** Employee ids with an approved leave request covering today — used to derive the "On Leave" filter without touching the core employment.status enum. */
-export async function getEmployeeIdsOnLeaveToday(session: SessionUser): Promise<Set<string>> {
-  const employees = scopeForSession(db.employees, session, { employeeIdField: 'id' })
-  const employeeIds = new Set(employees.map((e) => e.id))
-  const today = new Date().toISOString().slice(0, 10)
-
-  const onLeave = db.leaveRequests.filter(
-    (r) =>
-      r.companyId === session.companyId &&
-      r.status === 'approved' &&
-      employeeIds.has(r.employeeId) &&
-      r.dateFrom <= today &&
-      r.dateTo >= today,
-  )
-  return new Set(onLeave.map((r) => r.employeeId))
 }
 
 /** mock: only the Integrations CSV import (P16) still creates employees this way. */
@@ -191,7 +158,7 @@ export async function createEmployee(session: SessionUser, input: CreateEmployee
 const SECTIONS = ['personal', 'employment', 'benefits', 'government', 'compensation', 'bank']
 
 /** Pay and bank fields are missing for people who may not see pay; give the screens an empty shape so they render. */
-function toEmployee(raw: unknown): EmployeeRecord {
+export function toEmployee(raw: unknown): EmployeeRecord {
   const e = camelizeKeys<EmployeeRecord>(raw, SECTIONS)
   return {
     ...e,
@@ -215,6 +182,18 @@ export async function fetchAllEmployees(params: Omit<EmployeeListParams, 'page' 
   const first = await fetchEmployees({ ...params, perPage: 100, page: 1 })
   const rest = await Promise.all(Array.from({ length: Math.max(0, first.lastPage - 1) }, (_, i) => fetchEmployees({ ...params, perPage: 100, page: i + 2 })))
   return [...first.employees, ...rest.flatMap((p) => p.employees)]
+}
+
+/** The signed-in person's own record, with their pay and history; null when the account has no employee. */
+export async function fetchMe(): Promise<EmployeeRecord | null> {
+  const res = await api.get<{ data: unknown }>('/api/me')
+  return res.data ? toEmployee(res.data) : null
+}
+
+/** Employees may only edit their own contact fields; the server refuses anything else. */
+export async function updateMe(updates: SelfServiceProfileUpdate): Promise<EmployeeRecord> {
+  const res = await api.patch<{ data: unknown }>('/api/me', snakeizeKeys(updates))
+  return toEmployee(res.data)
 }
 
 export async function fetchEmployee(id: string): Promise<EmployeeRecord> {

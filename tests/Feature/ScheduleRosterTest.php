@@ -79,7 +79,7 @@ test('a manager rosters only their branch and a stray employee id is ignored', f
     $this->actingAs($manager)->getJson('/api/schedules/roster?from=2026-03-01&to=2026-03-31')->assertJsonCount(1, 'data');
 });
 
-test('a shift template from another company is refused, and an employee cannot use the roster', function () {
+test('a shift template from another company is refused, and an employee cannot write the roster', function () {
     $admin = companyUser();
     $foreign = shiftTemplate(otherCompany()->id, 'Foreign');
     $a = rosterStaff($admin->company_id);
@@ -87,7 +87,8 @@ test('a shift template from another company is refused, and an employee cannot u
     $this->actingAs($admin)->postJson('/api/schedules/roster', ['employee_ids' => [$a->id], 'dates' => ['2026-03-02'], 'work_schedule_id' => $foreign->id])->assertUnprocessable();
 
     $employee = companyUser('employee', $admin->company);
-    $this->actingAs($employee)->getJson('/api/schedules/roster?from=2026-03-01&to=2026-03-31')->assertForbidden();
+    // Self-service reads its own roster (none here: the account has no employee record) but never writes it.
+    $this->actingAs($employee)->getJson('/api/schedules/roster?from=2026-03-01&to=2026-03-31')->assertOk()->assertJsonCount(0, 'data');
     $this->actingAs($employee)->postJson('/api/schedules/roster', ['employee_ids' => [$a->id], 'dates' => ['2026-03-02']])->assertForbidden();
 });
 

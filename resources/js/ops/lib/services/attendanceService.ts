@@ -185,7 +185,7 @@ export async function logAttendance(input: LogAttendanceInput): Promise<LogAtten
   return res.data
 }
 
-// ---- Still the mock until their modules move: leave (P6), payroll (P10), ESS (P13), dashboards (P14) --------------------
+// ---- Still the mock until their modules move: reports and dashboards (P14), the payroll display helpers (P17) --------------------
 
 async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
   const employees = await getEmployees(session)
@@ -201,13 +201,6 @@ export async function getAttendanceRecords(session: SessionUser): Promise<Attend
   materializeWfhRecords()
   const employeeIds = await scopedEmployeeIds(session)
   return db.attendanceRecords.filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
-}
-
-export async function getAttendanceForEmployee(session: SessionUser, employeeId: string): Promise<AttendanceRecord[]> {
-  materializeWfhRecords()
-  const employeeIds = await scopedEmployeeIds(session)
-  if (!employeeIds.has(employeeId)) return []
-  return db.attendanceRecords.filter((r) => r.employeeId === employeeId).sort((a, b) => b.date.localeCompare(a.date))
 }
 
 export async function getAttendanceAdjustments(session: SessionUser): Promise<AttendanceAdjustment[]> {

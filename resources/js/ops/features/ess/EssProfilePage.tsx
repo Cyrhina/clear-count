@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FileText, Lock, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { PageHeader } from '@ops/components/layout/PageHeader'
@@ -17,9 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ops/components/ui/Tab
 import { useToast } from '@ops/components/ui/Toast'
 import { CompensationHistoryTable } from '@ops/features/employees/components/CompensationHistoryTable'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useSession } from '@ops/hooks/useSession'
-import { useTenant } from '@ops/hooks/useTenant'
-import { updateEmployeeSelf } from '@ops/lib/services/employeeService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { updateMe } from '@ops/lib/services/employeeService'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
 
 const schema = z.object({
@@ -62,38 +61,31 @@ const TAB_OPTIONS = [
 
 export function EssProfilePage() {
   const { employee, isLoading, refetch } = useSelfEmployee()
-  const { user } = useSession()
-  const { branches } = useTenant()
   const { notify } = useToast()
   const [tab, setTab] = useState('personal')
 
+  // `values` fills the form when the record arrives (and again after a save), which a reset in an effect did not do reliably.
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting, isDirty },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
-
-  useEffect(() => {
-    if (employee) {
-      reset({
-        contactNumber: employee.personal.contactNumber,
-        personalEmail: employee.personal.personalEmail ?? '',
-        address: employee.personal.address,
-      })
-    }
-  }, [employee, reset])
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    values: employee ? { contactNumber: employee.personal.contactNumber ?? '', personalEmail: employee.personal.personalEmail ?? '', address: employee.personal.address ?? '' } : undefined,
+  })
 
   if (isLoading) return <Skeleton className="h-96" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
 
   async function onSubmit(values: FormValues) {
-    await updateEmployeeSelf(user, values)
+    try {
+      await updateMe(values)
+    } catch (error) {
+      return notify({ title: "Couldn't save your profile", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Profile updated', tone: 'success' })
     refetch()
   }
-
-  const branch = branches.find((b) => b.id === employee.branchId)
 
   return (
     <div className="space-y-5">
@@ -175,7 +167,7 @@ export function EssProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:grid-cols-3">
               <Field label="Position" value={employee.employment.position} />
               <Field label="Department" value={employee.employment.department} />
-              <Field label="Branch" value={branch?.name} />
+              <Field label="Branch" value={employee.branchName} />
               <Field label="Employment type" value={employee.employment.employmentType.replace('_', ' ')} />
               <Field label="Date hired" value={formatDate(employee.employment.dateHired)} />
               <Field label="Status" value={employee.employment.status} />

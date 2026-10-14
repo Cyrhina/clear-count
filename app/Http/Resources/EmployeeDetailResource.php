@@ -26,7 +26,7 @@ class EmployeeDetailResource extends EmployeeResource
             'history' => $this->history(),
             // The sign-in account linked to this employee, for people who manage accounts.
             $this->mergeWhen($request->user()->can('users.manage'), fn () => ['account' => User::where('employee_id', $this->id)->first(['id', 'email', 'is_active'])?->only(['id', 'email', 'is_active'])]),
-            $this->mergeWhen($request->user()->can('employees.pay.view'), fn () => [
+            $this->mergeWhen(self::seesPay($request, $this->id), fn () => [
                 'compensation_history' => $this->compensationHistory(),
                 'documents' => $this->documents->map(fn ($d) => EmployeeDocumentController::present($d))->all(),
             ]),

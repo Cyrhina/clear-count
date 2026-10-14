@@ -1,12 +1,9 @@
-import { buildSampleLoans } from '@ops/features/ess/sampleData'
 import { getAttendanceRecords } from '@ops/lib/services/attendanceService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
-import { formatCurrency } from '@ops/lib/utils/format'
-import { db } from '@ops/mock-data'
 import type { SessionUser } from '@ops/types/domain'
 
-// mock: remove in P13 (loan notice), P14 (reports). Payslip notices are stored notifications now (sent when a run is finalized). Requests waiting for approval and their decisions are stored notifications now (notificationApiService); only these derived ones remain.
+// mock: remove in P14 (reports). Loan payment notices are stored notifications now (sent when a run finalizes). Payslip notices are stored notifications now (sent when a run is finalized). Requests waiting for approval and their decisions are stored notifications now (notificationApiService); only these derived ones remain.
 export interface AppNotification {
   id: string
   /** Stored notifications only: false until opened. */
@@ -49,37 +46,6 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
         link: `/payroll/${period.id}`,
       })
     })
-  }
-
-  if (session.employeeId) {
-    const employee = db.employees.find((e) => e.id === session.employeeId)
-    if (employee) {
-      // Loan payment confirmation — from real repayment history if this employee has one,
-      // else the same illustrative sample loan shown on `/ess/loans` when there's no real
-      // loan yet.
-      const loanWithHistory = db.loans.find((l) => l.employeeId === employee.id && l.repaymentHistory && l.repaymentHistory.length > 0)
-      if (loanWithHistory) {
-        const lastPayment = loanWithHistory.repaymentHistory!.at(-1)!
-        notifications.push({
-          id: `loan-payment-${loanWithHistory.id}`,
-          message: `Loan payment of ${formatCurrency(lastPayment.amount)} processed for "${loanWithHistory.label}"`,
-          tone: 'success',
-          timestamp: lastPayment.date,
-          link: '/ess/loans',
-          highlightId: loanWithHistory.id,
-        })
-      } else {
-        const sampleLoan = buildSampleLoans(employee.id, employee.companyId)[0]
-        notifications.push({
-          id: `loan-payment-${sampleLoan.id}`,
-          message: `Loan payment of ${formatCurrency(sampleLoan.monthlyDeduction)} processed for "${sampleLoan.label}"`,
-          tone: 'success',
-          timestamp: new Date().toISOString(),
-          link: '/ess/loans',
-          highlightId: sampleLoan.id,
-        })
-      }
-    }
   }
 
   return notifications.sort((a, b) => b.timestamp.localeCompare(a.timestamp))

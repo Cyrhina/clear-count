@@ -27,8 +27,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P9 | Benefits, loans, deductions, bonuses (a, b, c) | done (merged #14, #15, #16) | backend/p09-benefits-loans, backend/p09b-loans, backend/p09c-bonuses | #14, #15, #16 | 2026-10-24 |
 | P10 | Payroll engine and runs (a: engine, b: runs) | done (merged #17, #18) | backend/p10a-payroll-engine, backend/p10b-payroll-runs | #17, #18 | 2026-10-26 |
 | P11 | Payslips, PDF, email | done (merged #19, #20) | backend/p11-payslips, backend/fix-composer-lock | #19, #20 | 2026-10-27 |
-| P12 | 13th month and separate bonus payslips | in progress: in review | backend/p12-thirteenth-month | #21 | |
-| P13 | Employee and manager self-service | not started | | | |
+| P12 | 13th month and separate bonus payslips | done (merged #21) | backend/p12-thirteenth-month | #21 | 2026-10-27 |
+| P13 | Employee and manager self-service | in progress: in review | backend/p13-self-service | | |
 | P14 | Dashboards, reports, tax compliance | not started | | | |
 | P15 | Platform and subscriptions | not started | | | |
 | P16 | Integrations (API keys, webhooks) | not started | | | |
@@ -66,19 +66,19 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `useTenant` (mock company) | layout, dashboards | P14 | P1 |
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
-| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceForEmployee, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: getWfhArrangements, createWfhBatch, cancelWfh, scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | reports (late and absence, team), dashboards, manager service, notifications, ESS (WFH request page), leave, `LogAttendanceDialog` (default times) | P6 (leave), P13 (ESS, WFH request), P14 (dashboards, reports) | P5a |
-| `leaveService` (mock): getLeaveTypes, getLeaveRequests, getLeaveBalance, planLeaveRequest, submitLeaveRequest; `features/leave/hooks/useLeave.ts`; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | ESS leave pages, dashboards, notifications, manager service, 13th month, reports (late and absence, team) | P13 (ESS), P14 (dashboards, reports) | P6 |
-| `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords`; `features/ess/otApplicationStore.ts` (ESS-only OT applications) | dashboards, reports (basic, team), manager service, notifications, ESS overtime page | P13 (ESS), P14 (dashboards, reports) | P7 |
-| `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod, submitWorkLog, withdrawWorkLog; `db.compensationApprovals` | ESS work output page, work log card and rate basis display, dashboards, reports, manager service | P13 (ESS), P14 (dashboards, reports) | P7 |
-| `notificationService` (mock): getNotifications (team absence, payroll reminders and the loan payment notice only) | the bell and Notifications page, merged with the stored ones | P13 (loan notice), P14 | P7 |
+| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | reports (late and absence, team), dashboards, notifications, `LogAttendanceDialog` (default times), `WfhPanel` (todayKey) | P14 (dashboards, reports) | P5a |
+| `leaveService` (mock): getLeaveRequests only; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | dashboards, the payroll mock helpers, reports (late and absence, team) | P14 (dashboards, reports) | P6 |
+| `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords` | dashboards, reports (basic, team) | P14 (dashboards, reports) | P7 |
+| `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod; `db.compensationApprovals` | work log card and rate basis display, dashboards, reports | P14 (dashboards, reports), P17 (rate basis display) | P7 |
+| `notificationService` (mock): getNotifications (team absence and payroll reminders only) | the bell and Notifications page, merged with the stored ones | P14 | P7 |
 | `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | report previews (`reportService`), the Computation drawer and PayslipCard (they explain a stored payroll line with these helpers), reports, approvals and notifications (periods through the wrappers) | P14 (reports), P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | tax and compliance report, report previews | P14 (reports) | P9a |
-| `loanService` (mock): getLoans; `db.loans`, `db.loanTypes` (mock-data generators); the ESS loans store (`features/ess` sample loans) | ESS loans page, notifications (loan payment notice), report previews | P13 (ESS), P14 | P9b |
+| `db.loans`, `db.loanTypes` (mock-data generators; `loanService` is deleted) | the payroll mock helpers (`payrollService`), report previews | P14 (reports), P17 | P9b |
 | `db.payrollPeriods`, `db.payrollLines` (never filled now: the runs are on the API and the demo runs come from the seeder) | `dashboardService` (payroll cards) | P14 (dashboards) | P10b |
 | `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing writes them now) | `taxComplianceService` (13th month totals) | P14 (tax compliance) | P12 |
-| `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH, manager service | P5 (attendance), P6 (leave), P13 (ESS) | P4 |
-| `employeeService`: getEmployees, getEmployee, getEmployeeIdsOnLeaveToday, updateEmployeeSelf; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, ESS, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P13 (self service); P16 (createEmployee) | P3a |
-| `features/employees/hooks/useEmployees.ts`, `useEmployee.ts` (mock hooks) | the modules above | with the modules above | P3a |
+| `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH | P5 (attendance), P6 (leave) | P4 |
+| `employeeService`: getEmployees; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P16 (createEmployee) | P3a |
+| `features/employees/hooks/useEmployees.ts` (mock hook) | the report screens | P14 (reports) | P3a |
 
 ## Handoff notes
 
@@ -94,6 +94,26 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P13 - 2026-10-28
+- Branch: backend/p13-self-service (pushed: no)
+- Done:
+  - Backend: `GET api/me` (the signed-in person's own record, with pay, bank, documents, history and the branch name; `data: null` when the account has no employee) and `PATCH api/me` (contact number, personal email and address only). `EmployeeResource::seesPay` lets an employee see their own pay and bank. `GET api/manager/dashboard` (team head counts, pending counts, upcoming leave, who needs attention; the model scopes cut it to the manager's branch).
+  - Self-service access on routes that were staff-only: `attendance` list, `loans` list, `schedules/templates` and `schedules/roster` now take `ess.view` (the employee scope returns only the employee's own rows). Leave preview, filing and cancel take `ess.view`, but the controller refuses anyone who is not the employee unless they hold `leave.request` (so a manager cannot file or cancel for the team). New `GET api/overtime/rates` (the rates a request can use; the employee cannot open Payroll Settings) and `DELETE api/overtime/{overtime}` (withdraw a pending request).
+  - Finalizing a run now also notifies the employee of each loan payment it took (a stored notification, link /ess/loans); the mock loan notice is gone.
+  - Frontend: `useSelfEmployee` reads `api/me` (TanStack). ESS pages on the API: home, profile (`updateMe`), attendance (`useMyAttendance`), leave (types, requests, balances, file), loans, overtime (rates, file, withdraw), work output (file, withdraw), schedule (own roster; `useRoster` takes `self`), the WFH request dialog and withdraw. Manager dashboard and the team member Attendance tab (`managerApiService`).
+  - Deleted: `managerService`, `loanService`, the ESS sample data, the ESS OT store, the mock leave hooks, the mock `useEmployee`, and the mock functions the ESS pages used (`getAttendanceForEmployee`, `getWfhArrangements`, `createWfhBatch`, `cancelWfh`, `submitLeaveRequest` and the leave planner, `submitWorkLog`, `withdrawWorkLog`, `getEmployee`, `updateEmployeeSelf`, `getEmployeeIdsOnLeaveToday`). The ledger is updated.
+  - Tests: `SelfServiceTest` (7 tests). Three old tests that said an employee gets 403 on attendance, loans and the roster now say they read only their own and still cannot write.
+- Next: P14, dashboards, reports and tax compliance (the admin, HR, payroll and workforce dashboards, the report screens, `taxComplianceService`).
+- Gotchas:
+  - Deviation from PLAN.md: no `GET api/ess/summary`. The ESS home puts its cards together from the existing endpoints (payslips, leave, loans, attendance, notifications).
+  - The overtime request has no attachment any more (the mock only kept the file name; the API has no file store for it).
+  - An employee who is not hourly or output-paid no longer sees the Log button on My Work & Output (the server refuses their entries).
+  - The Attendance tab on a team member is built from the attendance and schedule endpoints in the browser; a member with no default work schedule shows "No work schedule assigned yet" (the mock fell back to the company default).
+  - The profile form is filled through react-hook-form `values`; a `reset` in an effect left the fields empty with the React Compiler build.
+  - Not tested: the manager screens other than the dashboard and the Attendance tab; the ESS pages as a manager with an employee link; a second WFH request right after the first (once the list did not refresh after sending, and could not be repeated).
+- Checks: php artisan test 292 (288 passed, 4 skipped); tsc and the build pass.
+
 
 ### P12 - 2026-10-27
 - Branch: backend/p12-thirteenth-month (pushed: no)

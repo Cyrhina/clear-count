@@ -1,5 +1,6 @@
 import { Hourglass, Plus, Wallet, X, CheckCircle2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { PageHeader } from '@ops/components/layout/PageHeader'
 import { Badge } from '@ops/components/ui/Badge'
 import { Button } from '@ops/components/ui/Button'
@@ -14,31 +15,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@ops/components/ui/Toast'
 import { EssCardList, EssRecordCard, EssTableView } from '@ops/features/ess/components/EssRecordCard'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useSession } from '@ops/hooks/useSession'
-import { getCompensationApprovals, submitWorkLog, withdrawWorkLog } from '@ops/lib/services/compensationApprovalService'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fetchWorkLogs, fileWorkLog, withdrawWorkLog } from '@ops/lib/services/workLogApiService'
 import { cn } from '@ops/lib/utils/cn'
 import { formatCurrency, formatDate } from '@ops/lib/utils/format'
-import type { CompensationApproval } from '@ops/types/domain'
 
 const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' } as const
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
 /** Employees log the hours they worked (or output they produced) here; the manager approves them under Work & Output Approvals. */
 export function EssWorkOutputPage() {
-  const { user } = useSession()
   const { notify } = useToast()
+  const queryClient = useQueryClient()
   const { employee, isLoading } = useSelfEmployee()
-  const [logs, setLogs] = useState<CompensationApproval[] | null>(null)
+  const { data: logs } = useQuery({ queryKey: ['work-logs'], queryFn: fetchWorkLogs, enabled: !!employee })
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ workDate: todayKey(), quantity: '', description: '' })
+  const load = () => void queryClient.invalidateQueries({ queryKey: ['work-logs'] })
 
-  const load = useCallback(() => {
-    if (!employee) return
-    getCompensationApprovals(user).then((all) => setLogs(all.filter((a) => a.employeeId === employee.id)))
-  }, [user, employee])
-  useEffect(load, [load])
-
-  if (isLoading || (employee && logs === null)) return <Skeleton className="h-72" />
+  if (isLoading || (employee && !logs)) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
 
   const isOutput = employee.compensation.payType === 'output_based'
@@ -46,7 +41,7 @@ export function EssWorkOutputPage() {
   const paidByEntries = isOutput || employee.compensation.payType === 'hourly'
   const unit = isOutput ? (employee.compensation.outputUnit ?? 'Per Unit') : 'hrs'
   const noun = isOutput ? 'output' : 'hours'
-  const rows = logs ?? []
+  const rows = (logs ?? []).filter((r) => r.employeeId === employee.id)
   const quantity = Number(form.quantity)
   const valid = form.workDate && quantity > 0 && (isOutput || quantity <= 24)
   const pending = rows.filter((r) => r.status === 'pending')
@@ -54,7 +49,11 @@ export function EssWorkOutputPage() {
 
   async function submit() {
     if (!employee || !valid) return
-    await submitWorkLog(user, { employeeId: employee.id, workDate: form.workDate, quantity, description: form.description.trim() || (isOutput ? 'Output completed' : 'Hours worked') })
+    try {
+      await fileWorkLog({ employeeId: employee.id, workDate: form.workDate, quantity, description: form.description.trim() || (isOutput ? 'Output completed' : 'Hours worked') })
+    } catch (error) {
+      return notify({ title: "Couldn't submit the entry", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Submitted for approval', description: 'Your manager will review this entry.', tone: 'success' })
     setOpen(false)
     setForm({ workDate: todayKey(), quantity: '', description: '' })
@@ -62,7 +61,11 @@ export function EssWorkOutputPage() {
   }
 
   async function withdraw(id: string) {
-    await withdrawWorkLog(user, id)
+    try {
+      await withdrawWorkLog(id)
+    } catch (error) {
+      return notify({ title: "Couldn't withdraw the entry", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Entry withdrawn' })
     load()
   }
@@ -71,11 +74,13 @@ export function EssWorkOutputPage() {
     <div className="space-y-5">
       <PageHeader
         title="My Work & Output"
-        description={`Log the ${noun} you worked so your manager can approve them for payroll.`}
+        description={paidByEntries ? `Log the ${noun} you worked so your manager can approve them for payroll.` : 'Your pay does not depend on logged hours or output, so there is nothing to log here.'}
         actions={
-          <Button icon={<Plus className="size-4" />} onClick={() => setOpen(true)}>
-            Log {isOutput ? 'Output' : 'Hours'}
-          </Button>
+          paidByEntries ? (
+            <Button icon={<Plus className="size-4" />} onClick={() => setOpen(true)}>
+              Log {isOutput ? 'Output' : 'Hours'}
+            </Button>
+          ) : undefined
         }
       />
 

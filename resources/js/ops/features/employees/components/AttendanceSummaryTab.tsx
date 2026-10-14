@@ -4,29 +4,28 @@ import { Card } from '@ops/components/ui/Card'
 import { EmptyState } from '@ops/components/ui/EmptyState'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
-import { useSession } from '@ops/hooks/useSession'
-import { getEmployeeAttendanceSummary } from '@ops/lib/services/managerService'
-import type { EmployeeAttendanceSummary } from '@ops/lib/services/managerService'
+import { fetchEmployeeAttendanceSummary } from '@ops/lib/services/managerApiService'
+import type { EmployeeAttendanceSummary } from '@ops/lib/services/managerApiService'
 import { formatDate } from '@ops/lib/utils/format'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const TONE = { present: 'success', late: 'warning', undertime: 'neutral', absent: 'danger' } as const
 
 /** Work schedule and the last 30 days of attendance for one employee — the "attendance summary" on a team member's profile. */
-export function AttendanceSummaryTab({ employeeId }: { employeeId: string }) {
-  const { user } = useSession()
+export function AttendanceSummaryTab({ employeeId, workScheduleId }: { employeeId: string; workScheduleId?: string }) {
   const [summary, setSummary] = useState<EmployeeAttendanceSummary | null | undefined>(undefined)
 
   useEffect(() => {
     let cancelled = false
     setSummary(undefined)
-    getEmployeeAttendanceSummary(user, employeeId).then((result) => {
-      if (!cancelled) setSummary(result ?? null)
-    })
+    fetchEmployeeAttendanceSummary(employeeId, workScheduleId).then(
+      (result) => !cancelled && setSummary(result),
+      () => !cancelled && setSummary(null),
+    )
     return () => {
       cancelled = true
     }
-  }, [user, employeeId])
+  }, [employeeId, workScheduleId])
 
   if (summary === undefined) return <Skeleton className="h-48" />
   if (summary === null) return <EmptyState title="Attendance isn't available for this employee" />

@@ -450,7 +450,7 @@ function EmployeeProfileContent() {
 
         {canViewAttendance && (
           <TabsContent value="attendance">
-            <AttendanceSummaryTab employeeId={employee.id} />
+            <AttendanceSummaryTab employeeId={employee.id} workScheduleId={employee.workScheduleId} />
           </TabsContent>
         )}
 

@@ -17,9 +17,9 @@ import { Select } from '@ops/components/ui/Select'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { useToast } from '@ops/components/ui/Toast'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useLeaveRequests, useLeaveTypes } from '@ops/features/leave/hooks/useLeave'
-import { useSession } from '@ops/hooks/useSession'
-import { submitLeaveRequest } from '@ops/lib/services/leaveService'
+import { useLeaveBalances, useLeaveRequestList, useLeaveTypeList } from '@ops/features/leave/hooks/useLeaveData'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { fileLeave } from '@ops/lib/services/leaveApiService'
 import { portionSuffix } from '@ops/lib/leave/leaveDays'
 import { formatDate } from '@ops/lib/utils/format'
 
@@ -35,9 +35,8 @@ type FormValues = z.infer<typeof schema>
 
 function RequestLeaveDialog({ employeeId, onCreated }: { employeeId: string; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
-  const { user } = useSession()
   const { notify } = useToast()
-  const { leaveTypes } = useLeaveTypes()
+  const { leaveTypes } = useLeaveTypeList()
 
   const {
     register,
@@ -56,8 +55,11 @@ function RequestLeaveDialog({ employeeId, onCreated }: { employeeId: string; onC
     const dateTo = isHalf ? values.dateFrom : values.dateTo
     if (!dateTo) return setError('dateTo', { message: 'Required' })
     if (dateTo < values.dateFrom) return setError('dateTo', { message: 'Must be on or after the start date' })
-    const result = await submitLeaveRequest(user, { ...values, employeeId, dateTo })
-    if (!result.ok) return // the live preview above already shows why
+    try {
+      await fileLeave({ ...values, employeeId, dateTo })
+    } catch (error) {
+      return notify({ title: "Couldn't file the request", description: apiErrorMessage(error), tone: 'danger' })
+    }
     notify({ title: 'Leave request submitted', description: 'Your manager will review it shortly.', tone: 'success' })
     reset({ dayPortion: 'full' })
     setOpen(false)
@@ -119,14 +121,17 @@ function RequestLeaveDialog({ employeeId, onCreated }: { employeeId: string; onC
 
 export function EssLeavePage() {
   const { employee, isLoading: isLoadingEmployee } = useSelfEmployee()
-  const { requests, isLoading: isLoadingRequests, refetch } = useLeaveRequests()
-  const { leaveTypes } = useLeaveTypes()
+  const { requests, isLoading: isLoadingRequests, refetch } = useLeaveRequestList()
+  const { leaveTypes } = useLeaveTypeList()
+  const { balances } = useLeaveBalances()
 
   if (isLoadingEmployee || isLoadingRequests) return <Skeleton className="h-72" />
   if (!employee) return <p className="text-sm text-muted-foreground">No employee record linked to this account.</p>
 
   const myRequests = requests.filter((r) => r.employeeId === employee.id)
   const leaveTypeById = new Map(leaveTypes.map((lt) => [lt.id, lt]))
+  // Only the leave types that are limited by credits have a balance to show.
+  const myBalances = balances.filter((b) => b.employeeId === employee.id && b.available !== null)
 
   return (
     <div className="space-y-5">
@@ -139,9 +144,9 @@ export function EssLeavePage() {
       <Card className="p-5">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Leave Balance</p>
         <div className="flex flex-wrap gap-2">
-          {Object.entries(employee.benefits.leaveCreditsByType).map(([type, credits]) => (
-            <Badge key={type} tone="brand">
-              {type}: {credits} days
+          {myBalances.map((b) => (
+            <Badge key={b.leaveTypeId} tone="brand">
+              {leaveTypeById.get(b.leaveTypeId)?.name}: {b.remaining} days{b.pending > 0 && ` (${b.pending} pending)`}
             </Badge>
           ))}
         </div>

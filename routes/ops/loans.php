@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\Route;
 // Required inside the auth + verified + active group in routes/web.php.
 
 Route::prefix('api/loans')->name('loans.')->group(function () {
+    // Self-service reads their own through the employee scope.
+    Route::get('/', [LoanController::class, 'index'])->middleware('permission:loans.view|ess.view')->name('index');
     Route::middleware('permission:loans.view')->group(function () {
-        Route::get('/', [LoanController::class, 'index'])->name('index');
         Route::get('types', [LoanController::class, 'types'])->name('types.index');
     });
     Route::middleware('permission:loans.manage')->group(function () {

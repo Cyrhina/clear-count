@@ -6,8 +6,9 @@ import { FormField } from '@ops/components/ui/FormField'
 import { Input, Textarea } from '@ops/components/ui/Input'
 import { useToast } from '@ops/components/ui/Toast'
 import { useSelfEmployee } from '@ops/features/ess/hooks/useSelfEmployee'
-import { useSession } from '@ops/hooks/useSession'
-import { createWfhBatch, todayKey } from '@ops/lib/services/wfhService'
+import { todayKey } from '@ops/features/schedules/dateUtil'
+import { apiErrorMessage } from '@ops/lib/api/http'
+import { createWfh } from '@ops/lib/services/wfhArrangementService'
 import { cn } from '@ops/lib/utils/cn'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -20,7 +21,6 @@ function addDays(date: string, n: number) {
 
 /** An employee asks to work from home for a date range; their manager decides. */
 export function RequestWfhDialog({ onRequested }: { onRequested?: () => void }) {
-  const { user } = useSession()
   const { employee } = useSelfEmployee()
   const { notify } = useToast()
   const [open, setOpen] = useState(false)
@@ -45,15 +45,15 @@ export function RequestWfhDialog({ onRequested }: { onRequested?: () => void }) 
     setSaving(true)
     setError(undefined)
     try {
-      const r = await createWfhBatch(user, { employeeIds: [employee.id], kind: 'temporary', dateFrom, dateTo, daysOfWeek: days, times: 'default', reason })
-      if (r.created.length === 0) throw new Error(r.skipped[0]?.reason ?? 'Could not send the request.')
-      notify({ title: r.created[0].status === 'approved' ? 'WFH set' : 'WFH request sent to your manager', tone: 'success' })
+      const r = await createWfh({ employeeIds: [employee.id], kind: 'temporary', dateFrom, dateTo, daysOfWeek: days, times: 'default', reason })
+      if (r.created === 0) throw new Error(r.skipped[0]?.reason ?? 'Could not send the request.')
+      notify({ title: 'WFH request sent to your manager', tone: 'success' })
       setOpen(false)
       setReason('')
       setDays([])
       onRequested?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not send the request.')
+      setError(apiErrorMessage(e))
     } finally {
       setSaving(false)
     }

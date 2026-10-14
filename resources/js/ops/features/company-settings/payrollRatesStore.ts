@@ -18,7 +18,7 @@ export interface HolidayRateType {
  * The three ids below are shared with the real payroll engine's `OvertimeType` (see
  * `src/types/domain.ts` and `src/lib/services/overtimeService.ts`) — editing their multiplier here
  * changes what the admin Overtime module actually pays out. `ot_night_diff` and any custom rate
- * types have no equivalent `OvertimeType`, so they stay UI/ESS-only (see `otApplicationStore.ts`).
+ * types have no equivalent `OvertimeType`.
  */
 export const DEFAULT_OT_RATES: OtRateType[] = [
   { id: 'regular', label: 'Regular Workday Overtime', multiplier: 1.25, isCustom: false },
