@@ -10,7 +10,7 @@ import { Skeleton } from '@ops/components/ui/Skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ops/components/ui/Table'
 import { CardSelectionContext, CardStat, ReportCardList, ReportRecordCard, ReportTableView } from '@ops/features/reports/components/ReportRecordCard'
 import { FilterLabel, ReportFilterBar, ReportViewShell, StatTile } from '@ops/features/reports/components/shared'
-import { useAllPayrollLines, useTaxComplianceData } from '@ops/features/reports/hooks/useReports'
+import { useFinalizedPayrollLines, useTaxComplianceData } from '@ops/features/reports/hooks/useReports'
 import { monthLabel } from '@ops/features/reports/payrollAggregates'
 import type { ExcelExport } from '@ops/features/reports/reportExport'
 import { DE_MINIMIS_CATEGORIES, THIRTEENTH_MONTH_CEILING, TAX_STATUS_LABEL, statusRank, type TaxStatus } from '@ops/lib/payroll/taxCompliance'
@@ -652,7 +652,7 @@ const VIEW_OPTIONS = [
 /** Tax withheld on compensation, by payroll month or by employee, for a calendar year. */
 export function WithholdingTaxSummaryReport() {
   const { year, isLoading, rows, filters, meta } = useTaxReport()
-  const { rows: lines, isLoading: linesLoading } = useAllPayrollLines()
+  const { rows: lines, isLoading: linesLoading } = useFinalizedPayrollLines()
   const [view, setView] = useState<'month' | 'employee'>('month')
 
   const months = useMemo(() => {

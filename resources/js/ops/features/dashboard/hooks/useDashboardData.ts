@@ -3,34 +3,13 @@ import { useEffect, useState } from 'react'
 import { useSession } from '@ops/hooks/useSession'
 import {
   getAdminDashboardOverview,
-  getDashboardStats,
-  getHeadcountTrend,
   getPendingRequestsSummary,
   getPayrollDashboard,
   getWorkforceCharts,
 } from '@ops/lib/services/dashboardService'
 import { fetchManagerDashboard } from '@ops/lib/services/managerApiService'
 import { getTaxAlerts, type TaxAlerts } from '@ops/lib/services/taxComplianceService'
-import type { AdminDashboardOverview, DashboardStats, PayrollDashboard, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
-
-export function useDashboardData() {
-  const { user } = useSession()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getDashboardStats(user).then((result) => {
-      if (!cancelled) setStats(result)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [user])
-
-  const trend = getHeadcountTrend(user)
-
-  return { stats, trend, isLoading: stats === null }
-}
+import type { AdminDashboardOverview, PayrollDashboard, PendingRequestsSummary, WorkforceCharts } from '@ops/lib/services/dashboardService'
 
 export function useAdminDashboardOverview() {
   const { user } = useSession()

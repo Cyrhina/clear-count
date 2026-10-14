@@ -1,7 +1,9 @@
-// mock: remove in P14 (dashboards, reports) and with the payroll display helpers (P17). The Approvals page and the ESS work output page use workLogApiService.
+// Read helpers for the dashboards, reports and the payroll run screen: work logs on the API (the Approvals and ESS pages use workLogApiService directly).
+import { memoRead } from '@ops/lib/api/memo'
 import { workLogsForPeriod } from '@ops/lib/payroll/rateBasis'
 import { getEmployees } from '@ops/lib/services/employeeService'
-import { db } from '@ops/mock-data'
+import { fetchPeriodRecords } from '@ops/lib/services/payrollApiService'
+import { fetchWorkLogs } from '@ops/lib/services/workLogApiService'
 import type { CompensationApproval, PayrollPeriod, SessionUser } from '@ops/types/domain'
 
 export interface WorkLogTotals {
@@ -21,24 +23,12 @@ export interface WorkLogSummary {
 
 type PeriodScope = Pick<PayrollPeriod, 'id' | 'status' | 'startDate' | 'endDate' | 'payrollGroupId'>
 
-/** Active hourly/output employees a payroll run over `period` covers (its Payroll Group, when it has one). */
-function workLogEmployeesFor(session: SessionUser, period: PeriodScope) {
-  const group = period.payrollGroupId ? db.payrollGroups.find((g) => g.id === period.payrollGroupId) : undefined
-  return db.employees.filter(
-    (e) =>
-      e.companyId === session.companyId &&
-      e.employment.status === 'active' &&
-      (e.compensation.payType === 'hourly' || e.compensation.payType === 'output_based') &&
-      (!group || group.employeeIds.includes(e.id)),
-  )
-}
-
 /**
- * Approved hourly/output work logs a payroll period pays (or, for a draft, would pay if run now) —
- * uses the engine's own selection rule, scoped to the period's Payroll Group when it has one.
+ * Approved hourly/output work logs a payroll period pays (or, for a draft, would pay if run now) — uses the engine's own
+ * selection rule over the logs of the period's dates (the server sends the ones of its Payroll Group).
  */
 export async function getWorkLogSummaryForPeriod(session: SessionUser, period: PeriodScope): Promise<WorkLogSummary> {
-  const employees = workLogEmployeesFor(session, period)
+  const [{ workLogs }, employees] = await Promise.all([fetchPeriodRecords(period.id), getEmployees(session)])
 
   const summary: WorkLogSummary = {
     hourly: { records: 0, quantity: 0, amount: 0 },
@@ -47,8 +37,8 @@ export async function getWorkLogSummaryForPeriod(session: SessionUser, period: P
     rejectedCount: 0,
     excludedApprovedCount: 0,
   }
-  for (const employee of employees) {
-    const logs = workLogsForPeriod(employee.id, period, db.compensationApprovals)
+  for (const employee of employees.filter((e) => e.employment.status === 'active' && (e.compensation.payType === 'hourly' || e.compensation.payType === 'output_based'))) {
+    const logs = workLogsForPeriod(employee.id, period, workLogs)
     const bucket = employee.compensation.payType === 'hourly' ? summary.hourly : summary.output
     const quantity = logs.payable.reduce((sum, a) => sum + a.quantity, 0)
     bucket.records += logs.payable.length
@@ -62,9 +52,5 @@ export async function getWorkLogSummaryForPeriod(session: SessionUser, period: P
 }
 
 export async function getCompensationApprovals(session: SessionUser): Promise<CompensationApproval[]> {
-  const employees = await getEmployees(session)
-  const employeeIds = new Set(employees.map((e) => e.id))
-  return db.compensationApprovals
-    .filter((a) => a.companyId === session.companyId && employeeIds.has(a.employeeId))
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+  return (await memoRead(`work-logs:${session.id}`, fetchWorkLogs)).slice().sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 }

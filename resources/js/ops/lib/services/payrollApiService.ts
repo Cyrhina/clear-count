@@ -27,6 +27,12 @@ export async function fetchPayrollLines(periodId: string): Promise<PayrollLine[]
   return camelizeKeys<PayrollLine[]>(res.data)
 }
 
+/** Every run paid between two dates (the last two years and this one by default) with all its lines, in one request: what the reports read. */
+export async function fetchReportPayrollLines(from?: string, to?: string): Promise<{ periods: PayrollPeriod[]; lines: PayrollLine[] }> {
+  const res = await api.get<{ data: { periods: unknown[]; lines: unknown[] } }>('/api/reports/payroll-lines', { from, to })
+  return { periods: camelizeKeys<ApiPeriod[]>(res.data.periods).map(toPeriod), lines: camelizeKeys<PayrollLine[]>(res.data.lines) }
+}
+
 export async function fetchPayrollLine(lineId: string): Promise<PayrollLine> {
   const res = await api.get<{ data: unknown }>(`/api/payroll/lines/${lineId}`)
   return camelizeKeys<PayrollLine>(res.data)

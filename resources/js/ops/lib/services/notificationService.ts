@@ -1,4 +1,4 @@
-import { getAttendanceRecords } from '@ops/lib/services/attendanceService'
+import { fetchAttendanceRange } from '@ops/lib/services/attendanceService'
 import { getPayrollPeriods } from '@ops/lib/services/payrollService'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
 import type { SessionUser } from '@ops/types/domain'
@@ -22,7 +22,9 @@ export async function getNotifications(session: SessionUser): Promise<AppNotific
   const notifications: AppNotification[] = []
 
   if (roleHasCapability(session.role, 'attendance.view')) {
-    const records = await getAttendanceRecords(session)
+    // The bell runs on every page, so it only looks at the last two weeks.
+    const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10)
+    const records = await fetchAttendanceRange(day(-14), day(0)).catch(() => [])
     const latest = [...new Set(records.map((r) => r.date))].sort().pop()
     const absent = latest ? records.filter((r) => r.date === latest && r.status === 'absent').length : 0
     const incomplete = latest ? records.filter((r) => r.date === latest && r.status !== 'absent' && (!r.timeIn || !r.timeOut)).length : 0

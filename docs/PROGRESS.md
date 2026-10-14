@@ -28,8 +28,8 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P10 | Payroll engine and runs (a: engine, b: runs) | done (merged #17, #18) | backend/p10a-payroll-engine, backend/p10b-payroll-runs | #17, #18 | 2026-10-26 |
 | P11 | Payslips, PDF, email | done (merged #19, #20) | backend/p11-payslips, backend/fix-composer-lock | #19, #20 | 2026-10-27 |
 | P12 | 13th month and separate bonus payslips | done (merged #21) | backend/p12-thirteenth-month | #21 | 2026-10-27 |
-| P13 | Employee and manager self-service | in progress: in review | backend/p13-self-service | | |
-| P14 | Dashboards, reports, tax compliance | not started | | | |
+| P13 | Employee and manager self-service | done (merged #22) | backend/p13-self-service | #22 | 2026-10-28 |
+| P14 | Dashboards, reports, tax compliance | in progress: in review | backend/p14-dashboards-reports | | |
 | P15 | Platform and subscriptions | not started | | | |
 | P16 | Integrations (API keys, webhooks) | not started | | | |
 | P17 | Mock removal and hardening | not started | | | |
@@ -61,24 +61,19 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | Mock code (file:function) | Still imported by | Remove in | Added in |
 |---|---|---|---|
 | `companyService`: getCompany, getSchedules, getHolidays | attendance, onboarding, employees | P2 (company), P5 (schedules, holidays in attendance) | P1 |
-| `payrollSettingsService`: getPayrollGroups, getCompensationTypes, getDeductionConfigs, getPayrollRules | attendance (late counting), loans-deductions, reports; `lib/payroll/*` display helpers | P14 (reports), P17 | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
-| `useTenant` (mock company) | layout, dashboards | P14 | P1 |
+| `useTenant` (mock company; the branches are real now) | layout, plan tier, payslip and 13th month pages | P15 | P1 |
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
-| `attendanceService`: getSchedules, getAttendanceRecords, getAttendanceAdjustments, getEmployeeIdsOnLeaveForDate, getApprovedLeavesInRange, statusForPunch; `wfhService`: scheduleOn, defaultTimesFor, materializeWfhRecords, todayKey; `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | reports (late and absence, team), dashboards, notifications, `LogAttendanceDialog` (default times), `WfhPanel` (todayKey) | P14 (dashboards, reports) | P5a |
-| `leaveService` (mock): getLeaveRequests only; `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests`; `attendanceService.getApprovedLeavesInRange` | dashboards, the payroll mock helpers, reports (late and absence, team) | P14 (dashboards, reports) | P6 |
-| `overtimeService` (mock): getOvertimeRecords, exportOvertimeSummaryCsv; `db.overtimeRecords` | dashboards, reports (basic, team) | P14 (dashboards, reports) | P7 |
-| `compensationApprovalService` (mock): getCompensationApprovals, getWorkLogSummaryForPeriod; `db.compensationApprovals` | work log card and rate basis display, dashboards, reports | P14 (dashboards, reports), P17 (rate basis display) | P7 |
-| `notificationService` (mock): getNotifications (team absence and payroll reminders only) | the bell and Notifications page, merged with the stored ones | P14 | P7 |
-| `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | report previews (`reportService`), the Computation drawer and PayslipCard (they explain a stored payroll line with these helpers), reports, approvals and notifications (periods through the wrappers) | P14 (reports), P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
-| `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans` (mock-data generators) | tax and compliance report, report previews | P14 (reports) | P9a |
-| `db.loans`, `db.loanTypes` (mock-data generators; `loanService` is deleted) | the payroll mock helpers (`payrollService`), report previews | P14 (reports), P17 | P9b |
-| `db.payrollPeriods`, `db.payrollLines` (never filled now: the runs are on the API and the demo runs come from the seeder) | `dashboardService` (payroll cards) | P14 (dashboards) | P10b |
-| `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing writes them now) | `taxComplianceService` (13th month totals) | P14 (tax compliance) | P12 |
-| `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | attendance, leave days, WFH | P5 (attendance), P6 (leave) | P4 |
-| `employeeService`: getEmployees; createEmployee | attendance, payroll, payslips, reports, leave, loans, bonuses, overtime, statutory, integrations (CSV import creates employees) | P4-P14 (getEmployees in each module); P16 (createEmployee) | P3a |
-| `features/employees/hooks/useEmployees.ts` (mock hook) | the report screens | P14 (reports) | P3a |
+| `wfhService` (mock): scheduleOn, defaultTimesFor, todayKey (default punch times from the mock schedules), materializeWfhRecords (reads `db.wfhArrangements`, which nothing fills); `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | `LogAttendanceDialog`, `WfhPanel` (todayKey), the payroll browser helpers | P17 | P5a |
+| `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests` | the payroll browser helpers (`payrollService`), the leave list (portion label) | P17 | P6 |
+| `db.overtimeRecords`, `db.compensationApprovals`, `lib/payroll/rateBasis.ts` (the work log and rate basis display helpers) | the payroll browser helpers (`payrollService`), the work log card (rate basis) | P17 | P7 |
+| `payrollService` (mock): computeLine (inside previewPayrollLine), previewPayrollLine, monthlyStatutoryFor, getStatutoryConfig, updateStatutoryConfig; the `getPayrollPeriods` and `getPayrollLines` wrappers (they call the API); `db.statutoryConfigs`; `mock-data/seed/statutoryConfig.ts`; `lib/payroll/*` (the browser engine's helpers: rate basis, pay frequency, bonus matching, withholding tax, computation breakdown) | the Computation drawer and PayslipCard (they explain a stored payroll line with these helpers), approvals and notifications (periods through the wrappers), the golden JS tests | P17 (the display helpers: the drawer should read the stored breakdown) | P8 |
+| `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans`, `db.loans`, `db.loanTypes` (mock-data generators) | the payroll browser helpers (`payrollService`) | P17 | P9a |
+| `db.payrollPeriods`, `db.payrollLines`, `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing reads or writes them now) | nothing (kept until the mock db goes) | P17 | P10b |
+| `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | `wfhService` default times, leave days | P17 | P4 |
+| `employeeService.createEmployee` (writes the mock `db.employees`); `db.employees` is still read by the payroll browser helpers | the Integrations CSV import | P16 (createEmployee), P17 | P3a |
+| `db.companies`, `db.users` (the platform screens): `SuperAdminDashboard`, `CompaniesPage` | the Super Admin home and Companies page | P15 | P14 |
 
 ## Handoff notes
 
@@ -94,6 +89,27 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P14 - 2026-10-29
+- Branch: backend/p14-dashboards-reports (pushed: no)
+- Done:
+  - Backend: `GET api/dashboard/overview` (head counts, today's attendance, leave and overtime, the pay cycle in progress taken from the active payroll groups, the last six months of finalized payroll, the five newest hires), `api/dashboard/payroll` (the run in progress, totals, counts by status, trend, deduction breakdown, exceptions) and `api/dashboard/workforce` (last seven working days and headcount by department). `GET api/reports/payroll-lines?from&to` returns the runs paid in a range with all their lines in one request (the last two years and this one by default; 422 above 50,000 lines). The branch list is readable by the report and payroll roles (their branch filters).
+  - Frontend: `dashboardService` reads those endpoints (the fabricated figures, the default dashboard and `useDashboardData` are gone). The reminders are the Compliance Deadlines plus the cut-off of the cycle. `getEmployees`, `getAttendanceRecords`, `getAttendanceAdjustments`, `getApprovedLeavesInRange`, `getLeaveRequests`, `getOvertimeRecords`, `getCompensationApprovals` and `getWorkLogSummaryForPeriod` now read the API with the same signatures (a ten second memory in `lib/api/memo.ts`), so every report, dashboard card and notification uses real data. The payroll role gets the payroll directory where it may not list employees.
+  - Reports: `reportService` (payroll lines, attendance and leave summaries) and `taxComplianceService` (bonuses, benefits, finalized 13th month lines) are on the API. The statutory, tax and accounting reports, the consolidated statutory data and the tax data use finalized runs only (`useFinalizedPayrollLines`); the payroll register, summary and history keep showing every run. The sample-data fallback of the statutory report is gone.
+  - `useTenant` returns the real branches (the company is still the mock until P15). The deduction configs the loans and report screens read come from the API.
+  - Deleted: `payrollSettingsService`, the mock overtime, leave, attendance and work log readers, `getDashboardStats`, `getHeadcountTrend`. Ledger updated.
+  - Tests: `DashboardApiTest` (5 tests); `BranchTest` updated.
+- Next: P15, platform and subscriptions (the Super Admin dashboard, Companies page, plan tier and the company in `useTenant`).
+- Gotchas:
+  - Deviation from PLAN.md: the report screens still add up their data in the browser (from the API reads above), and the tax compliance rules stay in `lib/payroll/taxCompliance.ts`; only the dashboards got server endpoints. There is no paginated report API. Limits: attendance of the last year, up to 2,000 overtime rows, 1,000 leave requests and 2,000 work logs per read (server caps), payroll lines of two years. A company larger than a few hundred employees needs server-side aggregates (`shortcut:` in `reportService`).
+  - HR cannot read the Compliance Deadlines, so its reminders show only the payroll cut-off (and one 403 in the console).
+  - The Super Admin dashboard and the Companies page still read the mock companies (P15).
+  - The pay cycle shown on the dashboards is the active group whose next pay date comes first; a group whose rules cannot be read is skipped.
+  - The 13th month and tax pages count only finalized 13th month batches as paid; a draft batch is a projection.
+  - `LogAttendanceDialog` default punch times still come from the mock schedules (ledger, P17).
+  - Not tested: BIR 1601-C and 2316, the Excel and PDF exports, the custom report builder, the advanced analytics tab, the Payroll Admin's reports, a company with several hundred employees.
+- Checks: php artisan test 298 (294 passed, 4 skipped); tsc and the build pass.
+
 
 ### P13 - 2026-10-28
 - Branch: backend/p13-self-service (pushed: no)

@@ -1,18 +1,11 @@
-// mock: remove in P10 (payroll), P14 (dashboards, reports). The Overtime page uses overtimeApiService; getOvertimeRecords and the CSV export still serve payroll, dashboards, reports, manager service and notifications.
+// Read helper and the CSV export for the reports and dashboards: overtime on the API (the Overtime page uses overtimeApiService directly).
+import { memoRead } from '@ops/lib/api/memo'
 import { getEmployees } from '@ops/lib/services/employeeService'
-import { db } from '@ops/mock-data'
+import { fetchOvertime } from '@ops/lib/services/overtimeApiService'
 import type { OvertimeRecord, SessionUser } from '@ops/types/domain'
 
-async function scopedEmployeeIds(session: SessionUser): Promise<Set<string>> {
-  const employees = await getEmployees(session)
-  return new Set(employees.map((e) => e.id))
-}
-
 export async function getOvertimeRecords(session: SessionUser): Promise<OvertimeRecord[]> {
-  const employeeIds = await scopedEmployeeIds(session)
-  return db.overtimeRecords
-    .filter((r) => r.companyId === session.companyId && employeeIds.has(r.employeeId))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.requestedAt.localeCompare(a.requestedAt))
+  return (await memoRead(`overtime:${session.id}`, fetchOvertime)).slice().sort((a, b) => b.date.localeCompare(a.date) || b.requestedAt.localeCompare(a.requestedAt))
 }
 
 function toCsv(rows: string[][]): string {
