@@ -9,6 +9,7 @@ import { queryClient } from '@ops/lib/api/queryClient'
 import { useSessionStore } from '@ops/lib/auth/mockSession'
 import { users } from '@ops/mock-data/seed/users'
 import { PlanGate } from '@ops/components/ui/PlanGate'
+import { applyServerPlans, type ServerPlans } from '@ops/lib/plans'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
 import { OPS_PAGES, PAGE_FEATURES } from './pages'
 import { OutletProvider } from './shim/react-router-dom'
@@ -16,6 +17,7 @@ import { OutletProvider } from './shim/react-router-dom'
 interface OpsProps {
   page: string
   auth: { user: { email: string } | null; role: string | null }
+  plans?: ServerPlans
   [key: string]: unknown
 }
 
@@ -37,7 +39,9 @@ function GuestPage({ pageKey }: { pageKey: string }) {
   )
 }
 
-function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; role: string | null }) {
+function AuthedPage({ pageKey, email, role, plans }: { pageKey: string; email: string; role: string | null; plans?: ServerPlans }) {
+  // The prices, limits and feature lists of the plans come from the server (config/plans.php); set them before anything reads them.
+  applyServerPlans(plans)
   const [ready, setReady] = useState(false)
   const { tier } = useActivePlanTier()
 
@@ -75,11 +79,11 @@ function AuthedPage({ pageKey, email, role }: { pageKey: string; email: string; 
 }
 
 export default function OpsPage() {
-  const { page, auth } = usePage<OpsProps>().props
+  const { page, auth, plans } = usePage<OpsProps>().props
   const user = auth.user
   return (
     <QueryClientProvider client={queryClient}>
-      {!user || page.startsWith('auth.') ? <GuestPage pageKey={OPS_PAGES[page] ? page : 'auth.login'} /> : <AuthedPage pageKey={page} email={user.email} role={auth.role} />}
+      {!user || page.startsWith('auth.') ? <GuestPage pageKey={OPS_PAGES[page] ? page : 'auth.login'} /> : <AuthedPage pageKey={page} email={user.email} role={auth.role} plans={plans} />}
     </QueryClientProvider>
   )
 }

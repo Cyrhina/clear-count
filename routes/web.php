@@ -54,7 +54,19 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     });
 
     // JSON API modules: one file per module in routes/ops/ (shared middleware comes from this group).
-    foreach (['employees', 'payroll-settings', 'holidays', 'company-info', 'activity-logs', 'permission-map', 'users', 'branches', 'schedules', 'attendance', 'leave', 'overtime', 'notifications', 'statutory', 'benefits', 'loans', 'bonuses', 'payroll', 'payslips', 'thirteenth-month', 'self-service', 'dashboard'] as $module) {
+    // A module that needs a company ('company': the super admin cannot change its data) and the plan feature that unlocks it
+    // ('plan': only the requests that change data are blocked, so reports and dashboards of a lower plan keep working).
+    $modules = [
+        'employees' => [], 'payroll-settings' => [], 'holidays' => [], 'company-info' => [], 'branches' => [], 'schedules' => ['schedules'],
+        'attendance' => ['attendance'], 'leave' => ['leave'], 'overtime' => ['overtime_night_diff'], 'statutory' => [], 'benefits' => ['loans_deductions'],
+        'loans' => ['loans_deductions'], 'bonuses' => ['bonuses_incentives'], 'payroll' => [], 'payslips' => [], 'thirteenth-month' => ['thirteenth_month'],
+        'self-service' => [], 'dashboard' => [],
+    ];
+    foreach ($modules as $module => $features) {
+        Route::middleware(['company', ...array_map(fn ($f) => "plan:{$f},writes", $features)])->group(fn () => require __DIR__."/ops/{$module}.php");
+    }
+    // Modules that work without a company, or that are not part of a plan.
+    foreach (['activity-logs', 'permission-map', 'users', 'notifications', 'platform'] as $module) {
         require __DIR__."/ops/{$module}.php";
     }
 });

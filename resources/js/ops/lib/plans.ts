@@ -164,3 +164,30 @@ export function planHasFeature(tier: PlanTier, feature: PlanFeature): boolean {
 export function minimumPlanFor(feature: PlanFeature): PlanTier {
   return PLAN_ORDER.find((tier) => planHasFeature(tier, feature)) ?? 'enterprise'
 }
+
+/** The plans as the server sends them (`config/plans.php`, shared as the Inertia `plans` prop). */
+export interface ServerPlans {
+  tiers: Record<string, { label: string; monthly_price: number | null; extra_employee_price: number | null; employee_limit: number | null; user_limit: number | null; features: string[] }>
+  feature_labels: Record<string, string>
+}
+
+/**
+ * The server owns the prices, limits and what each plan unlocks; this overwrites the local copy with it, so a change in
+ * `config/plans.php` shows on every screen. The marketing text of the cards (audience, highlights) stays in this file.
+ */
+export function applyServerPlans(plans: ServerPlans | undefined): void {
+  if (!plans) return
+  for (const tier of PLAN_ORDER) {
+    const server = plans.tiers[tier]
+    if (!server) continue
+    Object.assign(PLAN_DETAILS[tier], {
+      label: server.label,
+      monthlyPricePhp: server.monthly_price,
+      additionalEmployeePricePhp: server.extra_employee_price,
+      employeeLimit: server.employee_limit,
+      userLimit: server.user_limit,
+      features: server.features as PlanFeature[],
+    })
+  }
+  Object.assign(FEATURE_LABELS, plans.feature_labels)
+}

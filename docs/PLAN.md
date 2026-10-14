@@ -536,6 +536,8 @@ Frontend: `subscriptionService`, `features/platform/CompaniesPage.tsx` and `Supe
 
 Done when: a super admin can onboard a company, and plan limits are enforced on the server.
 
+**P15 status:** done in branch `backend/p15-platform` (see PROGRESS.md). Seats and the write routes of the gated modules are enforced on the server; branches, approvals, advanced reports and integrations are still gated only in the screens.
+
 ---
 
 ### P16. Integrations: API keys and webhooks (M)

@@ -8,11 +8,10 @@ import { Card } from '@ops/components/ui/Card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@ops/components/ui/Dialog'
 import { Skeleton } from '@ops/components/ui/Skeleton'
 import { UpgradePaymentDialog } from '@ops/features/subscription/components/UpgradePaymentDialog'
-import { useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
+import { useRefreshPlan, useSubscriptionUsage } from '@ops/features/subscription/hooks/useSubscription'
 import { useActivePlanTier } from '@ops/hooks/useActivePlanTier'
-import { useSession } from '@ops/hooks/useSession'
-import { useDemoPlanStore } from '@ops/lib/demo/demoPlanStore'
 import { usePermission } from '@ops/hooks/usePermission'
+import { apiErrorMessage } from '@ops/lib/api/http'
 import { PLAN_DETAILS, PLAN_ORDER, estimateMonthlyBill, formatEmployeeLimit, formatPlanBasePrice } from '@ops/lib/plans'
 import { downgradePlan } from '@ops/lib/services/subscriptionService'
 import { useToast } from '@ops/components/ui/Toast'
@@ -37,19 +36,24 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 }
 
 function DowngradeDialog({ targetPlan, onChanged }: { targetPlan: PlanTier; onChanged: () => void }) {
-  const { user } = useSession()
   const { notify } = useToast()
-  const setPreviewTier = useDemoPlanStore((s) => s.setPreviewTier)
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function onConfirm() {
-    await downgradePlan(user, targetPlan)
-    setPreviewTier(null) // the real plan is now the target, so a preview of another tier would no longer match it
+    try {
+      await downgradePlan(targetPlan)
+    } catch (e) {
+      setError(apiErrorMessage(e)) // for example: more admin accounts than the smaller plan allows
+      return
+    }
+    setOpen(false)
     notify({ title: `Downgraded to ${PLAN_DETAILS[targetPlan].label} Plan`, tone: 'success' })
     onChanged()
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); setError(null) }}>
       <DialogTrigger asChild>
         <Button size="sm" variant="secondary">
           Downgrade Plan
@@ -60,6 +64,7 @@ function DowngradeDialog({ targetPlan, onChanged }: { targetPlan: PlanTier; onCh
         <DialogDescription>
           {formatPlanBasePrice(PLAN_DETAILS[targetPlan])} · {formatEmployeeLimit(targetPlan)} included. Modules that are not in this plan will be locked.
         </DialogDescription>
+        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button size="sm" onClick={onConfirm}>
             Confirm Downgrade
@@ -71,18 +76,19 @@ function DowngradeDialog({ targetPlan, onChanged }: { targetPlan: PlanTier; onCh
 }
 
 export function SubscriptionPage() {
-  const { usage, isLoading, refetch } = useSubscriptionUsage()
-  const { tier, isPreview } = useActivePlanTier() // follows the Demo Portal preview tier, so this page matches the sidebar
+  const { usage, isLoading } = useSubscriptionUsage()
+  const refreshPlan = useRefreshPlan()
+  const { tier } = useActivePlanTier()
   const canManage = usePermission('subscription.manage')
   const [searchParams, setSearchParams] = useSearchParams()
   const [upgradeTarget, setUpgradeTarget] = useState<PlanTier | null>(null)
-  const pending = usage?.pendingChange
+  const pending = usage?.pendingPayment
 
   // The sidebar's "Upgrade to …" buttons arrive as /subscription?upgrade=<tier>: open the payment form for that tier.
   const requested = searchParams.get('upgrade') as PlanTier | null
   useEffect(() => {
     if (!requested || !usage || !canManage) return
-    if (PLAN_ORDER.includes(requested) && requested !== 'enterprise' && !usage.pendingChange) setUpgradeTarget(requested)
+    if (PLAN_ORDER.includes(requested) && requested !== 'enterprise' && !usage.pendingPayment) setUpgradeTarget(requested)
     setSearchParams({}, { replace: true })
   }, [requested, usage, canManage, setSearchParams])
 
@@ -100,7 +106,7 @@ export function SubscriptionPage() {
         <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
           <Clock className="mt-0.5 size-4 shrink-0 text-warning" />
           <div>
-            <p className="font-medium">Upgrade to {PLAN_DETAILS[pending.targetTier].label} is waiting for verification</p>
+            <p className="font-medium">Upgrade to {PLAN_DETAILS[pending.toTier].label} is waiting for verification</p>
             <p className="text-xs text-muted-foreground">
               The FBS Pay billing team is checking your payment ({pending.paymentReference}, submitted {formatDate(pending.submittedAt)}). Your plan changes once they confirm it.
             </p>
@@ -112,7 +118,7 @@ export function SubscriptionPage() {
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <Badge tone="brand" className="mb-2">
-              {isPreview ? 'Previewing Plan (Demo)' : 'Current Plan'}
+              Current Plan
             </Badge>
             <p className="font-display text-2xl font-semibold">{currentPlan.label}</p>
             <p className="text-sm text-muted-foreground">
@@ -228,10 +234,10 @@ export function SubscriptionPage() {
                 ) : canManage ? (
                   idx > currentIndex ? (
                     <Button size="sm" disabled={!!pending} onClick={() => setUpgradeTarget(planTier)}>
-                      {pending?.targetTier === planTier ? 'Pending verification' : 'Upgrade Plan'}
+                      {pending?.toTier === planTier ? 'Pending verification' : 'Upgrade Plan'}
                     </Button>
                   ) : (
-                    <DowngradeDialog targetPlan={planTier} onChanged={refetch} />
+                    <DowngradeDialog targetPlan={planTier} onChanged={refreshPlan} />
                   )
                 ) : (
                   <Button size="sm" variant="secondary" disabled>
@@ -244,7 +250,7 @@ export function SubscriptionPage() {
         })}
       </div>
 
-      <UpgradePaymentDialog targetPlan={upgradeTarget} onClose={() => setUpgradeTarget(null)} onSubmitted={refetch} />
+      <UpgradePaymentDialog targetPlan={upgradeTarget} onClose={() => setUpgradeTarget(null)} onSubmitted={refreshPlan} />
     </div>
   )
 }

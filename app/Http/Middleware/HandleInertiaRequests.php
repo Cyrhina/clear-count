@@ -56,6 +56,8 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $user?->getAllPermissions()->pluck('name')->values() ?? [],
                 'company' => $user?->company?->only(['id', 'name', 'plan_tier', 'use_logo_colors', 'brand_color']),
             ],
+            // Prices, limits and what each plan unlocks: the server enforces them, the screens show them.
+            'plans' => ['order' => config('plans.order'), 'tiers' => config('plans.tiers'), 'feature_labels' => config('plans.feature_labels')],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

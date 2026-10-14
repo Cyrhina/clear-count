@@ -17,7 +17,8 @@ class CompanyFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'plan_tier' => 'professional',
+            // Everything unlocked and no seat limit, so a test only meets a plan rule when it asks for one.
+            'plan_tier' => 'enterprise',
             'timezone' => 'Asia/Manila',
             'payroll_frequency' => 'semi_monthly',
         ];

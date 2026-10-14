@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Company */
+/** @mixin Company */
 class CompanyInfoResource extends JsonResource
 {
     private const ADDRESS = ['building_unit', 'street', 'barangay', 'city', 'province', 'region', 'zip_code'];
@@ -32,6 +33,7 @@ class CompanyInfoResource extends JsonResource
             'brand_color' => $this->brand_color,
             // Read-only context for the settings screen; the plan is changed by the platform admin, never from this form.
             'plan_tier' => $this->plan_tier,
+            'status' => $this->status,
             'timezone' => $this->timezone,
             'payroll_frequency' => $this->payroll_frequency,
             'created_at' => $this->created_at?->toIso8601String(),

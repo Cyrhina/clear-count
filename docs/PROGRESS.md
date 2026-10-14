@@ -30,7 +30,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P12 | 13th month and separate bonus payslips | done (merged #21) | backend/p12-thirteenth-month | #21 | 2026-10-27 |
 | P13 | Employee and manager self-service | done (merged #22) | backend/p13-self-service | #22 | 2026-10-28 |
 | P14 | Dashboards, reports, tax compliance | in progress: in review | backend/p14-dashboards-reports | | |
-| P15 | Platform and subscriptions | not started | | | |
+| P15 | Platform and subscriptions | done: in review | backend/p15-platform | | |
 | P16 | Integrations (API keys, webhooks) | not started | | | |
 | P17 | Mock removal and hardening | not started | | | |
 
@@ -62,7 +62,6 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 |---|---|---|---|
 | `companyService`: getCompany, getSchedules, getHolidays | attendance, onboarding, employees | P2 (company), P5 (schedules, holidays in attendance) | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
-| `useTenant` (mock company; the branches are real now) | layout, plan tier, payslip and 13th month pages | P15 | P1 |
 | `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
 | `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
 | `wfhService` (mock): scheduleOn, defaultTimesFor, todayKey (default punch times from the mock schedules), materializeWfhRecords (reads `db.wfhArrangements`, which nothing fills); `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | `LogAttendanceDialog`, `WfhPanel` (todayKey), the payroll browser helpers | P17 | P5a |
@@ -73,7 +72,6 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `db.payrollPeriods`, `db.payrollLines`, `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing reads or writes them now) | nothing (kept until the mock db goes) | P17 | P10b |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | `wfhService` default times, leave days | P17 | P4 |
 | `employeeService.createEmployee` (writes the mock `db.employees`); `db.employees` is still read by the payroll browser helpers | the Integrations CSV import | P16 (createEmployee), P17 | P3a |
-| `db.companies`, `db.users` (the platform screens): `SuperAdminDashboard`, `CompaniesPage` | the Super Admin home and Companies page | P15 | P14 |
 
 ## Handoff notes
 
@@ -89,6 +87,28 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P15 - 2026-10-29
+- Branch: backend/p15-platform
+- Done:
+  - Backend: `config/plans.php` (tiers, prices, limits, features; shared to the screens as the Inertia `plans` prop); `AppSupportPlans` (has, usage, quote, assertSeats). Migration: `companies.status` (active | suspended) and `plan_renews_on`, new `subscription_payments` table (upgrade payments, the receipt photo on the private `local` disk).
+  - Middleware: `plan:<feature>[,writes]` (403 with "X is available in the Y plan"), `company` (a user with no company, the super admin, cannot write company data: 422 instead of a 500), and `active` now also signs out the users of a suspended company. `routes/web.php` wraps each module with them (a module map: attendance, leave, overtime, schedules, loans and benefits, bonuses, 13th month are gated on writes only, so reports and dashboards of a lower plan keep reading).
+  - Seats: a hard limit on active admin and manager accounts (employee self-service logins are free), checked when inviting a user (`UserInvites::create`) and when turning an account back on. Employees above the plan's limit are allowed and billed as the add-on, like the existing estimate.
+  - Routes (`routes/ops/platform.php`): company side `GET api/subscription` (usage, pending payment), `quote/{tier}`, `POST downgrade` (applies right away, refused when the accounts do not fit), `POST payments` (multipart: the amount is worked out by the server, one pending payment at a time), `GET payments/{payment}/proof`; super admin side `api/platform/dashboard`, `companies` (list, create with the first company admin and a head office, `status`, `plan`), `payments` and `payments/{payment}/decision` (through `Approval::decide`; confirming sets the plan and a month of renewal; both outcomes notify). `GET api/company` returns the own company for any role.
+  - Frontend: `subscriptionService` on the API; `useSubscriptionUsage` and `useRefreshPlan` (TanStack `['subscription']` plus an Inertia reload of `auth`); `useActivePlanTier` reads the plan from the Inertia props (known on first render); `applyServerPlans` overwrites the prices, limits and features in `lib/plans.ts` with the server's; `useTenant` returns the real company (`['company']`, from `api/company`); `CompaniesPage` (create, suspend, set plan, verify or reject payments with the receipt) and `SuperAdminDashboard` on the endpoints; the upgrade dialog uploads the receipt file.
+  - Deleted: `lib/demo/demoPlanStore.ts` and the Demo Portal tier switcher (Topbar, MobileDemoBar), mock `companyService`, the mock subscription store, the `PendingPlanChange` type.
+  - Tests: `PlatformTest` (10 tests). `CompanyFactory` now defaults to the enterprise plan (everything unlocked, no seat limit) so older tests meet a plan rule only when they ask for one.
+- Next: P16, integrations (API keys and webhooks) and `createEmployee`.
+- Gotchas:
+  - Not gated on the server: branches (multi_branch), approvals, advanced reports, flexible compensation and the Integrations page (api_integrations). The screens still lock them (`PlanGate`, sidebar); the API does not refuse them yet.
+  - The platform actions of the super admin are not in the activity log (`ActivityLogger` skips a user with no company).
+  - A suspended company's user can still sign in and is signed out on the next request (no message on the login page).
+  - The notification of a new payment goes to every active super admin. Sales contact for Enterprise is still a mailto.
+  - The session user in the topbar and the role switcher are still the mock until P17 (for example the topbar shows the mock name for a company created now).
+  - The seeded demo company has no `plan_renews_on` (shows a dash); a company made by the super admin gets one month.
+  - Not tested in the browser: the reject flow, suspend (covered by Pest), the downgrade dialog, and the Inertia reload after a plan change.
+- Checks: php artisan test 308 (304 passed, 4 skipped); tsc and the build pass; route:cache passes.
+
 
 ### P14 - 2026-10-29
 - Branch: backend/p14-dashboards-reports (pushed: no)
