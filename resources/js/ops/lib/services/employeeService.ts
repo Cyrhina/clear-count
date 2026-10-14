@@ -1,12 +1,10 @@
 // mock: remove in P17. The Employees screens use the API functions at the bottom of this file. Every other module still reads the
 // mock employees through getEmployees until its own phase; the signed-in employee's own record is on the API (fetchMe, updateMe);
-// createEmployee stays for the Integrations CSV import (P16).
 import type { EmployeePage, EmployeeListParams, EmployeeRecord } from '@ops/features/employees/types'
 import { camelizeKeys, snakeizeKeys } from '@ops/lib/api/case'
 import { api } from '@ops/lib/api/http'
 import { memoRead } from '@ops/lib/api/memo'
 import { roleHasCapability } from '@ops/lib/rbac/permissions'
-import { ensureBranchDepartment } from '@ops/lib/services/branchDepartmentService'
 import { db } from '@ops/mock-data'
 import type {
   Employee,
@@ -92,72 +90,6 @@ export interface UpdateCompensationInput {
 export interface UpdateBenefitsInput {
   hmoPlan?: string
   leaveCreditsByType: Record<string, number>
-}
-
-/** mock: only the Integrations CSV import (P16) still creates employees this way. */
-export async function createEmployee(session: SessionUser, input: CreateEmployeeInput): Promise<Employee> {
-  const sequence = db.employees.filter((e) => e.companyId === session.companyId).length + 1
-  const employee: Employee = {
-    id: `${session.companyId}_emp_${crypto.randomUUID().slice(0, 8)}`,
-    companyId: session.companyId,
-    branchId: input.branchId,
-    employeeNumber: `${session.companyId.slice(3, 5).toUpperCase()}-${String(sequence).padStart(4, '0')}`,
-    personal: {
-      firstName: input.firstName,
-      lastName: input.lastName,
-      birthDate: input.extras?.birthDate ?? '1995-01-01',
-      civilStatus: input.extras?.civilStatus ?? 'single',
-      address: input.extras?.address ?? '',
-      contactNumber: input.extras?.contactNumber ?? '',
-      ...(input.extras?.personalEmail ? { personalEmail: input.extras.personalEmail } : {}),
-    },
-    employment: {
-      position: input.position,
-      department: input.department,
-      employmentType: input.employmentType,
-      dateHired: input.dateHired,
-      status: 'active',
-      category: 'regular',
-    },
-    compensation: { basicPay: input.basicPay, payType: input.payType, outputUnit: input.outputUnit ?? null, allowances: [] },
-    benefits: {
-      leaveCreditsByType: { 'Vacation Leave': 15, 'Sick Leave': 10, 'Emergency Leave': 5, 'Maternity/Paternity Leave': 7 },
-    },
-    government: {
-      ...(input.extras?.sssNo ? { sssNo: input.extras.sssNo } : {}),
-      ...(input.extras?.philhealthNo ? { philhealthNo: input.extras.philhealthNo } : {}),
-      ...(input.extras?.pagibigNo ? { pagibigNo: input.extras.pagibigNo } : {}),
-      ...(input.extras?.tinNo ? { tinNo: input.extras.tinNo } : {}),
-    },
-    bank: {
-      ...(input.extras?.bankName ? { bankName: input.extras.bankName } : {}),
-      ...(input.extras?.accountNumber ? { accountNumber: input.extras.accountNumber } : {}),
-    },
-    documents: [],
-    history: [
-      {
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        actor: session.name,
-        action: input.extras ? 'Employee record created (imported)' : 'Employee record created',
-      },
-    ],
-    compensationHistory: [
-      {
-        id: crypto.randomUUID(),
-        effectiveDate: input.dateHired,
-        type: 'Initial Hire',
-        previousSalary: null,
-        newSalary: input.basicPay,
-        approvedBy: session.name,
-      },
-    ],
-  }
-
-  db.employees.push(employee)
-  // Every employee's department exists in their branch's configuration.
-  await ensureBranchDepartment(session, employee.branchId, employee.employment.department)
-  return employee
 }
 
 /** The employee record, backed by `/api/employees`. Sections keep the camelCase the server stores. */

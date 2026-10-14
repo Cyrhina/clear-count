@@ -23,7 +23,7 @@ import { loanTypes } from '@ops/mock-data/seed/loanTypes'
 import { schedules } from '@ops/mock-data/seed/schedules'
 import { statutoryConfigs } from '@ops/mock-data/seed/statutoryConfig'
 import { users } from '@ops/mock-data/seed/users'
-import type { ActivityLogEntry, ApiKey, Employee, PayrollLine, PayrollPeriod, PayslipEmailRecord, ThirteenthMonthLine, ThirteenthMonthRun, Webhook, WfhArrangement } from '@ops/types/domain'
+import type { ActivityLogEntry, Employee, PayrollLine, PayrollPeriod, PayslipEmailRecord, ThirteenthMonthLine, ThirteenthMonthRun, WfhArrangement } from '@ops/types/domain'
 
 const EMPLOYEE_COUNT_BY_COMPANY: Record<string, number> = {
   co_frontline: 24,
@@ -192,6 +192,4 @@ export const db = {
   thirteenthMonthRuns: [] as ThirteenthMonthRun[],
   thirteenthMonthLines: [] as ThirteenthMonthLine[],
   payslipEmails: [] as PayslipEmailRecord[],
-  apiKeys: [] as ApiKey[],
-  webhooks: [] as Webhook[],
 }

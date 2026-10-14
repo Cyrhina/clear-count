@@ -31,7 +31,7 @@ Status values: `not started`, `in progress`, `in review` (PR open), `merged`.
 | P13 | Employee and manager self-service | done (merged #22) | backend/p13-self-service | #22 | 2026-10-28 |
 | P14 | Dashboards, reports, tax compliance | in progress: in review | backend/p14-dashboards-reports | | |
 | P15 | Platform and subscriptions | done: in review | backend/p15-platform | | |
-| P16 | Integrations (API keys, webhooks) | not started | | | |
+| P16 | Integrations (API keys, webhooks) | done: in review | backend/p16-integrations | | |
 | P17 | Mock removal and hardening | not started | | | |
 
 ## Owner decisions
@@ -62,8 +62,8 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 |---|---|---|---|
 | `companyService`: getCompany, getSchedules, getHolidays | attendance, onboarding, employees | P2 (company), P5 (schedules, holidays in attendance) | P1 |
 | `mock-data/seed`: companies, payrollGroups, schedules, holidays, earningConfigs, deductionConfigs, compensationTypes, payrollRules, complianceDeadlines | the mock services above and the mock payroll engine | with the services above | P1 |
-| `branchService`: getBranches; `branchDepartmentService`: addBranchDepartment, ensureBranchDepartment | integrations, `employeeService.createEmployee` | P16 (integrations) | P2 |
-| `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P16 | P4 |
+| `branchService`: getBranches (nothing calls it now); `db.branches` | `useTenant` activeBranch, the payroll browser helpers | P17 | P2 |
+| `mock-data/generators/shiftAssignments.ts` (`db.shiftAssignments`) | nothing (kept until the mock db goes) | P17 | P4 |
 | `wfhService` (mock): scheduleOn, defaultTimesFor, todayKey (default punch times from the mock schedules), materializeWfhRecords (reads `db.wfhArrangements`, which nothing fills); `db.attendanceRecords`, `db.attendanceAdjustments`, `db.wfhArrangements` | `LogAttendanceDialog`, `WfhPanel` (todayKey), the payroll browser helpers | P17 | P5a |
 | `lib/leave/leaveDays.ts`; `db.leaveTypes`, `db.leaveRequests` | the payroll browser helpers (`payrollService`), the leave list (portion label) | P17 | P6 |
 | `db.overtimeRecords`, `db.compensationApprovals`, `lib/payroll/rateBasis.ts` (the work log and rate basis display helpers) | the payroll browser helpers (`payrollService`), the work log card (rate basis) | P17 | P7 |
@@ -71,7 +71,7 @@ Mock code that a phase could not delete because a not-yet-migrated mock module s
 | `db.employeeBenefits`, `db.employeeDeductions`, `db.benefitPlans`, `db.deductionPlans`, `db.loans`, `db.loanTypes` (mock-data generators) | the payroll browser helpers (`payrollService`) | P17 | P9a |
 | `db.payrollPeriods`, `db.payrollLines`, `db.thirteenthMonthRuns`, `db.thirteenthMonthLines`, `db.bonuses`, `db.payslipEmails` (mock-data; nothing reads or writes them now) | nothing (kept until the mock db goes) | P17 | P10b |
 | `Schedule.assignedEmployeeIds` on the mock `db.schedules` (read as the employee schedule) | `wfhService` default times, leave days | P17 | P4 |
-| `employeeService.createEmployee` (writes the mock `db.employees`); `db.employees` is still read by the payroll browser helpers | the Integrations CSV import | P16 (createEmployee), P17 | P3a |
+| `db.employees` (mock generators) | the payroll browser helpers (`payrollService`) | P17 | P3a |
 
 ## Handoff notes
 
@@ -87,6 +87,31 @@ Newest first. One entry per working session or finished sub-step.
 - Gotchas: <anything the next session must know>
 - Checks: php artisan test <pass/fail>, types:check <pass/fail>
 ```
+
+### P16 - 2026-10-29
+- Branch: backend/p16-integrations
+- Owner decision: laravel/sanctum (v4.3.3) for API keys.
+- Done:
+  - API keys (Sanctum, hashed, token prefix `fbs_`): `GET|POST api/integrations/api-keys`, `DELETE api-keys/{id}`. A key acts as the user who made it, limited to the abilities picked (`employees.read`, `attendance.read`, `payroll.read`; the creator must hold the matching capability), with an optional expiry (30, 90 or 365 days). The key is shown once. `config/sanctum.php` has `guard => []`, so a browser session never authenticates an API call.
+  - Public read API `routes/api.php` (`api: ` routing added in `bootstrap/app.php`): `GET api/v1/employees`, `employees/{id}`, `attendance`, `payroll`, `payroll/{id}/lines`. It reuses the app's controllers and resources, so a key sees what its user sees (company scope, branch for a manager). Middleware: `auth:sanctum`, `active` (an inactive user or suspended company gets 401), `throttle:api-keys` (60 a minute per key), `permission:` and `api.key:<ability>` (the key must hold the ability and the company must still have `api_integrations`).
+  - Webhooks: tables `webhook_endpoints` (url, events, encrypted secret, active) and `webhook_deliveries` (event, payload, status, attempts, response code, error). `App\Support\Webhooks::watch()` hooks `Employee::created`, `PayrollPeriod` becoming finalized and `LeaveRequest` becoming approved, so the three events fire from every path (API, CSV import, console). `App\Jobs\DeliverWebhook` is queued, signs with `X-FBS-Signature: t=<unix>,v1=<hmac_sha256("t.body")>`, times out after 10 seconds, does not follow redirects, retries 5 times with the backoff 1, 5, 15, 60 minutes, and marks the delivery failed after that. Only companies whose plan has `api_integrations` send.
+  - SSRF guard: a webhook URL must be https, with no credentials, and every resolved address must be public (no private, loopback, link-local or reserved range); checked when saved and again at send time. `WEBHOOKS_ALLOW_PRIVATE=true` turns it off for a local test only.
+  - Routes (`routes/ops/integrations.php`, `integrations.manage`, wrapped by `plan:api_integrations,writes`): webhooks list, create (secret returned once), on/off and events, delete, deliveries (last 50) and a retry of a failed delivery.
+  - Frontend: `integrationService` on the API; TanStack hooks; the Integrations page has API keys (abilities, expiry, one-time key dialog, last used, revoke) and webhooks (events, one-time secret dialog, on/off switch, deliveries with Send again). The CSV import tab now reuses the Employees page import dialog (the P3 import kit, server dry run). Exports are unchanged (they read the P14 report services).
+  - Deleted: mock `createEmployee`, the mock department helpers, `ApiKey`, `Webhook` and `WebhookEvent` mock types, `db.apiKeys`, `db.webhooks`.
+  - Tests: `IntegrationsTest` (8 tests).
+- Next: P17, mock removal and hardening.
+- Gotchas:
+  - A key belongs to the user who made it: if that user is deactivated, or the company is suspended, the key gets 401. A key made by an admin who is later demoted loses the matching access.
+  - The `personal_access_tokens` migration carries today's mock date (2026_10_14); it creates only that table.
+  - Delivery retries need the queue worker (`queue:work`, already an s6 service). In the tests the queue is sync, so a failing delivery is marked failed after one try.
+  - Delivery rows are never pruned. The payload keeps names and dates, not pay or government IDs.
+  - A webhook endpoint has one secret for its life: there is no rotate button yet.
+  - The CSV export still builds in the browser from the report services.
+  - Not tested: a real delivery to an outside server, the retry timing on a real queue, the key reading attendance and payroll through the browser, the Integrations page on a phone.
+  - Local DB: migrated; the demo company was set to enterprise for the browser test and put back to professional_plus.
+- Checks: php artisan test 316 (312 passed, 4 skipped); tsc and the build pass; route:cache passes.
+
 
 ### P15 - 2026-10-29
 - Branch: backend/p15-platform

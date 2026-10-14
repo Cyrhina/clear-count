@@ -1,36 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useSession } from '@ops/hooks/useSession'
-import { getApiKeys, getWebhooks } from '@ops/lib/services/integrationService'
-import type { ApiKey, Webhook } from '@ops/types/domain'
+import { useQuery } from '@tanstack/react-query'
+import { getApiKeys, getWebhookDeliveries, getWebhooks } from '@ops/lib/services/integrationService'
 
 export function useApiKeys() {
-  const { user } = useSession()
-  const [apiKeys, setApiKeys] = useState<ApiKey[] | null>(null)
-
-  const refetch = useCallback(() => {
-    getApiKeys(user).then(setApiKeys)
-  }, [user])
-
-  useEffect(() => {
-    setApiKeys(null)
-    refetch()
-  }, [refetch])
-
-  return { apiKeys: apiKeys ?? [], isLoading: apiKeys === null, refetch }
+  const query = useQuery({ queryKey: ['integrations', 'keys'], queryFn: getApiKeys })
+  return { apiKeys: query.data ?? [], isLoading: query.isPending, refetch: () => void query.refetch() }
 }
 
 export function useWebhooks() {
-  const { user } = useSession()
-  const [webhooks, setWebhooks] = useState<Webhook[] | null>(null)
+  const query = useQuery({ queryKey: ['integrations', 'webhooks'], queryFn: getWebhooks })
+  return { webhooks: query.data ?? [], isLoading: query.isPending, refetch: () => void query.refetch() }
+}
 
-  const refetch = useCallback(() => {
-    getWebhooks(user).then(setWebhooks)
-  }, [user])
-
-  useEffect(() => {
-    setWebhooks(null)
-    refetch()
-  }, [refetch])
-
-  return { webhooks: webhooks ?? [], isLoading: webhooks === null, refetch }
+export function useWebhookDeliveries(webhookId: string | null) {
+  const query = useQuery({ queryKey: ['integrations', 'deliveries', webhookId], queryFn: () => getWebhookDeliveries(webhookId as string), enabled: webhookId !== null })
+  return { deliveries: query.data ?? [], isLoading: query.isPending && webhookId !== null, refetch: () => void query.refetch() }
 }

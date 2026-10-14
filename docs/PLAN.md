@@ -553,6 +553,8 @@ Frontend: `integrationService`.
 
 Done when: a key can read data with only its abilities, and a webhook delivery is signed, logged and retried.
 
+**P16 status:** done in branch `backend/p16-integrations` (see PROGRESS.md). Sanctum was approved by the owner.
+
 ---
 
 ### P17. Mock removal and hardening (M)
