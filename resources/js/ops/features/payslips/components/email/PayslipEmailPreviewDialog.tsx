@@ -125,7 +125,7 @@ export function PayslipEmailPreviewDialog({
           {mode === 'email' ? (
             <div className="payslip-paper mx-auto max-w-[640px] rounded-xl p-3 shadow-soft sm:p-5">
               <PayslipEmailMeta email={email} timestamp={record?.status === 'sent' && record.sentAt ? record.sentAt : new Date().toISOString()} />
-              <PayslipEmailTemplate email={email} />
+              <PayslipEmailTemplate email={email} preview />
             </div>
           ) : (
             <ScaledPage>{children}</ScaledPage>
