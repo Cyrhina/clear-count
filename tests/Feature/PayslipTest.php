@@ -94,3 +94,9 @@ test('emailing queues one job per employee, records the outcome, and fails a mis
     // Only a role with payslips.generate may send.
     $this->actingAs(companyUser('hr_admin', $admin->company))->postJson('/api/payslip-emails', $body)->assertForbidden();
 });
+
+test('the payslip email renders, greeting the employee by first name', function () {
+    $html = (new PayslipMail('Your payslip', 'Juan', 'Oct 1 – 15, 2026', fn () => 'pdf', 'payslip.pdf'))->render();
+
+    expect($html)->toContain('Hi Juan,')->and($html)->toContain('Oct 1 – 15, 2026');
+});

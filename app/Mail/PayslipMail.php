@@ -20,7 +20,10 @@ class PayslipMail extends Mailable
 
     public function content(): Content
     {
+<<<<<<< HEAD
         // `name` is what the shared mail layout greets ("Hi {name}"); `firstName` is what the payslip view's own text uses.
+=======
+>>>>>>> e731c9e5c3b48c308ac17191e8af06e02382c028
         return new Content(view: 'mail.payslip', with: ['name' => $this->firstName, 'firstName' => $this->firstName, 'periodLabel' => $this->periodLabel, 'url' => url('/ess/payslips')]);
     }
 
