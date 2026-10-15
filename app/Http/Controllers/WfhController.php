@@ -28,7 +28,7 @@ class WfhController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json([
-            'data' => WfhArrangement::with(['requester:id,name', 'decider:id,name'])->orderByDesc('id')->get(),
+            'data' => WfhArrangement::with(['requester:id,first_name,last_name', 'decider:id,first_name,last_name'])->orderByDesc('id')->get(),
             'meta' => ['monthly_limit' => $this->limit($request)],
         ]);
     }

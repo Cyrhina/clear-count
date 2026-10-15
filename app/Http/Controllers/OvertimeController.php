@@ -24,7 +24,7 @@ class OvertimeController extends Controller
             'to' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        $rows = OvertimeRecord::with(['requester:id,name', 'decider:id,name'])
+        $rows = OvertimeRecord::with(['requester:id,first_name,last_name', 'decider:id,first_name,last_name'])
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($data['from'] ?? null, fn ($q, $d) => $q->whereDate('work_date', '>=', $d))
             ->when($data['to'] ?? null, fn ($q, $d) => $q->whereDate('work_date', '<=', $d))

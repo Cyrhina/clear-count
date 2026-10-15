@@ -19,7 +19,7 @@ class AttendanceAdjustmentController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(['data' => AttendanceAdjustment::with(['record:id,date', 'decider:id,name'])->latest()->get()]);
+        return response()->json(['data' => AttendanceAdjustment::with(['record:id,date', 'decider:id,first_name,last_name'])->latest()->get()]);
     }
 
     /** From an existing record, or from an employee and date (a day with no record yet becomes an absent one). */

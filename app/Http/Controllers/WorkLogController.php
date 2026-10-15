@@ -22,7 +22,7 @@ class WorkLogController extends Controller
             'to' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        $rows = WorkLog::with('decider:id,name')
+        $rows = WorkLog::with('decider:id,first_name,last_name')
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($data['from'] ?? null, fn ($q, $d) => $q->whereDate('work_date', '>=', $d))
             ->when($data['to'] ?? null, fn ($q, $d) => $q->whereDate('work_date', '<=', $d))

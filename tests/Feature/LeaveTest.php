@@ -239,3 +239,13 @@ test('a manager reads their branch but cannot file or approve, and balances stay
     $this->actingAs($manager)->postJson('/api/leave/requests', filing($own, $t))->assertForbidden();
     $this->actingAs($manager)->postJson('/api/leave/requests/decide', ['ids' => [1], 'decision' => 'approved'])->assertForbidden();
 });
+
+test('a filed request shows up in the requests list with who filed it', function () {
+    $admin = companyUser();
+    $e = leaveStaff($admin->company_id);
+    $t = vacation($admin->company_id);
+
+    $id = $this->actingAs($admin)->postJson('/api/leave/requests', filing($e, $t))->assertCreated()->json('data.id');
+
+    $this->actingAs($admin)->getJson('/api/leave/requests')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $id)->assertJsonPath('data.0.requester.name', $admin->name);
+});
