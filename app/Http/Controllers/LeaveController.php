@@ -71,7 +71,7 @@ class LeaveController extends Controller
             'employee_id' => ['nullable', 'integer'],
         ]);
 
-        $rows = LeaveRequest::with(['leaveType:id,name,is_paid', 'requester:id,name', 'decider:id,name'])
+        $rows = LeaveRequest::with(['leaveType:id,name,is_paid', 'requester:id,first_name,last_name', 'decider:id,first_name,last_name'])
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($data['employee_id'] ?? null, fn ($q, $id) => $q->where('employee_id', $id))
             // Overlapping a range (for the attendance and roster screens).

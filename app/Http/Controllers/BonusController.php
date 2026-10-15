@@ -17,7 +17,7 @@ class BonusController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(['data' => BonusIncentive::with('decider:id,name')->orderByDesc('id')->get()]);
+        return response()->json(['data' => BonusIncentive::with('decider:id,first_name,last_name')->orderByDesc('id')->get()]);
     }
 
     public function store(Request $request): JsonResponse
