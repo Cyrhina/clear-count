@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Payroll runs: the periods, their lines, and the steps from draft to finalized (App\Payroll\PayrollRun). */
 class PayrollController extends Controller
@@ -52,6 +53,13 @@ class PayrollController extends Controller
             'pay_date' => ['required', 'date_format:Y-m-d'],
             'payroll_group_id' => ['nullable', 'integer', Rule::exists('payroll_groups', 'id')->where('company_id', $companyId)],
         ]);
+
+        // The same period, pay date and group would pay everyone twice.
+        $duplicate = PayrollPeriod::where('start_date', $data['start_date'])->where('end_date', $data['end_date'])->where('pay_date', $data['pay_date'])
+            ->where('payroll_group_id', $data['payroll_group_id'] ?? null)->first();
+        if ($duplicate) {
+            throw ValidationException::withMessages(['start_date' => "A payroll run with the same dates and payroll group already exists ({$duplicate->payroll_number} · {$duplicate->label})."]);
+        }
 
         $period = PayrollRun::create($companyId, $data);
         ActivityLogger::log(module: 'Payroll', action: 'Created', title: 'Payroll run', description: "{$period->payroll_number} · {$period->label}", subject: $period);

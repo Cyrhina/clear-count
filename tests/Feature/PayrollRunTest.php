@@ -141,3 +141,15 @@ test('the period records give the payroll role the attendance, overtime and work
     expect($data['attendance'])->toHaveCount(1)->and($data['work_logs'])->toHaveCount(1)->and($data['overtime'])->toBe([]);
     $this->actingAs(companyUser('hr_admin', $admin->company))->getJson("/api/payroll/{$id}/records")->assertForbidden();
 });
+
+test('a payroll run with the same dates and group as an existing one is refused', function () {
+    $admin = companyUser('payroll_admin');
+    [, $group] = runStaff($admin->company);
+    newRun($this, $admin, $group->id);
+
+    $this->actingAs($admin)->postJson('/api/payroll', ['label' => 'Another label', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])
+        ->assertUnprocessable()->assertJsonValidationErrors('start_date');
+    // all-employees run (no group) is a different run; so is another pay date
+    newRun($this, $admin, null);
+    newRun($this, $admin, $group->id, ['pay_date' => '2026-10-16']);
+});
