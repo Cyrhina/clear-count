@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>{{ $company->trade_name ?: $company->name }}</h1>
-<div class="muted">{{ $company->registered_address ?: $company->office_address }}</div>
+<div class="muted">{{ $company->addressLine() }}</div>
 
 <h2>Employee</h2>
 <table>

@@ -78,4 +78,30 @@ class Company extends Model
     {
         return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
     }
+
+    /**
+     * The company address as one printable line for PDFs: the registered address, or the office address when the registered
+     * one is empty. Both are stored as arrays (street, city ...), so they cannot be echoed as they are. The country alone does
+     * not count as an address, because the form fills it in by default. Returns '' when no address is set.
+     */
+    public function addressLine(): string
+    {
+        foreach ([$this->registered_address, $this->office_address] as $address) {
+            if ($address === null) {
+                continue;
+            }
+
+            $parts = array_values(array_filter(array_map(
+                fn (string $key) => is_scalar($address[$key] ?? null) ? trim((string) $address[$key]) : '',
+                ['building_unit', 'street', 'barangay', 'city', 'province', 'region', 'zip_code'],
+            )));
+            if ($parts !== []) {
+                $country = is_scalar($address['country'] ?? null) ? trim((string) $address['country']) : '';
+
+                return implode(', ', [...$parts, ...($country !== '' ? [$country] : [])]);
+            }
+        }
+
+        return '';
+    }
 }

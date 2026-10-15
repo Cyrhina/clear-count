@@ -19,7 +19,7 @@
 </head>
 <body>
 <h1>{{ $company->trade_name ?: $company->name }}</h1>
-<div class="muted">{{ $company->registered_address ?: $company->office_address }}</div>
+<div class="muted">{{ $company->addressLine() }}</div>
 <p><strong>Bonus / Incentive payslip</strong> &middot; separate from the regular payroll</p>
 
 <h2>Employee</h2>

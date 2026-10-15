@@ -65,6 +65,15 @@ function companyUser(string $role = 'company_admin', ?Company $company = null, a
     return User::factory()->create(['company_id' => $company->id, ...$attrs])->assignRole($role);
 }
 
+/** The company profile as the form saves it: addresses are arrays (street, city ...), which the PDFs must print as a line. */
+function fillCompanyAddress(Company $company): Company
+{
+    $address = ['building_unit' => '', 'street' => '1 Test Street', 'barangay' => 'Poblacion', 'city' => 'Makati City', 'province' => 'Metro Manila', 'region' => 'NCR', 'zip_code' => '1200', 'country' => 'Philippines'];
+    $company->update(['registered_address' => $address, 'office_address' => $address, 'same_as_registered' => true]);
+
+    return $company;
+}
+
 /** A second company, to prove a row of another tenant is a 404 and never leaks. */
 function otherCompany(): Company
 {

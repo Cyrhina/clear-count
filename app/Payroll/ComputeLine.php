@@ -143,6 +143,13 @@ final class ComputeLine
         $taxableBonusAmount = array_sum(array_map(fn ($b) => BonusMatching::amountFor($b, $employee), array_filter($approvedBonuses, fn ($b) => $b['taxable'])));
         $withholdingTax = $baseWithholdingTax + Num::round0(($taxableBonusAmount + $overtimePay) * $marginalRate);
 
+        // A cutoff with no earnings at all (an output-paid employee who logged nothing, say) owes no contributions or tax: they come out of
+        // pay, and there is none, so they would only leave a negative net pay.
+        if ($grossPay <= 0) {
+            $sssEmployeeShare = $sssEmployerShare = $philhealthEmployeeShare = $philhealthEmployerShare = $pagibigEmployeeShare = $pagibigEmployerShare = 0.0;
+            $withholdingTax = 0;
+        }
+
         $absenceLines = $absenceDeduction > 0 ? [['label' => 'Absences', 'amount' => $absenceDeduction]] : [];
 
         // Deductions from Benefits, Loans & Deductions: benefit employee shares and recurring deductions are monthly amounts split like the

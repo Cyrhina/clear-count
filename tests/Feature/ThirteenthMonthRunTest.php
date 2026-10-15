@@ -90,6 +90,7 @@ test('a batch needs its permission, the selection must belong to the company, an
 
 test('the 13th month payslip is a PDF only once finalized, for the payroll role and the employee it is about', function () {
     $admin = companyUser('payroll_admin');
+    fillCompanyAddress($admin->company);
     [$e] = runStaff($admin->company);
     $self = companyUser('employee', $admin->company, ['employee_id' => $e->id]);
     $run = $this->actingAs($admin)->postJson('/api/thirteenth-month', batchBody())->json('data.id');

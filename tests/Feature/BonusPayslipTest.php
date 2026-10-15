@@ -46,6 +46,7 @@ test('a percentage bonus is a share of the monthly pay, and a bonus with no pays
 
 test('the bonus payslip PDF downloads for a covered employee only, and only for the roles that see bonuses', function () {
     $admin = companyUser('payroll_admin');
+    fillCompanyAddress($admin->company);
     [$e] = runStaff($admin->company);
     [$left] = runStaff($admin->company);
     $bonus = separateBonus($admin->company_id, ['target_type' => 'employee', 'target_employee_id' => $e->id]);

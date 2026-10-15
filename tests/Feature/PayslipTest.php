@@ -38,6 +38,7 @@ test('a payslip exists only once the run is finalized, and finalizing tells the 
 
 test('the payslip PDF downloads for payroll and for its own employee, and for nobody else', function () {
     [$admin, $id, $e, $self] = finalizedRun($this);
+    fillCompanyAddress($admin->company);
     $this->actingAs($admin)->postJson("/api/payroll/{$id}/finalize")->assertOk();
     $lineId = $this->actingAs($admin)->getJson("/api/payroll/{$id}/lines")->json('data.0.id');
 
@@ -49,6 +50,23 @@ test('the payslip PDF downloads for payroll and for its own employee, and for no
     [, , , $other] = finalizedRun($this);
     $this->actingAs($other)->getJson("/api/payslips/{$lineId}")->assertNotFound();
     $this->actingAs(companyUser('payroll_admin'))->get("/api/payslips/{$lineId}/pdf")->assertNotFound();
+});
+
+test('the payslip email really renders: the greeting, the period and the PDF, with the company address filled in', function () {
+    // No Mail::fake: the real (array) mailer builds the view and the attached PDF, which is where an undefined variable would fail the job.
+    [$admin, $id, $e] = finalizedRun($this);
+    fillCompanyAddress($admin->company);
+    $this->actingAs($admin)->postJson("/api/payroll/{$id}/finalize")->assertOk();
+
+    Bus::fake();
+    $this->actingAs($admin)->postJson('/api/payslip-emails', ['kind' => 'payroll', 'source_id' => $id, 'targets' => [['employee_id' => $e->id, 'subject' => 'Your payslip']]])->assertStatus(202);
+
+    $record = PayslipEmail::first();
+    (new SendPayslipEmail($record->id))->handle();
+    expect($record->fresh()->status)->toBe('sent')->and($record->fresh()->error)->toBeNull();
+
+    $html = (new PayslipMail('Your payslip', 'Juan', 'Oct 1 – 15, 2026', fn () => 'pdf', 'Payslip.pdf'))->render();
+    expect($html)->toContain('Hi Juan,')->and($html)->toContain('Oct 1 – 15, 2026');
 });
 
 test('emailing queues one job per employee, records the outcome, and fails a missing address with the reason', function () {

@@ -5,6 +5,7 @@ use App\Models\Employee;
 use App\Models\EmployeeDeduction;
 use App\Models\Loan;
 use App\Models\WorkLog;
+use App\Payroll\PayrollRun;
 
 test('a run goes draft, review, approved, finalized; finalizing posts the loan, settles the one-time deduction and locks the run', function () {
     $admin = companyUser('payroll_admin');
@@ -34,6 +35,27 @@ test('a run goes draft, review, approved, finalized; finalizing posts the loan, 
     $this->actingAs($admin)->postJson("/api/payroll/{$id}/hold", ['employee_ids' => [$e->id]])->assertConflict();
     $this->actingAs($admin)->postJson("/api/payroll/{$id}/release", ['employee_ids' => [$e->id]])->assertConflict();
     expect(Loan::find($loan->id)->repayments()->count())->toBe(1);
+});
+
+test('a cutoff with no earnings takes no contributions or tax, so the net pay is never negative', function () {
+    $admin = companyUser('payroll_admin');
+    [$e, $group] = runStaff($admin->company, ['payType' => 'output_based', 'basicPay' => 15, 'outputUnit' => 'pcs']);
+
+    // An output-paid employee who logged nothing: no pay, so nothing to take contributions or tax from.
+    $id = newRun($this, $admin, $group->id);
+    $this->actingAs($admin)->postJson("/api/payroll/{$id}/run")->assertOk();
+    $line = $this->actingAs($admin)->getJson("/api/payroll/{$id}/lines")->json('data.0');
+    expect($line['grossPay'])->toEqual(0)->and($line['netPay'])->toEqual(0)->and($line['totalDeductions'])->toEqual(0)
+        ->and($line['sssEmployeeShare'])->toEqual(0)->and($line['sssEmployerShare'])->toEqual(0)->and($line['philhealthEmployeeShare'])->toEqual(0)
+        ->and($line['philhealthEmployerShare'])->toEqual(0)->and($line['pagibigEmployeeShare'])->toEqual(0)->and($line['pagibigEmployerShare'])->toEqual(0)
+        ->and($line['withholdingTax'])->toEqual(0);
+
+    // The same employee with an approved log is paid and does contribute.
+    WorkLog::create(['company_id' => $admin->company_id, 'employee_id' => $e->id, 'type' => 'output', 'work_date' => '2026-11-05', 'quantity' => 120, 'unit_label' => 'pcs', 'rate' => 15, 'amount' => 1800, 'status' => 'approved']);
+    $paid = newRun($this, $admin, $group->id, ['label' => 'Nov 1 – 15, 2026', 'start_date' => '2026-11-01', 'end_date' => '2026-11-15', 'pay_date' => '2026-11-15']);
+    $this->actingAs($admin)->postJson("/api/payroll/{$paid}/run")->assertOk();
+    $line = $this->actingAs($admin)->getJson("/api/payroll/{$paid}/lines")->json('data.0');
+    expect($line['grossPay'])->toEqual(1800)->and($line['netPay'])->toBeGreaterThan(0);
 });
 
 test('run numbers count up per pay-date year and start again each year', function () {
@@ -77,7 +99,7 @@ test('running locks the approved work logs it pays, and a run cannot pay a log a
 
     $first = newRun($this, $admin, $group->id);
     // The API refuses a second run with the same dates and group, so the overlapping one is made directly.
-    $second = \App\Payroll\PayrollRun::create($admin->company_id, ['label' => 'Oct 1 – 15, 2026 (again)', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])->id;
+    $second = PayrollRun::create($admin->company_id, ['label' => 'Oct 1 – 15, 2026 (again)', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])->id;
     $this->actingAs($admin)->postJson("/api/payroll/{$first}/run")->assertOk();
     expect($paid->fresh()->payroll_period_id)->toBe($first)->and($pending->fresh()->payroll_period_id)->toBeNull()->and($outside->fresh()->payroll_period_id)->toBeNull();
 
