@@ -20,7 +20,7 @@ class PayslipMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'mail.payslip', with: ['firstName' => $this->firstName, 'periodLabel' => $this->periodLabel, 'url' => url('/ess/payslips')]);
+        return new Content(view: 'mail.payslip', with: ['name' => $this->firstName, 'firstName' => $this->firstName, 'periodLabel' => $this->periodLabel, 'url' => url('/ess/payslips')]);
     }
 
     /** @return list<Attachment> */
