@@ -76,7 +76,8 @@ test('running locks the approved work logs it pays, and a run cannot pay a log a
     $outside = $log('2026-10-20', 'approved');
 
     $first = newRun($this, $admin, $group->id);
-    $second = newRun($this, $admin, $group->id);
+    // The API refuses a second run with the same dates and group, so the overlapping one is made directly.
+    $second = \App\Payroll\PayrollRun::create($admin->company_id, ['label' => 'Oct 1 – 15, 2026 (again)', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])->id;
     $this->actingAs($admin)->postJson("/api/payroll/{$first}/run")->assertOk();
     expect($paid->fresh()->payroll_period_id)->toBe($first)->and($pending->fresh()->payroll_period_id)->toBeNull()->and($outside->fresh()->payroll_period_id)->toBeNull();
 
@@ -140,4 +141,16 @@ test('the period records give the payroll role the attendance, overtime and work
     $data = $this->actingAs($admin)->getJson("/api/payroll/{$id}/records")->assertOk()->json('data');
     expect($data['attendance'])->toHaveCount(1)->and($data['work_logs'])->toHaveCount(1)->and($data['overtime'])->toBe([]);
     $this->actingAs(companyUser('hr_admin', $admin->company))->getJson("/api/payroll/{$id}/records")->assertForbidden();
+});
+
+test('a payroll run with the same dates and group as an existing one is refused', function () {
+    $admin = companyUser('payroll_admin');
+    [, $group] = runStaff($admin->company);
+    newRun($this, $admin, $group->id);
+
+    $this->actingAs($admin)->postJson('/api/payroll', ['label' => 'Another label', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])
+        ->assertUnprocessable()->assertJsonValidationErrors('start_date');
+    // all-employees run (no group) is a different run; so is another pay date
+    newRun($this, $admin, null);
+    newRun($this, $admin, $group->id, ['pay_date' => '2026-10-16']);
 });
