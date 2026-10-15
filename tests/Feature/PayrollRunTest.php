@@ -76,7 +76,8 @@ test('running locks the approved work logs it pays, and a run cannot pay a log a
     $outside = $log('2026-10-20', 'approved');
 
     $first = newRun($this, $admin, $group->id);
-    $second = newRun($this, $admin, $group->id);
+    // The API refuses a second run with the same dates and group, so the overlapping one is made directly.
+    $second = \App\Payroll\PayrollRun::create($admin->company_id, ['label' => 'Oct 1 – 15, 2026 (again)', 'start_date' => '2026-10-01', 'end_date' => '2026-10-15', 'pay_date' => '2026-10-15', 'payroll_group_id' => $group->id])->id;
     $this->actingAs($admin)->postJson("/api/payroll/{$first}/run")->assertOk();
     expect($paid->fresh()->payroll_period_id)->toBe($first)->and($pending->fresh()->payroll_period_id)->toBeNull()->and($outside->fresh()->payroll_period_id)->toBeNull();
 
