@@ -88,6 +88,7 @@ export function BonusDetailsDialog({
       periodText: bonus?.periodLabel,
       payDate: payoutPeriod?.payDate,
       ctaPath: '/ess/payslips',
+      pdfPath: bonus ? `/api/bonuses/${bonus.id}/payslips/${p.employee.id}/pdf` : undefined,
     })
   const sendEmails = (employeeIds: string[]) =>
     emails.send(

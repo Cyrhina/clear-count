@@ -25,6 +25,8 @@ export interface PayslipEmailContent {
   payDate: string
   /** Absolute link behind the "View Payslip" button. */
   ctaUrl: string
+  /** In the admin preview the button downloads this PDF instead (the ctaUrl is the employee's own page). Unset until the payslip is issued. */
+  previewPdfUrl?: string
   companyName: string
   attachmentName: string
 }
@@ -68,10 +70,12 @@ export function buildPayslipEmail(params: {
   payDate?: string
   /** App path of the payslip, turned into an absolute link for the email. */
   ctaPath: string
+  /** API path of the payslip PDF, when it can be downloaded (the run is finalized). */
+  pdfPath?: string
   /** Bonus name, for the bonus headline. */
   bonusName?: string
 }): PayslipEmailContent {
-  const { kind, company, employee, label, periodStart, periodEnd, periodText, payDate, ctaPath, bonusName } = params
+  const { kind, company, employee, label, periodStart, periodEnd, periodText, payDate, ctaPath, pdfPath, bonusName } = params
   const companyName = company?.name ?? 'your company'
   const hasRange = !!periodStart && !!periodEnd
   const payPeriod = hasRange ? formatPayPeriod(periodStart, periodEnd) : (periodText ?? label)
@@ -109,6 +113,7 @@ export function buildPayslipEmail(params: {
     payPeriod,
     payDate: payDateText,
     ctaUrl: `${typeof window === 'undefined' ? '' : window.location.origin}${ctaPath}`,
+    previewPdfUrl: pdfPath,
     companyName,
     attachmentName: `${slug(PAYSLIP_EMAIL_KIND_LABEL[kind])}_${employee.employeeNumber}_${slug(label)}.pdf`,
   }

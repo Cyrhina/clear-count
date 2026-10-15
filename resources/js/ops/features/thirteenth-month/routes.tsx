@@ -144,6 +144,7 @@ export function ThirteenthMonthPage() {
       periodEnd: line.activeTo ?? `${activeRun.year}-12-31`,
       payDate: activeRun.generationDate,
       ctaPath: '/ess/payslips',
+      pdfPath: activeRun.status === 'finalized' ? `/api/thirteenth-month/lines/${line.id}/pdf` : undefined,
     })
   }
   const sendEmails = (employeeIds: string[]) =>

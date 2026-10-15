@@ -146,6 +146,7 @@ export function PayrollPeriodDetailPage() {
           periodEnd: period.endDate,
           payDate: period.payDate,
           ctaPath: `/ess/payslips/${line.id}`,
+          pdfPath: period.status === 'finalized' ? `/api/payslips/${line.id}/pdf` : undefined,
         }) : undefined
   }
   const sendEmails = (employeeIds: string[]) =>

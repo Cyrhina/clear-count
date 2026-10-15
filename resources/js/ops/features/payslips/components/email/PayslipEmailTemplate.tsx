@@ -110,7 +110,8 @@ export function PayslipEmailMeta({ email, timestamp }: { email: PayslipEmailCont
 }
 
 /** The payslip notification email body — greeting, CTA, portal note, pay period/date card, footer. */
-export function PayslipEmailTemplate({ email }: { email: PayslipEmailContent }) {
+/** `preview`: the button does not navigate. Its link is the employee's own page (`ess.view`), which an admin previewing the email may not open (403). */
+export function PayslipEmailTemplate({ email, preview = false }: { email: PayslipEmailContent; preview?: boolean }) {
   return (
     <div className="mx-auto w-full max-w-[600px] overflow-hidden rounded-2xl border bg-white font-sans" style={{ borderColor: C.border, color: C.text }}>
       {/* Hero */}
@@ -132,9 +133,10 @@ export function PayslipEmailTemplate({ email }: { email: PayslipEmailContent }) 
 
         <div className="text-center">
           <a
-            href={email.ctaUrl}
-            target="_blank"
-            rel="noreferrer"
+            href={preview && email.previewPdfUrl ? email.previewPdfUrl : email.ctaUrl}
+            {...(preview && email.previewPdfUrl ? { download: '' } : { target: '_blank', rel: 'noreferrer' })}
+            onClick={preview && !email.previewPdfUrl ? (e) => e.preventDefault() : undefined}
+            title={preview ? (email.previewPdfUrl ? 'Downloads the payslip PDF.' : 'The payslip can be downloaded once it is finalized. See the PDF Attachment tab.') : undefined}
             className="inline-flex items-center justify-center gap-2.5 rounded-xl px-12 py-3.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90"
             style={{ background: C.green }}
           >
