@@ -87,7 +87,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Branded reset email (replaces the framework's default look).
         ResetPassword::toMailUsing(fn (object $notifiable, string $token) => (new MailMessage)
-            ->subject('Reset your FBS Payroll password')
+            ->subject('Reset your Clear Count password')
             ->view('mail.reset-password', [
                 'name' => $notifiable->first_name,
                 'url' => MailLink::passwordReset($token, $notifiable->getEmailForPasswordReset()),

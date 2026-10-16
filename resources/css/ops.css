@@ -11,38 +11,39 @@
 
   --ease-editorial: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --color-brand-50: #e7fbef;
-  --color-brand-100: #cff5df;
-  --color-brand-200: #a3eac1;
-  --color-brand-300: #6edb9c;
-  --color-brand-400: #43d77f;
-  --color-brand-500: #3ab866;
-  --color-brand-600: #2d9450;
-  --color-brand-700: #247a41;
-  --color-brand-800: #1d5e33;
-  --color-brand-900: #184828;
-  --color-brand-950: #142c1f;
+  /* Clear Count palette: Black #000000, Regal Blue #1e3765, White Lilac #f8f9fc, Pastel Blue #b0c6d4. */
+  --color-brand-50: #f1f5fa;
+  --color-brand-100: #e1eaf2;
+  --color-brand-200: #cfdce7;
+  --color-brand-300: #b0c6d4;
+  --color-brand-400: #7a9bbd;
+  --color-brand-500: #4a6c9b;
+  --color-brand-600: #1e3765;
+  --color-brand-700: #192e54;
+  --color-brand-800: #142544;
+  --color-brand-900: #0f1c34;
+  --color-brand-950: #0a1322;
 
-  --color-amber-accent: #c8842a;
+  --color-steel-accent: #4a6c9b;
 
   --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(0 0 0 / 0.10);
   --shadow-soft-lg: 0 2px 4px 0 rgb(0 0 0 / 0.04), 0 16px 40px -12px rgb(0 0 0 / 0.14);
 }
 
 :root {
-  --background: #f6fbf8;
-  --foreground: #16241b;
+  --background: #f8f9fc;
+  --foreground: #0a0f1c;
   --card: #ffffff;
-  --card-foreground: #16241b;
-  --muted: #edf6f0;
-  --muted-foreground: #5f7266;
-  --border: #e5f2e9;
+  --card-foreground: #0a0f1c;
+  --muted: #eceff6;
+  --muted-foreground: #566780;
+  --border: #dce4ee;
   --ring: var(--color-brand-500);
 
   --primary: var(--color-brand-600);
-  --primary-foreground: #ffffff;
-  --accent: var(--color-amber-accent);
-  --accent-foreground: #2a1a05;
+  --primary-foreground: #f8f9fc;
+  --accent: var(--color-steel-accent);
+  --accent-foreground: #ffffff;
 
   --success: #1e9249;
   --success-foreground: #f4fbf7;
@@ -51,45 +52,46 @@
   --danger: #b83b3b;
   --danger-foreground: #fdf5f5;
 
-  --sidebar: var(--brand-sidebar, #142c1f);
-  --sidebar-foreground: #e7fbef;
-  --sidebar-muted: var(--brand-sidebar-muted, #8db59b);
+  --sidebar: var(--brand-sidebar, #1e3765);
+  --sidebar-foreground: #f8f9fc;
+  --sidebar-muted: var(--brand-sidebar-muted, #b0c6d4);
   --sidebar-border: rgb(255 255 255 / 0.08);
   --sidebar-active: rgb(255 255 255 / 0.08);
 
-  /* Chart-only categorical accents (Advanced Reports/@nivo) — extend the teal/amber brand
+  /* Chart-only categorical accents (Advanced Reports/@nivo) — extend the blue brand
      palette with indigo/blue/violet/slate so multi-series charts never need red. */
   --chart-indigo: #5b5fc7;
   --chart-blue: #3b7dd8;
   --chart-violet: #7c5cbf;
   --chart-slate: #64748b;
+  --chart-amber: #c8842a;
 }
 
 .dark {
-  --background: #0b150f;
-  --foreground: #e9f5ee;
-  --card: #122219;
-  --card-foreground: #e9f5ee;
-  --muted: #183024;
-  --muted-foreground: #8fab9b;
-  --border: rgb(167 243 196 / 0.12);
+  --background: #03060b;
+  --foreground: #f8f9fc;
+  --card: #0b1220;
+  --card-foreground: #f8f9fc;
+  --muted: #111a2c;
+  --muted-foreground: #8fa3b8;
+  --border: rgb(176 198 212 / 0.14);
   --ring: var(--color-brand-400);
 
-  --primary: var(--color-brand-400);
-  --primary-foreground: #0b1f13;
-  --accent: var(--color-amber-accent);
-  --accent-foreground: #2a1a05;
+  --primary: var(--color-brand-300);
+  --primary-foreground: #0a1322;
+  --accent: var(--color-brand-400);
+  --accent-foreground: #03060b;
 
-  --success: #43d77f;
+  --success: #7a9bbd;
   --success-foreground: #0b1f13;
   --warning: #d99a3f;
   --warning-foreground: #2a1a05;
   --danger: #d16565;
   --danger-foreground: #2a1010;
 
-  --sidebar: var(--brand-sidebar-dark, #09130d);
-  --sidebar-foreground: #e7fbef;
-  --sidebar-muted: var(--brand-sidebar-muted, #7fa38d);
+  --sidebar: var(--brand-sidebar-dark, #000000);
+  --sidebar-foreground: #f8f9fc;
+  --sidebar-muted: var(--brand-sidebar-muted, #9db3c4);
   --sidebar-border: rgb(255 255 255 / 0.06);
   --sidebar-active: rgb(255 255 255 / 0.06);
 
@@ -97,6 +99,28 @@
   --chart-blue: #6fa4e8;
   --chart-violet: #a690d9;
   --chart-slate: #94a3b8;
+  --chart-amber: #d99a3f;
+}
+
+/* Login / forgot / reset form panel: always Regal Blue, on top of the `.dark` tokens. */
+.auth-panel {
+  --background: #1e3765;
+  --card: rgb(255 255 255 / 0.04);
+  --border: rgb(176 198 212 / 0.4);
+  --muted: rgb(255 255 255 / 0.07);
+  --muted-foreground: #b0c6d4;
+  --ring: #b0c6d4;
+}
+
+/* In dark mode the form panel drops to a deep navy so the two modes read differently. */
+.dark .auth-panel {
+  --background: #0a1322;
+  --border: rgb(176 198 212 / 0.28);
+}
+
+.auth-panel .auth-cta {
+  background-image: linear-gradient(90deg, #f8f9fc, #b0c6d4);
+  color: #1e3765;
 }
 
 @theme inline {
@@ -127,6 +151,7 @@
   --color-chart-blue: var(--chart-blue);
   --color-chart-violet: var(--chart-violet);
   --color-chart-slate: var(--chart-slate);
+  --color-chart-amber: var(--chart-amber);
 }
 
 body {
@@ -191,14 +216,14 @@ body {
      bg-gradient-to-br from-slate-50/80 via-indigo-50/30 to-purple-50/50 (lavender),
      from-emerald-50/40 via-emerald-50/30 to-teal-50/20 (sage), from-rose-50/50 via-orange-50/30 to-amber-50/40 (peach). */
   --soft-tint-lavender: linear-gradient(to bottom right, rgb(248 250 252 / 0.8), rgb(238 242 255 / 0.3), rgb(250 245 255 / 0.5));
-  --soft-tint-sage: linear-gradient(to bottom right, rgb(236 253 245 / 0.4), rgb(236 253 245 / 0.3), rgb(240 253 250 / 0.2));
+  --soft-tint-sage: linear-gradient(to bottom right, rgb(176 198 212 / 0.22), rgb(176 198 212 / 0.14), rgb(176 198 212 / 0.08));
   --soft-tint-peach: linear-gradient(to bottom right, rgb(255 241 242 / 0.5), rgb(255 247 237 / 0.3), rgb(255 251 235 / 0.4));
   --soft-card-border: rgb(241 245 249 / 0.8); /* slate-100/80 */
 }
 
 .dark {
   --soft-tint-lavender: linear-gradient(to bottom right, color-mix(in srgb, var(--chart-slate) 6%, transparent), color-mix(in srgb, var(--chart-indigo) 5%, transparent), color-mix(in srgb, var(--chart-violet) 8%, transparent));
-  --soft-tint-sage: linear-gradient(to bottom right, color-mix(in srgb, var(--success) 7%, transparent), color-mix(in srgb, var(--success) 5%, transparent), color-mix(in srgb, var(--color-brand-300) 4%, transparent));
+  --soft-tint-sage: linear-gradient(to bottom right, color-mix(in srgb, var(--color-brand-300) 8%, transparent), color-mix(in srgb, var(--color-brand-300) 6%, transparent), color-mix(in srgb, var(--color-brand-300) 4%, transparent));
   --soft-tint-peach: linear-gradient(to bottom right, color-mix(in srgb, var(--danger) 6%, transparent), color-mix(in srgb, var(--accent) 5%, transparent), color-mix(in srgb, var(--warning) 6%, transparent));
   --soft-card-border: rgb(255 255 255 / 0.1);
 }
@@ -246,7 +271,7 @@ main[data-card-theme='soft'] [data-slot='card-watermark'] {
 }
 
 main[data-card-theme='soft'] :is(.grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 2), [data-slot='card'][data-tint='sage']) > [data-slot='card-watermark'] {
-  color: color-mix(in srgb, var(--success) 10%, transparent);
+  color: color-mix(in srgb, var(--color-brand-400) 10%, transparent);
 }
 
 main[data-card-theme='soft'] :is(.grid > [data-slot='card'].bg-card:not([data-tint]):nth-child(3n + 3), [data-slot='card'][data-tint='peach']) > [data-slot='card-watermark'] {
@@ -547,12 +572,12 @@ main[data-card-theme='soft'] [data-slot='metric-card-footer'] > svg {
    theme tokens onto the rendered payslip even when the portal itself is in dark mode. */
 .payslip-paper {
   --background: #f6fbf8;
-  --foreground: #16241b;
+  --foreground: #0a0f1c;
   --card: #ffffff;
-  --card-foreground: #16241b;
+  --card-foreground: #0a0f1c;
   --muted: #edf6f0;
   --muted-foreground: #5f7266;
-  --border: #e5f2e9;
+  --border: #dce4ee;
   --primary: var(--color-brand-600);
   --primary-foreground: #ffffff;
   --success: #1e9249;
@@ -575,7 +600,7 @@ main[data-card-theme='soft'] [data-slot='metric-card-footer'] > svg {
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 4px 10px -4px rgb(0 0 0 / 0.08);
 }
 
-/* Sidebar scrollbar — the usual brand green, but thin and see-through: faint while the menu is idle, a
+/* Sidebar scrollbar — the brand blue, but thin and see-through: faint while the menu is idle, a
    little stronger while the user is scrolling (the nav sets data-scrolling), and strongest on hover.
    No arrow buttons. Chromium only draws a custom thumb when the standard scrollbar-color/width are
    left at auto, so those are reset there; Firefox gets the standard properties instead. */

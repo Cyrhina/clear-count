@@ -8,6 +8,9 @@ import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
+// Vercel's build image has no PHP, so it cannot run `php artisan wayfinder:generate`; the generated files are committed instead.
+const onVercel = Boolean(process.env.VERCEL);
+
 export default defineConfig({
     plugins: lazyPlugins(() => [
         laravel({
@@ -30,9 +33,7 @@ export default defineConfig({
             presets: [reactCompilerPreset()],
         }),
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
+        ...(onVercel ? [] : [wayfinder({ formVariants: true })]),
     ]),
     resolve: {
         alias: {
@@ -55,6 +56,8 @@ export default defineConfig({
                 '**/.cursor/**',
                 '**/.junie/**',
                 '**/vendor/**',
+                // Laravel writes short-lived temp files here; watching them crashes Vite with EBUSY on Windows.
+                '**/storage/**',
             ],
         },
     },

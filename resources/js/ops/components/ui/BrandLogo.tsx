@@ -1,13 +1,13 @@
 import { cn } from '@ops/lib/utils/cn'
 
-export const BRAND_NAME = 'FBS Pay'
+export const BRAND_NAME = 'Clear Count'
 
-/** The FBS Pay mark: the light tile in light mode, the dark tile in dark mode (the theme is the `.dark` class on <html>). */
+/** The Clear Count mark: the light tile in light mode, the dark tile in dark mode (the theme is the `.dark` class on <html>). */
 export function BrandLogo({ className }: { className?: string }) {
   return (
     <>
-      <img src="/brand/fbs-pay-light.png" alt={BRAND_NAME} className={cn('shrink-0 object-contain dark:hidden', className)} />
-      <img src="/brand/fbs-pay-dark.png" alt={BRAND_NAME} className={cn('hidden shrink-0 object-contain dark:block', className)} />
+      <img src="/brand/clear-count-light.png" alt={BRAND_NAME} className={cn('shrink-0 object-contain dark:hidden', className)} />
+      <img src="/brand/clear-count-dark.png" alt={BRAND_NAME} className={cn('hidden shrink-0 object-contain dark:block', className)} />
     </>
   )
 }
@@ -26,7 +26,7 @@ export function PoweredByBrand({ className }: { className?: string }) {
 }
 
 /**
- * Full-screen loader: the FBS Pay mark with a ring spinning around it, over a blurred copy of whatever is behind.
+ * Full-screen loader: the Clear Count mark with a ring spinning around it, over a blurred copy of whatever is behind.
  * It fades in after a short delay (see `.brand-loader` in ops.css) so quick loads don't flash.
  */
 export function BrandLoader() {

@@ -113,14 +113,14 @@ export function formatGeneratedAt(date: Date): string {
 /** Who the report is for: shown at the top-right of every export, next to the logo on the left. */
 export interface ReportCompany {
   name: string
-  /** The company's logo (any image URL / data URL). Falls back to the FBS Pay logo. */
+  /** The company's logo (any image URL / data URL). Falls back to the Clear Count logo. */
   logoUrl?: string
   addressLines: string[]
   contactLine?: string
 }
 
 export const REPORT_BRAND = { name: BRAND.name, subtitle: BRAND.subtitle, tagline: BRAND.tagline, closing: 'Better Workplaces. Brighter Futures.' }
-export const DEFAULT_REPORT_LOGO = '/brand/fbs-pay-light.png'
+export const DEFAULT_REPORT_LOGO = '/brand/clear-count-light.png'
 
 export const REPORT_NOTES = ['This report is for payroll processing purposes only.', 'Figures are rounded to the nearest cent.']
 

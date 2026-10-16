@@ -276,10 +276,10 @@ function AddWebhookDialog({ onCreated }: { onCreated: (secret: string) => void }
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Add Webhook</DialogTitle>
-        <DialogDescription>FBS Pay will POST each event to this address, signed with a secret that is shown once after you save.</DialogDescription>
+        <DialogDescription>Clear Count will POST each event to this address, signed with a secret that is shown once after you save.</DialogDescription>
         <div className="mt-5 space-y-4">
           <FormField label="Endpoint URL" required error={errors.url} hint="Must be an https:// address on the public internet.">
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/webhooks/fbs-pay" invalid={!!errors.url} />
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/webhooks/clear-count" invalid={!!errors.url} />
           </FormField>
           <FormField label="Events" error={errors.events}>
             <div className="space-y-2">

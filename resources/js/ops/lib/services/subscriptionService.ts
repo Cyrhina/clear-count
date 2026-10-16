@@ -70,7 +70,7 @@ export async function submitUpgradePayment(input: { targetTier: PlanTier; paymen
   return camelizeKeys<SubscriptionPayment>(res.data)
 }
 
-// ---- FBS Pay billing team (Super Admin) ------------------------------------------------------------------------
+// ---- Clear Count billing team (Super Admin) ------------------------------------------------------------------------
 
 export interface PlatformCompany {
   id: string

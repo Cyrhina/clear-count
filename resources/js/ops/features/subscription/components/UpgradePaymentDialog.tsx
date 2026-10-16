@@ -14,7 +14,7 @@ import type { PlanTier } from '@ops/types/domain'
 
 /**
  * Upgrade payment: the company scans the QR, pays, then submits the receipt's reference number. The plan is NOT
- * changed here — the FBS Pay billing team verifies the payment first (see CompaniesPage for the confirm step).
+ * changed here — the Clear Count billing team verifies the payment first (see CompaniesPage for the confirm step).
  * The QR in `public/brand/payment-qr.svg` is a placeholder: replace it with the provider's QR (InstaPay / e-wallet).
  */
 const PROOF_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -95,7 +95,7 @@ export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { tar
             </div>
             <DialogTitle>Payment submitted</DialogTitle>
             <DialogDescription>
-              The FBS Pay billing team will verify your payment, usually within 1 business day. Your plan changes to {plan?.label} only after they confirm it — until then you stay on your current plan.
+              The Clear Count billing team will verify your payment, usually within 1 business day. Your plan changes to {plan?.label} only after they confirm it — until then you stay on your current plan.
             </DialogDescription>
             <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-left text-xs">
               <p className="text-muted-foreground">Payment reference</p>
@@ -159,7 +159,7 @@ export function UpgradePaymentDialog({ targetPlan, onClose, onSubmitted }: { tar
 
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
               <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />
-              Your plan will not change until the FBS Pay billing team has verified the payment.
+              Your plan will not change until the Clear Count billing team has verified the payment.
             </p>
 
             <div className="flex justify-end gap-2">

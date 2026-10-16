@@ -115,7 +115,7 @@ export function ForgotPasswordPage() {
               <IconField id="email" icon={Mail} type="email" autoFocus placeholder="Enter your email address" error={errors.email?.message} {...register('email')} />
             </div>
 
-            <Button type="submit" className="w-full" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
+            <Button type="submit" className="auth-cta w-full py-3" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
               Send Reset Link
             </Button>
           </form>

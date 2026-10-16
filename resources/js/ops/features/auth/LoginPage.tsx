@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { router, usePage } from '@inertiajs/react'
+import { router } from '@inertiajs/react'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { BrandLoader } from '@ops/components/ui/BrandLogo'
@@ -10,13 +10,6 @@ import { Button } from '@ops/components/ui/Button'
 import { Checkbox } from '@ops/components/ui/Checkbox'
 import { useToast } from '@ops/components/ui/Toast'
 import { AuthLayout, IconField } from '@ops/features/auth/components/AuthLayout'
-
-/** Local-only quick logins, sent by the server (empty outside the local environment). */
-interface DemoAccount {
-  email: string
-  password: string
-  roleLabel: string
-}
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -26,9 +19,20 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/** The four-square Microsoft mark. */
+function MicrosoftLogo() {
+  return (
+    <svg viewBox="0 0 21 21" className="size-5" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="currentColor" />
+      <rect x="11" y="1" width="9" height="9" fill="currentColor" />
+      <rect x="1" y="11" width="9" height="9" fill="currentColor" />
+      <rect x="11" y="11" width="9" height="9" fill="currentColor" />
+    </svg>
+  )
+}
+
 export function LoginPage() {
   const { notify } = useToast()
-  const { demoAccounts = [] } = usePage<{ demoAccounts?: DemoAccount[] }>().props
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -37,7 +41,6 @@ export function LoginPage() {
     register,
     handleSubmit,
     control,
-    setValue,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '', keepSignedIn: true } })
 
@@ -59,28 +62,23 @@ export function LoginPage() {
     submit(values.email, values.password, values.keepSignedIn)
   }
 
-  function onDemoLogin(email: string, password: string) {
-    setValue('email', email)
-    setValue('password', password)
-    submit(email, password, true)
-  }
-
   return (
     <AuthLayout>
       {isSubmitting && <BrandLoader />}
-      <h2 className="font-display text-2xl font-semibold tracking-tight">Welcome Back!</h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">Log in to your FBS Pay account to continue.</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-300">Welcome Back</p>
+      <h2 className="mt-3 font-display text-[1.9rem] font-semibold leading-tight tracking-tight">Sign in to your Payroll Account</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Access your payroll system, manage your employees, and keep your data secure.</p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
         <div>
-          <label htmlFor="email" className="mb-1.5 block text-xs font-semibold tracking-tight">
+          <label htmlFor="email" className="mb-2 block text-sm font-medium">
             Email Address
           </label>
-          <IconField id="email" icon={Mail} type="email" placeholder="Enter your email address" error={errors.email?.message} {...register('email')} />
+          <IconField id="email" icon={Mail} type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1.5 block text-xs font-semibold tracking-tight">
+          <label htmlFor="password" className="mb-2 block text-sm font-medium">
             Password
           </label>
           <IconField
@@ -115,38 +113,20 @@ export function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" className="w-full" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
+        <Button type="submit" className="auth-cta w-full py-3" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
           Log In
         </Button>
       </form>
 
       <div className="my-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">or</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">or</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <Button variant="secondary" className="w-full" onClick={() => notify({ title: 'Microsoft sign-in is not available in this demo', tone: 'default' })}>
+      <Button variant="secondary" className="w-full bg-transparent py-3" icon={<MicrosoftLogo />} onClick={() => notify({ title: 'Microsoft sign-in is not available in this demo', tone: 'default' })}>
         Sign in with Microsoft
       </Button>
-
-      {demoAccounts.length > 0 && (
-      <div className="mt-7 rounded-xl border border-dashed border-border bg-muted/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick Demo Login</p>
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {demoAccounts.map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              onClick={() => onDemoLogin(account.email, account.password)}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-            >
-              {account.roleLabel}
-            </button>
-          ))}
-        </div>
-      </div>
-      )}
     </AuthLayout>
   )
 }

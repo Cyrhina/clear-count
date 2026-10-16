@@ -187,7 +187,7 @@ export function ResetPasswordPage() {
 
           {formError && <p className="text-xs text-danger">{formError}</p>}
 
-          <Button type="submit" className="w-full" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
+          <Button type="submit" className="auth-cta w-full py-3" isLoading={isSubmitting} icon={<ArrowRight className="size-4" />}>
             Reset Password
           </Button>
         </form>

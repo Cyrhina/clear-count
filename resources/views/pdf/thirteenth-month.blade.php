@@ -8,14 +8,14 @@
 <meta charset="utf-8">
 <style>
     body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1f2d3a; }
-    h1 { font-size: 18px; margin: 0; color: #0a4f3f; }
+    h1 { font-size: 18px; margin: 0; color: #1e3765; }
     h2 { font-size: 11px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .5px; color: #4a6072; }
     table { width: 100%; border-collapse: collapse; }
     td, th { padding: 5px 6px; border-bottom: 1px solid #e3e9ee; text-align: left; }
     td.r, th.r { text-align: right; }
     .muted { color: #6b7d8c; }
     .total td { font-weight: bold; border-top: 1px solid #1f2d3a; }
-    .net { margin-top: 14px; padding: 10px; background: #eaf6f1; font-size: 14px; font-weight: bold; }
+    .net { margin-top: 14px; padding: 10px; background: #eef2f7; font-size: 14px; font-weight: bold; }
 </style>
 </head>
 <body>

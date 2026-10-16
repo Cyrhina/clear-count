@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link id="ops-icon" rel="icon" href="/brand/fbs-pay-light.png" type="image/png">
+        <link id="ops-icon" rel="icon" href="/brand/clear-count-light.png" type="image/png">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
                     if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                     if (theme === 'dark') {
                         document.documentElement.classList.add('dark');
-                        document.getElementById('ops-icon').href = '/brand/fbs-pay-dark.png';
+                        document.getElementById('ops-icon').href = '/brand/clear-count-dark.png';
                     }
                 } catch (e) {}
             })();
@@ -24,7 +24,7 @@
         @viteReactRefresh
         @vite(['resources/css/ops.css', 'resources/js/ops-app.tsx'])
         <x-inertia::head>
-            <title>FBS Pay</title>
+            <title>Clear Count</title>
         </x-inertia::head>
     </head>
     <body>

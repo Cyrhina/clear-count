@@ -1,15 +1,15 @@
 /**
  * Company color theme from the logo: find the logo's dominant color, spread it into the 11-step `brand` scale
  * the whole UI is built on (`--color-brand-50 … 950` → buttons, links, charts, focus rings, badges) and tint the
- * sidebar. Lightness steps are fixed (the same ones as the default green scale) so text on `brand-600` stays
+ * sidebar. Lightness steps are fixed (the same ones as the default blue scale) so text on `brand-600` stays
  * readable whatever the logo's color — only hue and saturation come from the logo.
  */
 
 export const BRAND_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const
 export type BrandShade = (typeof BRAND_SHADES)[number]
 
-/** The built-in FBS Pay green theme, used when a company hasn't turned on the logo theme. */
-export const DEFAULT_BRAND_COLOR = '#2d9450'
+/** The built-in Clear Count blue theme, used when a company hasn't turned on the logo theme. */
+export const DEFAULT_BRAND_COLOR = '#1e3765'
 
 const LIGHTNESS: Record<BrandShade, number> = { 50: 95, 100: 90, 200: 80, 300: 67, 400: 56, 500: 46, 600: 39, 700: 31, 800: 24, 900: 19, 950: 12 }
 

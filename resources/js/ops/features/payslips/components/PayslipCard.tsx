@@ -346,7 +346,7 @@ export function PayslipCard({
         <div className="rounded-2xl border border-border bg-muted/40 p-4 print:bg-transparent">
           <SectionBadge icon={Heart} label="Note & Appreciation" tone="muted" />
           <p className="text-xs leading-relaxed text-muted-foreground print:text-foreground/70">
-            Thank you for being a valued member of the FBS team! Together, we build a better tomorrow.
+            Thank you for being a valued member of the Clear Count team! Together, we build a better tomorrow.
           </p>
         </div>
       </div>

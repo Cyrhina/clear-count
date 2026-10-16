@@ -8,20 +8,20 @@ import { formatDate } from '@ops/lib/utils/format'
  * brand palette (always light, even when the portal is in dark mode):
  */
 const C = {
-  green: '#247a41',
-  greenSoft: '#e7fbef',
-  ink: '#16241b',
-  text: '#3d5044',
-  muted: '#74877b',
-  card: '#f3fbf6',
-  border: '#e5f2e9',
+  green: '#1e3765',
+  greenSoft: '#e1eaf2',
+  ink: '#0a0f1c',
+  text: '#3f5365',
+  muted: '#6b7d8c',
+  card: '#f4f7fb',
+  border: '#dce4ee',
 }
 
-/** The FBS Pay mark (light tile — emails always render on a light page), served from /public. Emails need an absolute image URL. */
-const LOGO_URL = `${typeof window === 'undefined' ? '' : window.location.origin}/brand/fbs-pay-light.png`
+/** The Clear Count mark (light tile — emails always render on a light page), served from /public. Emails need an absolute image URL. */
+const LOGO_URL = `${typeof window === 'undefined' ? '' : window.location.origin}/brand/clear-count-light.png`
 
 function FbsLogo({ size = 36 }: { size?: number }) {
-  return <img src={LOGO_URL} alt="FBS Pay" width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} />
+  return <img src={LOGO_URL} alt="Clear Count" width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} />
 }
 
 function Brand({ small }: { small?: boolean }) {
@@ -45,19 +45,19 @@ function EnvelopeIllustration(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 160 130" aria-hidden="true" {...props}>
       <circle cx="92" cy="66" r="56" fill={C.greenSoft} />
-      <circle cx="30" cy="30" r="5" fill="#bdeed0" />
-      <circle cx="148" cy="100" r="4" fill="#bdeed0" />
+      <circle cx="30" cy="30" r="5" fill="#b0c6d4" />
+      <circle cx="148" cy="100" r="4" fill="#b0c6d4" />
       <path d="M118 16 l6 -8 M126 22 l10 -4 M112 12 l0 -9" stroke={C.green} strokeWidth="3" strokeLinecap="round" />
       {/* Payslip sheet */}
       <rect x="58" y="16" width="62" height="70" rx="6" fill="#ffffff" stroke={C.border} strokeWidth="2" />
-      <rect x="67" y="28" width="30" height="5" rx="2.5" fill="#8fd9ab" />
-      <rect x="67" y="40" width="44" height="4" rx="2" fill="#dff3e6" />
-      <rect x="67" y="50" width="44" height="4" rx="2" fill="#dff3e6" />
-      <rect x="67" y="60" width="32" height="4" rx="2" fill="#dff3e6" />
+      <rect x="67" y="28" width="30" height="5" rx="2.5" fill="#7a9bbd" />
+      <rect x="67" y="40" width="44" height="4" rx="2" fill="#e1eaf2" />
+      <rect x="67" y="50" width="44" height="4" rx="2" fill="#e1eaf2" />
+      <rect x="67" y="60" width="32" height="4" rx="2" fill="#e1eaf2" />
       {/* Envelope */}
-      <path d="M40 62 l49 32 l49 -32 v46 a8 8 0 0 1 -8 8 h-82 a8 8 0 0 1 -8 -8 z" fill="#2d9450" />
-      <path d="M40 62 l49 32 l49 -32" fill="none" stroke="#247a41" strokeWidth="2" />
-      <path d="M40 116 l38 -28 M138 116 l-38 -28" stroke="#43d77f" strokeWidth="2" />
+      <path d="M40 62 l49 32 l49 -32 v46 a8 8 0 0 1 -8 8 h-82 a8 8 0 0 1 -8 -8 z" fill="#1e3765" />
+      <path d="M40 62 l49 32 l49 -32" fill="none" stroke="#1e3765" strokeWidth="2" />
+      <path d="M40 116 l38 -28 M138 116 l-38 -28" stroke="#7a9bbd" strokeWidth="2" />
       {/* Check badge */}
       <circle cx="132" cy="106" r="15" fill={C.green} stroke="#ffffff" strokeWidth="4" />
       <path d="M125 106 l5 5 l9 -10" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />

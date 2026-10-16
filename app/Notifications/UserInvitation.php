@@ -38,7 +38,7 @@ class UserInvitation extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Create your FBS Payroll password')
+            ->subject('Create your Clear Count password')
             ->view('mail.invitation', [
                 'name' => $notifiable->first_name,
                 'roleLabel' => $this->roleLabel,

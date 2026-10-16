@@ -78,7 +78,7 @@ final class Webhooks
             'X-FBS-Event' => $delivery->event,
             'X-FBS-Delivery' => (string) $delivery->id,
             'X-FBS-Signature' => "t={$t},v1=".hash_hmac('sha256', "{$t}.{$body}", $secret),
-            'User-Agent' => 'FBS-Pay-Webhooks/1.0',
+            'User-Agent' => 'Clear-Count-Webhooks/1.0',
         ]];
     }
 

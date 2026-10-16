@@ -13,21 +13,21 @@
             <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:14px;">
                 <tr>
                     <td style="padding:28px 36px 0;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #e3ebe8;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #dce4ee;">
                             <tr>
                                 <td style="padding-bottom:18px;">
                                     <table role="presentation" cellpadding="0" cellspacing="0">
                                         <tr>
-                                            <td style="padding-right:10px;"><img src="{{ url('/brand/fbs-pay-light.png') }}" alt="" height="40" style="display:block;height:40px;border:0;"></td>
+                                            <td style="padding-right:10px;"><img src="{{ url('/brand/clear-count-light.png') }}" alt="" height="40" style="display:block;height:40px;border:0;"></td>
                                             <td style="line-height:1.3;">
-                                                <strong style="font-size:18px;color:#0a4f3f;">FBS Payroll</strong><br>
+                                                <strong style="font-size:18px;color:#1e3765;">Clear Count</strong><br>
                                                 <span style="font-size:12px;color:#6b7d8c;">Simple. Accurate. On Time.</span>
                                             </td>
                                         </tr>
                                     </table>
                                 </td>
                                 <td align="right" style="padding-bottom:18px;font-size:13px;font-weight:600;">
-                                    <a href="{{ url('/login') }}" style="color:#0b6b52;text-decoration:none;">Employee Portal &rarr;</a>
+                                    <a href="{{ url('/login') }}" style="color:#1e3765;text-decoration:none;">Employee Portal &rarr;</a>
                                 </td>
                             </tr>
                         </table>
@@ -36,10 +36,10 @@
 
                 <tr>
                     <td style="padding:22px 36px 0;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eaf6f1;border-radius:10px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;border-radius:10px;">
                             <tr>
                                 <td style="padding:30px 28px;">
-                                    <h1 style="margin:0 0 10px;font-size:28px;line-height:1.2;color:#0a4f3f;">@yield('heading')</h1>
+                                    <h1 style="margin:0 0 10px;font-size:28px;line-height:1.2;color:#1e3765;">@yield('heading')</h1>
                                     <p style="margin:0;font-size:14px;line-height:1.7;color:#4a6072;">@yield('lead')</p>
                                 </td>
                             </tr>
@@ -56,7 +56,7 @@
 
                 <tr>
                     <td align="center" style="padding:26px 36px 8px;">
-                        <a href="{{ $url }}" style="display:inline-block;background:#0b5d4b;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:15px 44px;border-radius:8px;">@yield('button') &rarr;</a>
+                        <a href="{{ $url }}" style="display:inline-block;background:#1e3765;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:15px 44px;border-radius:8px;">@yield('button') &rarr;</a>
                     </td>
                 </tr>
 
@@ -67,16 +67,16 @@
                 <tr>
                     <td style="padding:22px 36px 0;font-size:13px;line-height:1.7;color:#5d7080;">
                         @yield('footnote')
-                        <p style="margin:18px 0 0;">Best regards,<br><strong style="color:#0f2a3d;">FBS Payroll Team</strong></p>
+                        <p style="margin:18px 0 0;">Best regards,<br><strong style="color:#0f2a3d;">Clear Count Team</strong></p>
                     </td>
                 </tr>
 
                 <tr>
                     <td style="padding:26px 36px 28px;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e3ebe8;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #dce4ee;">
                             <tr>
                                 <td style="padding-top:18px;font-size:12px;color:#6b7d8c;">
-                                    <strong style="color:#0f2a3d;font-size:13px;">FBS Payroll</strong><br>Simple. Accurate. On Time.
+                                    <strong style="color:#0f2a3d;font-size:13px;">Clear Count</strong><br>Simple. Accurate. On Time.
                                 </td>
                             </tr>
                         </table>

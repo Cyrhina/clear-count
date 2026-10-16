@@ -108,7 +108,7 @@ export function SubscriptionPage() {
           <div>
             <p className="font-medium">Upgrade to {PLAN_DETAILS[pending.toTier].label} is waiting for verification</p>
             <p className="text-xs text-muted-foreground">
-              The FBS Pay billing team is checking your payment ({pending.paymentReference}, submitted {formatDate(pending.submittedAt)}). Your plan changes once they confirm it.
+              The Clear Count billing team is checking your payment ({pending.paymentReference}, submitted {formatDate(pending.submittedAt)}). Your plan changes once they confirm it.
             </p>
           </div>
         </div>

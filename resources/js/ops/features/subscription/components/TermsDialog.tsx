@@ -16,7 +16,7 @@ const DOCS: Record<LegalDoc, { title: string; updated: string; sections: Section
     sections: [
       {
         heading: '1. The service',
-        body: [`FBS Pay is a payroll and HR service provided by ${POWERED_BY_NAME} ("FBS", "we"). These terms apply when your company upgrades its subscription plan.`],
+        body: [`Clear Count is a payroll and HR service provided by ${POWERED_BY_NAME} ("Clear Count", "we"). These terms apply when your company upgrades its subscription plan.`],
       },
       {
         heading: '2. Plans and fees',
@@ -29,7 +29,7 @@ const DOCS: Record<LegalDoc, { title: string; updated: string; sections: Section
         heading: '3. Payment and verification',
         body: [
           'Upgrades are paid by scanning the payment QR code and submitting a photo of your receipt and its reference number.',
-          'Your plan changes only after the FBS Pay billing team has verified the payment, usually within 1 business day. Until then your current plan stays in effect. We may reject a payment that cannot be matched, is incomplete, or has an unreadable receipt, and will tell you why.',
+          'Your plan changes only after the Clear Count billing team has verified the payment, usually within 1 business day. Until then your current plan stays in effect. We may reject a payment that cannot be matched, is incomplete, or has an unreadable receipt, and will tell you why.',
         ],
       },
       {
@@ -65,7 +65,7 @@ const DOCS: Record<LegalDoc, { title: string; updated: string; sections: Section
       },
       {
         heading: '3. Who sees it',
-        body: ['Authorized members of the FBS Pay billing team, and our payment or banking partners when needed to confirm a payment. We do not share it with anyone else unless the law requires it.'],
+        body: ['Authorized members of the Clear Count billing team, and our payment or banking partners when needed to confirm a payment. We do not share it with anyone else unless the law requires it.'],
       },
       {
         heading: '4. How long we keep it',

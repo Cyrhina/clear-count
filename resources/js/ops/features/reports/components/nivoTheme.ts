@@ -38,14 +38,14 @@ export const NIVO_THEME: PartialTheme = {
 
 /**
  * Categorical palette for every Advanced Reports chart — deliberately red-free (no `--color-danger`
- * or any `#ef4444`/`#dc2626`-family hue). Teal brand shades plus indigo/blue/violet/amber/slate
+ * or any `#ef4444`/`#dc2626`-family hue). Blue brand shades plus indigo/blue/violet/amber/slate
  * accents give up to 8 distinguishable series without ever reaching for red.
  */
 export const CHART_PALETTE_NO_RED = [
   'var(--color-brand-500)',
   'var(--color-chart-indigo)',
   'var(--color-chart-blue)',
-  'var(--color-accent)',
+  'var(--color-chart-amber)',
   'var(--color-brand-300)',
   'var(--color-chart-violet)',
   'var(--color-brand-700)',

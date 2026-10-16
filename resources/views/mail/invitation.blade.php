@@ -2,7 +2,7 @@
 
 @section('title', 'Create your password')
 @section('heading', 'Create Your Password')
-@section('lead', 'Welcome to FBS Payroll! You are almost ready to access your employee portal.')
+@section('lead', 'Welcome to Clear Count! You are almost ready to access your employee portal.')
 @section('button', 'Create Your Password')
 
 @section('content')
@@ -11,10 +11,10 @@
 @endsection
 
 @section('panel')
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eaf6f1;border-radius:10px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;border-radius:10px;">
         <tr>
             <td style="padding:18px 22px;font-size:13px;line-height:1.8;color:#4a6072;">
-                <strong style="color:#0a4f3f;font-size:14px;">Password Requirements</strong><br>
+                <strong style="color:#1e3765;font-size:14px;">Password Requirements</strong><br>
                 &bull; At least 8 characters<br>
                 &bull; Upper and lowercase letters<br>
                 &bull; At least one number<br>
@@ -22,7 +22,7 @@
             </td>
         </tr>
     </table>
-    <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#6b7d8c;">Button not working? Copy this link into your browser:<br><a href="{{ $url }}" style="color:#0b6b52;word-break:break-all;">{{ $url }}</a></p>
+    <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#6b7d8c;">Button not working? Copy this link into your browser:<br><a href="{{ $url }}" style="color:#1e3765;word-break:break-all;">{{ $url }}</a></p>
 @endsection
 
 @section('footnote')

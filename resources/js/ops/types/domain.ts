@@ -39,7 +39,7 @@ export interface CompanyRegistration {
   businessPermitNo?: string
 }
 
-/** An upgrade the company has paid for (by QR) that the FBS Pay billing team has not verified yet. */
+/** An upgrade the company has paid for (by QR) that the Clear Count billing team has not verified yet. */
 export interface Company {
   id: string
   name: string

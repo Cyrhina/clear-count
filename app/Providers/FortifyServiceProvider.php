@@ -85,14 +85,6 @@ class FortifyServiceProvider extends ServiceProvider
                 'page' => 'auth.login',
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'status' => $request->session()->get('status'),
-                'demoAccounts' => app()->environment('local') ? [
-                    ['email' => 'company_admin.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Company Admin'],
-                    ['email' => 'payroll_admin.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Payroll Admin'],
-                    ['email' => 'hr_admin.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'HR Admin'],
-                    ['email' => 'manager.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Manager'],
-                    ['email' => 'employee.consignado@frontlinebusiness.com.ph', 'password' => '123123qQ!', 'roleLabel' => 'Employee'],
-                    ['email' => 'admin@fbs.com', 'password' => '123123qQ!', 'roleLabel' => 'Super Admin'],
-                ] : [],
             ]);
         });
 
