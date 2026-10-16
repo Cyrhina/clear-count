@@ -58,4 +58,11 @@ if ($demoDatabase && ! file_exists($database = getenv('DB_DATABASE'))) {
     $kernel->call('db:seed', ['--force' => true]);
 }
 
-$app->handleRequest(Request::capture());
+// Laravel can lose the original exception behind a "headers already sent" error here, so log it first.
+try {
+    $app->handleRequest(Request::capture());
+} catch (Throwable $e) {
+    error_log('[clear-count] '.$e::class.': '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
+
+    throw $e;
+}
