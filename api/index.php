@@ -5,7 +5,7 @@
  *
  * Vercel functions have a read-only filesystem except /tmp, so everything Laravel writes (storage, compiled views,
  * bootstrap caches) is pointed there. Nothing in /tmp survives a cold start or is shared between instances, so for
- * anything beyond a demo set DB_CONNECTION=pgsql (and DB_* values) in the Vercel project's environment variables.
+ * anything beyond a demo set DEMO_MODE=false, DB_CONNECTION=pgsql (and DB_* values) in the Vercel project's environment variables.
  */
 
 use Illuminate\Http\Request;
@@ -38,13 +38,22 @@ $default('LOG_CHANNEL', 'stderr');
 
 // Demo mode: with no database configured, use a throw-away SQLite file in /tmp. Every instance has its own copy, so
 // sessions live in the cookie and there is no shared cache or queue.
-$demoDatabase = getenv('DB_CONNECTION') === false || getenv('DB_CONNECTION') === 'sqlite';
+// Set DEMO_MODE=false (together with the DB_* values) to use a real database instead. Demo mode overrides any DB,
+// session, cache or queue values left in the Vercel project, which would otherwise point at an unreachable database.
+$demoDatabase = getenv('DEMO_MODE') !== 'false';
 if ($demoDatabase) {
-    $default('DB_CONNECTION', 'sqlite');
-    $default('DB_DATABASE', "{$tmp}/database.sqlite");
-    $default('SESSION_DRIVER', 'cookie');
-    $default('CACHE_STORE', 'array');
-    $default('QUEUE_CONNECTION', 'sync');
+    foreach ([
+        'DB_CONNECTION' => 'sqlite',
+        'DB_DATABASE' => "{$tmp}/database.sqlite",
+        'SESSION_DRIVER' => 'cookie',
+        'CACHE_STORE' => 'array',
+        'QUEUE_CONNECTION' => 'sync',
+    ] as $key => $value) {
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
+    putenv('DB_URL');
+    unset($_ENV['DB_URL'], $_SERVER['DB_URL']);
 }
 
 require __DIR__.'/../vendor/autoload.php';
